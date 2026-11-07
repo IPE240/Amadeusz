@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Testy porównawcze modeli na zestawach z profili (profile\*\testy.jsonl). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>LokalneAI.Eval</AssemblyName>
+    <Product>LokalneAI</Product>
+    <Company>Optimal Design of Structures Sp. z o.o.</Company>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness.Postgres\LokalneAI.Harness.Postgres.csproj" />
+  </ItemGroup>
+
+</Project>

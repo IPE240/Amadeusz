@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Gotowy panel rozmowy z pół-harnessem do osadzenia w oknie gospodarza.
+    WPF: UserControl. WinForms: przez System.Windows.Forms.Integration.ElementHost.
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>net48;net10.0-windows</TargetFrameworks>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>LokalneAI.Harness.Wpf</RootNamespace>
+    <Product>LokalneAI</Product>
+    <Version>0.1.0</Version>
+    <Company>Optimal Design of Structures Sp. z o.o.</Company>
+    <Copyright>Copyright (c) 2026 Optimal Design of Structures Sp. z o.o.</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
+  </ItemGroup>
+
+</Project>

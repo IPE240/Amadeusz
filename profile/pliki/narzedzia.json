@@ -1,0 +1,85 @@
+{
+  "narzedzia": [
+    {
+      "nazwa": "utworz_folder",
+      "opis": "Tworzy folder (razem z brakującymi folderami nadrzędnymi). Ścieżka pełna albo względna do folderu bieżącego.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": { "type": "string", "description": "np. C:\\ODS\\Projekty\\1095_WSP\\Raporty albo Raporty" }
+        },
+        "required": ["sciezka"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pokaz_zawartosc",
+      "opis": "Pokazuje foldery i pliki w folderze (opcjonalnie tylko pasujące do wzorca, np. *.pdf).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": { "type": "string", "description": "folder; pusta = folder bieżący" },
+          "wzorzec": { "type": "string", "description": "np. *.pdf, R0*; pusty = wszystko" }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "przejdz_do_folderu",
+      "opis": "Ustawia folder bieżący (jak cd w PowerShellu). Kolejne ścieżki względne liczą się od niego.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": { "type": "string" }
+        },
+        "required": ["sciezka"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "kopiuj",
+      "opis": "Kopiuje plik albo cały folder. Jeśli cel to istniejący folder, kopia trafia do środka. Niczego nie nadpisuje.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "zrodlo": { "type": "string" },
+          "cel": { "type": "string" }
+        },
+        "required": ["zrodlo", "cel"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "przenies",
+      "opis": "Przenosi albo zmienia nazwę pliku lub folderu. Jeśli cel to istniejący folder, element trafia do środka. Niczego nie nadpisuje.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "zrodlo": { "type": "string" },
+          "cel": { "type": "string", "description": "nowa ścieżka albo folder docelowy" }
+        },
+        "required": ["zrodlo", "cel"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "otworz_w_eksploratorze",
+      "opis": "Otwiera folder w Eksploratorze Windows (albo zaznacza w nim plik).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": { "type": "string" }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

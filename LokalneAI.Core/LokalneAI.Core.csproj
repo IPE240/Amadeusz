@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>LokalneAI.Core</RootNamespace>
+    <Product>LokalneAI</Product>
+    <Company>Optimal Design of Structures Sp. z o.o.</Company>
+    <Copyright>Copyright (c) 2026 Optimal Design of Structures Sp. z o.o.</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LokalneAI.Core.Tests" />
+  </ItemGroup>
+
+</Project>

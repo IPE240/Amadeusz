@@ -1,0 +1,150 @@
+﻿# LokalneAI — instalacja na komputerze użytkownika (bez praw administratora).
+#
+#   instaluj.bat                                     model liczy na tym PC (instaluje Ollamę i pobiera model)
+#   instaluj.bat -SerwerModelu http://serwer-ai:11434  model liczy na serwerze w biurze (bez Ollamy na tym PC)
+#   instaluj.bat -Model SpeakLeash/bielik-minitron-7B-v3.0-instruct:Q4_K_M   inny model (ten: mniejszy i szybszy)
+#
+# Model domyślny: Bielik 11B v3 (SpeakLeash, Q4_K_M) — najlepszy z Bielików w naszych testach (docs\wybor-modelu.md).
+#
+# Program trafia do %LOCALAPPDATA%\Programs\LokalneAI, dostaje skrót w menu Start i na pulpicie
+# oraz wpis w Ustawienia → Aplikacje (odinstalowanie). Ustawienia i historia użytkownika zostają przy aktualizacji.
+param(
+    [string]$SerwerModelu = "",
+    [string]$Model = "SpeakLeash/bielik-11b-v3.0-instruct:Q4_K_M",
+    [switch]$BezSkrotuNaPulpicie
+)
+
+$ErrorActionPreference = "Stop"
+$zrodlo = $PSScriptRoot
+$cel = Join-Path $env:LOCALAPPDATA "Programs\LokalneAI"
+$wersja = (Get-Content (Join-Path $zrodlo "WERSJA.txt") -ErrorAction SilentlyContinue | Select-Object -First 1)
+if (-not $wersja) { $wersja = "0.0.0" }
+
+function Krok($tekst) { Write-Host ""; Write-Host "== $tekst" -ForegroundColor Cyan }
+
+Krok "LokalneAI $wersja → $cel"
+
+# 1. Program (zamknij działającą kopię, żeby dało się podmienić pliki).
+Get-Process LokalneAI -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null; Start-Sleep 2; if (-not $_.HasExited) { $_.Kill() } }
+New-Item -ItemType Directory -Force $cel | Out-Null
+Copy-Item -Path (Join-Path $zrodlo "program\*") -Destination $cel -Recurse -Force
+# Źródła wiedzy wpisane przez użytkownika (okno „Źródła wiedzy”) przeżywają aktualizację; własne notatki w wiedza\ też
+# (kopiowanie niczego nie kasuje, a pliki użytkownika mają inne nazwy niż pliki z paczki).
+$zachowane = @{}
+$profileCel = Join-Path $cel "profile"
+if (Test-Path $profileCel) {
+    Get-ChildItem $profileCel -Directory | ForEach-Object {
+        $plik = Join-Path $_.FullName "zrodla.json"
+        if (Test-Path $plik) { $zachowane[$plik] = [System.IO.File]::ReadAllBytes($plik) }
+    }
+}
+foreach ($folder in @("profile", "docs")) {
+    if (Test-Path (Join-Path $zrodlo $folder)) {
+        Copy-Item -Path (Join-Path $zrodlo $folder) -Destination $cel -Recurse -Force
+    }
+}
+foreach ($plik in $zachowane.Keys) { [System.IO.File]::WriteAllBytes($plik, $zachowane[$plik]) }
+if ($zachowane.Count -gt 0) { Write-Host "Źródła wiedzy użytkownika zostają bez zmian ($($zachowane.Count) profili)." }
+Copy-Item -Path (Join-Path $zrodlo "odinstaluj.ps1"), (Join-Path $zrodlo "WERSJA.txt"), (Join-Path $zrodlo "CZYTAJ.txt") -Destination $cel -Force
+# Pliki z internetu (zip z maila) Windows oznacza jako obce — zdejmujemy oznaczenie, żeby program się uruchamiał.
+Get-ChildItem $cel -Recurse -File | Unblock-File
+Write-Host "Skopiowano program."
+
+# 2. Ustawienia startowe — tylko gdy użytkownik jeszcze ich nie ma (aktualizacja niczego nie nadpisuje).
+$ustawienia = Join-Path $env:APPDATA "LokalneAI\ustawienia.json"
+$adres = if ($SerwerModelu) { $SerwerModelu.TrimEnd('/') } else { "http://127.0.0.1:11434" }
+if (-not (Test-Path $ustawienia)) {
+    New-Item -ItemType Directory -Force (Split-Path $ustawienia) | Out-Null
+    $json = [ordered]@{ ollamaUrl = $adres; model = $Model } | ConvertTo-Json
+    [System.IO.File]::WriteAllText($ustawienia, $json, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "Ustawienia: serwer modelu $adres, model $Model."
+} else {
+    Write-Host "Ustawienia użytkownika zostają bez zmian ($ustawienia)."
+}
+
+# 3. Model: lokalnie przez Ollamę albo serwer w biurze.
+if ($SerwerModelu) {
+    Krok "Serwer modelu: $adres"
+    try {
+        $v = Invoke-RestMethod "$adres/api/version" -TimeoutSec 5
+        Write-Host "Serwer odpowiada (Ollama $($v.version))."
+    } catch {
+        Write-Warning "Serwer $adres teraz nie odpowiada — program pokaże to w oknie. Adres można zmienić w Ustawieniach programu."
+    }
+} else {
+    Krok "Ollama i model na tym komputerze"
+    $ollama = Join-Path $env:LOCALAPPDATA "Programs\Ollama\ollama.exe"
+    if (-not (Test-Path $ollama)) {
+        $wSciezce = Get-Command ollama -ErrorAction SilentlyContinue
+        if ($wSciezce) { $ollama = $wSciezce.Source }
+    }
+    if (-not (Test-Path $ollama)) {
+        Write-Host "Instaluję Ollamę (https://ollama.com, bez praw administratora)…"
+        Invoke-RestMethod https://ollama.com/install.ps1 | Invoke-Expression
+        $ollama = Join-Path $env:LOCALAPPDATA "Programs\Ollama\ollama.exe"
+        if (-not (Test-Path $ollama)) { throw "Nie udało się zainstalować Ollamy. Zainstaluj ją ręcznie: irm https://ollama.com/install.ps1 | iex" }
+    } else {
+        Write-Host "Ollama już jest: $ollama"
+    }
+
+    # Serwer Ollamy musi działać, żeby pobrać model.
+    $dziala = $false
+    try { Invoke-RestMethod "http://127.0.0.1:11434/api/version" -TimeoutSec 3 | Out-Null; $dziala = $true } catch { }
+    if (-not $dziala) {
+        $aplikacja = Join-Path (Split-Path $ollama) "ollama app.exe"
+        if (Test-Path $aplikacja) { Start-Process $aplikacja } else { Start-Process $ollama -ArgumentList "serve" -WindowStyle Hidden }
+        for ($i = 0; $i -lt 30 -and -not $dziala; $i++) {
+            Start-Sleep 1
+            try { Invoke-RestMethod "http://127.0.0.1:11434/api/version" -TimeoutSec 3 | Out-Null; $dziala = $true } catch { }
+        }
+    }
+    if (-not $dziala) { throw "Ollama nie wystartowała. Uruchom ją z menu Start i powtórz instalację." }
+
+    $lista = (Invoke-RestMethod "http://127.0.0.1:11434/api/tags").models.name
+    if ($lista -contains $Model) {
+        # Celowo bez „ollama pull” — pull na pobranym modelu podmienia go na nowszą wersję z rejestru.
+        Write-Host "Model $Model już jest pobrany."
+    } else {
+        # Model Bielik 11B Q4_K_M to ok. 6,7 GB — sprawdzamy miejsce tam, gdzie Ollama trzyma modele.
+        $folderModeli = if ($env:OLLAMA_MODELS) { $env:OLLAMA_MODELS } else { Join-Path $env:USERPROFILE ".ollama\models" }
+        $dysk = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetFullPath($folderModeli))
+        $wolneGB = [math]::Round((New-Object System.IO.DriveInfo($dysk)).AvailableFreeSpace / 1GB, 1)
+        if ($wolneGB -lt 8) {
+            throw "Za mało miejsca na dysku $dysk ($wolneGB GB wolne, model potrzebuje ok. 8 GB). Zwolnij miejsce i uruchom instalację jeszcze raz."
+        }
+
+        Write-Host "Pobieram model $Model (ok. 7 GB, to potrwa; wolne miejsce: $wolneGB GB)…"
+        & $ollama pull $Model
+        if ($LASTEXITCODE -ne 0) { throw "Nie udało się pobrać modelu $Model." }
+    }
+}
+
+# 4. Skróty i wpis do odinstalowania.
+Krok "Skróty"
+$exe = Join-Path $cel "LokalneAI.exe"
+$powloka = New-Object -ComObject WScript.Shell
+$miejsca = @(Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\LokalneAI.lnk")
+if (-not $BezSkrotuNaPulpicie) { $miejsca += Join-Path ([Environment]::GetFolderPath("Desktop")) "LokalneAI.lnk" }
+foreach ($lnk in $miejsca) {
+    New-Item -ItemType Directory -Force (Split-Path $lnk) | Out-Null
+    $skrot = $powloka.CreateShortcut($lnk)
+    $skrot.TargetPath = $exe
+    $skrot.WorkingDirectory = $cel
+    $skrot.Description = "LokalneAI — lokalny asystent AI"
+    $skrot.Save()
+}
+
+$klucz = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LokalneAI"
+New-Item -Force $klucz | Out-Null
+Set-ItemProperty $klucz -Name DisplayName -Value "LokalneAI"
+Set-ItemProperty $klucz -Name DisplayVersion -Value $wersja
+Set-ItemProperty $klucz -Name Publisher -Value "Optimal Design of Structures Sp. z o.o."
+Set-ItemProperty $klucz -Name InstallLocation -Value $cel
+Set-ItemProperty $klucz -Name DisplayIcon -Value $exe
+Set-ItemProperty $klucz -Name UninstallString -Value ("powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"" + (Join-Path $cel "odinstaluj.ps1") + "`"")
+Set-ItemProperty $klucz -Name NoModify -Value 1 -Type DWord
+Set-ItemProperty $klucz -Name NoRepair -Value 1 -Type DWord
+
+Krok "Gotowe"
+Write-Host "Uruchom LokalneAI z menu Start albo skrótu na pulpicie."
+Write-Host "Odinstalowanie: Ustawienia → Aplikacje → LokalneAI."

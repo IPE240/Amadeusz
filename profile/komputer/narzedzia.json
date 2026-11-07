@@ -1,0 +1,211 @@
+{
+  "narzedzia": [
+    {
+      "nazwa": "utworz_folder",
+      "opis": "Tworzy folder (razem z brakującymi folderami nadrzędnymi). Ścieżka pełna albo względna do folderu bieżącego.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "np. C:\\ODS\\Projekty\\1095_WSP\\Raporty albo Raporty"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pokaz_zawartosc",
+      "opis": "Pokazuje foldery i pliki w folderze (opcjonalnie tylko pasujące do wzorca, np. *.pdf).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "folder; pusta = folder bieżący"
+          },
+          "wzorzec": {
+            "type": "string",
+            "description": "np. *.pdf, R0*; pusty = wszystko"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "przejdz_do_folderu",
+      "opis": "Ustawia folder bieżący (jak cd w PowerShellu). Kolejne ścieżki względne liczą się od niego.",
+      "zmienia_model": false,
+      "konczy_ture": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "kopiuj",
+      "opis": "Kopiuje plik albo cały folder. Jeśli cel to istniejący folder, kopia trafia do środka. Niczego nie nadpisuje.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "zrodlo": {
+            "type": "string"
+          },
+          "cel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "zrodlo",
+          "cel"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "przenies",
+      "opis": "Przenosi albo zmienia nazwę pliku lub folderu. Jeśli cel to istniejący folder, element trafia do środka. Niczego nie nadpisuje.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "zrodlo": {
+            "type": "string"
+          },
+          "cel": {
+            "type": "string",
+            "description": "nowa ścieżka albo folder docelowy"
+          }
+        },
+        "required": [
+          "zrodlo",
+          "cel"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "otworz_w_eksploratorze",
+      "opis": "Otwiera folder w Eksploratorze Windows (albo zaznacza w nim plik).",
+      "zmienia_model": false,
+      "konczy_ture": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "powershell",
+      "opis": "Wykonuje polecenie Windows PowerShell 5.1 w folderze bieżącym i zwraca jego wynik. Polecenia, które tylko czytają, idą od razu; zmiany zatwierdza użytkownik.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "polecenie": {
+            "type": "string",
+            "description": "np. Get-ChildItem -Recurse -Filter *.pdf | Measure-Object"
+          },
+          "opis": {
+            "type": "string",
+            "description": "jedno zdanie po polsku: co polecenie zrobi (pokazywane przy pytaniu o zgodę)"
+          }
+        },
+        "required": [
+          "polecenie",
+          "opis"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "uruchom",
+      "opis": "Otwiera plik domyślnym programem (PDF, DWG, XLSX…) albo uruchamia program (np. notepad, excel albo pełna ścieżka do .exe).",
+      "zmienia_model": true,
+      "konczy_ture": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "program": {
+            "type": "string",
+            "description": "plik albo program, np. raport.pdf, notepad, C:\\ODS\\narzedzie.exe"
+          },
+          "argumenty": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "program"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "czytaj_plik",
+      "opis": "Pokazuje treść pliku tekstowego (txt, md, csv, json, xml, cs, py, ps1…) z numerami linii.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "od_linii": {
+            "type": "integer",
+            "description": "od której linii (domyślnie 1)"
+          },
+          "ile_linii": {
+            "type": "integer",
+            "description": "ile linii (domyślnie 200)"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "szukaj_plikow",
+      "opis": "Szuka plików i folderów po nazwie w folderze i wszystkich podfolderach (najwyżej 60 wyników).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "wzorzec": {
+            "type": "string",
+            "description": "fragment nazwy albo wzorzec, np. WSP, *.dwg, *R02*.pdf"
+          },
+          "sciezka": {
+            "type": "string",
+            "description": "gdzie szukać; pusta = folder bieżący"
+          }
+        },
+        "required": [
+          "wzorzec"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,855 @@
+{
+ "narzedzia": [
+  {
+   "nazwa": "wstaw_slup",
+   "opis": "Wstawia pionowy słup stalowy w punkcie (x, y) od poziomu dołu do poziomu góry. Zwraca id słupa.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "x_mm": {
+      "type": "number",
+      "description": "współrzędna X osi słupa w milimetrach, np. 6000"
+     },
+     "y_mm": {
+      "type": "number",
+      "description": "współrzędna Y osi słupa w milimetrach, np. 0"
+     },
+     "poziom_dol_m": {
+      "type": "number",
+      "description": "poziom dołu słupa w metrach, np. 0 albo -0.5"
+     },
+     "poziom_gora_m": {
+      "type": "number",
+      "description": "poziom góry słupa w metrach, np. 3.53"
+     },
+     "profil": {
+      "type": "string",
+      "description": "profil z katalogu Tekli, zapis bez spacji, np. HEB300"
+     },
+     "material": {
+      "type": "string",
+      "description": "gatunek materiału, np. S235JR (pominięty = S235JR)"
+     },
+     "klasa": {
+      "type": "string",
+      "description": "klasa elementu (numer 1-14, w Tekli to kolor), np. 3 (pominięta = 1)"
+     },
+     "nazwa": {
+      "type": "string",
+      "description": "nazwa elementu, np. SLUP (pominięta = SLUP)"
+     },
+     "obrot_stopni": {
+      "type": "number",
+      "description": "obrót profilu wokół własnej osi w stopniach, np. 90 (pominięty = 0)"
+     }
+    },
+    "required": [
+     "x_mm",
+     "y_mm",
+     "poziom_dol_m",
+     "poziom_gora_m",
+     "profil"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/wstaw_slup.cs"
+  },
+  {
+   "nazwa": "wstaw_belke",
+   "opis": "Wstawia belkę (rygiel, płatew, stężenie) między dwoma punktami. Poziomy końców w metrach. Zwraca id belki.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "x1_mm": {
+      "type": "number",
+      "description": "X początku belki w mm, np. 0"
+     },
+     "y1_mm": {
+      "type": "number",
+      "description": "Y początku belki w mm, np. 0"
+     },
+     "z1_m": {
+      "type": "number",
+      "description": "poziom początku belki w metrach, np. 3.53"
+     },
+     "x2_mm": {
+      "type": "number",
+      "description": "X końca belki w mm, np. 6000"
+     },
+     "y2_mm": {
+      "type": "number",
+      "description": "Y końca belki w mm, np. 0"
+     },
+     "z2_m": {
+      "type": "number",
+      "description": "poziom końca belki w metrach, np. 3.53"
+     },
+     "profil": {
+      "type": "string",
+      "description": "profil z katalogu Tekli, zapis bez spacji, np. IPE300"
+     },
+     "material": {
+      "type": "string",
+      "description": "gatunek materiału, np. S235JR (pominięty = S235JR)"
+     },
+     "klasa": {
+      "type": "string",
+      "description": "klasa elementu (numer 1-14, w Tekli to kolor), np. 3 (pominięta = 1)"
+     },
+     "nazwa": {
+      "type": "string",
+      "description": "nazwa elementu, np. BELKA (pominięta = BELKA)"
+     },
+     "obrot_stopni": {
+      "type": "number",
+      "description": "obrót profilu wokół własnej osi w stopniach, np. 90 (pominięty = 0)"
+     }
+    },
+    "required": [
+     "x1_mm",
+     "y1_mm",
+     "z1_m",
+     "x2_mm",
+     "y2_mm",
+     "z2_m",
+     "profil"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/wstaw_belke.cs"
+  },
+  {
+   "nazwa": "wstaw_strop",
+   "opis": "Wstawia prostokątną płytę betonową (strop) między dwoma przeciwległymi narożnikami; górna powierzchnia na podanym poziomie. Zwraca id płyty.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "x1_mm": {
+      "type": "number",
+      "description": "X pierwszego narożnika w mm, np. 0"
+     },
+     "y1_mm": {
+      "type": "number",
+      "description": "Y pierwszego narożnika w mm, np. 0"
+     },
+     "x2_mm": {
+      "type": "number",
+      "description": "X przeciwległego narożnika w mm, np. 6000"
+     },
+     "y2_mm": {
+      "type": "number",
+      "description": "Y przeciwległego narożnika w mm, np. 4000"
+     },
+     "poziom_gora_m": {
+      "type": "number",
+      "description": "poziom górnej powierzchni stropu w metrach, np. 3.53"
+     },
+     "grubosc_mm": {
+      "type": "number",
+      "description": "grubość płyty w mm, np. 200"
+     },
+     "material": {
+      "type": "string",
+      "description": "gatunek materiału, np. C25/30 (pominięty = C25/30)"
+     },
+     "klasa": {
+      "type": "string",
+      "description": "klasa elementu (numer 1-14, w Tekli to kolor), np. 3 (pominięta = 1)"
+     },
+     "nazwa": {
+      "type": "string",
+      "description": "nazwa elementu, np. STROP (pominięta = STROP)"
+     }
+    },
+    "required": [
+     "x1_mm",
+     "y1_mm",
+     "x2_mm",
+     "y2_mm",
+     "poziom_gora_m",
+     "grubosc_mm"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/wstaw_strop.cs"
+  },
+  {
+   "nazwa": "wstaw_blache",
+   "opis": "Wstawia prostokątną blachę stalową (PL) o środku w (x, y) na podanym poziomie. Zwraca id blachy.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "x_mm": {
+      "type": "number",
+      "description": "X środka blachy w mm, np. 0"
+     },
+     "y_mm": {
+      "type": "number",
+      "description": "Y środka blachy w mm, np. 0"
+     },
+     "poziom_m": {
+      "type": "number",
+      "description": "poziom powierzchni blachy w metrach, np. 3.53"
+     },
+     "polozenie": {
+      "type": "string",
+      "description": "której powierzchni dotyczy poziom: gora (blacha leży poniżej) albo dol (blacha leży powyżej); pominięte = gora",
+      "enum": [
+       "gora",
+       "dol"
+      ]
+     },
+     "dlugosc_x_mm": {
+      "type": "number",
+      "description": "wymiar blachy wzdłuż X w mm, np. 300"
+     },
+     "szerokosc_y_mm": {
+      "type": "number",
+      "description": "wymiar blachy wzdłuż Y w mm, np. 300"
+     },
+     "grubosc_mm": {
+      "type": "number",
+      "description": "grubość blachy w mm, np. 20"
+     },
+     "material": {
+      "type": "string",
+      "description": "gatunek materiału, np. S235JR (pominięty = S235JR)"
+     },
+     "klasa": {
+      "type": "string",
+      "description": "klasa elementu (numer 1-14, w Tekli to kolor), np. 3 (pominięta = 1)"
+     },
+     "nazwa": {
+      "type": "string",
+      "description": "nazwa elementu, np. BLACHA (pominięta = BLACHA)"
+     }
+    },
+    "required": [
+     "x_mm",
+     "y_mm",
+     "poziom_m",
+     "dlugosc_x_mm",
+     "szerokosc_y_mm",
+     "grubosc_mm"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/wstaw_blache.cs"
+  },
+  {
+   "nazwa": "wstaw_podstawe_slupa",
+   "opis": "Dodaje do dołu pionowego słupa blachę podstawy (pod słupem), opcjonalnie 4 kotwy w narożnikach i ostrogę (kawałek profilu pod blachą). Zwraca id blachy oraz id kotew i ostrogi.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "grubosc_blachy_mm": {
+      "type": "number",
+      "description": "grubość blachy podstawy w mm, np. 30"
+     },
+     "dlugosc_x_mm": {
+      "type": "number",
+      "description": "wymiar blachy podstawy wzdłuż X w mm, np. 400"
+     },
+     "szerokosc_y_mm": {
+      "type": "number",
+      "description": "wymiar blachy podstawy wzdłuż Y w mm, np. 400"
+     },
+     "kotwy_srednica_mm": {
+      "type": "number",
+      "description": "średnica kotew w mm, np. 24; pominięta lub 0 = bez kotew"
+     },
+     "kotwy_rozstaw_x_mm": {
+      "type": "number",
+      "description": "rozstaw kotew wzdłuż X w mm, np. 300 (pominięty = wymiar blachy minus 120)"
+     },
+     "kotwy_rozstaw_y_mm": {
+      "type": "number",
+      "description": "rozstaw kotew wzdłuż Y w mm, np. 300 (pominięty = wymiar blachy minus 120)"
+     },
+     "kotwy_dlugosc_mm": {
+      "type": "number",
+      "description": "długość kotwy pod blachą (zakotwienie) w mm, np. 600 (pominięta = 600)"
+     },
+     "ostroga": {
+      "type": "string",
+      "description": "czy dodać ostrogę pod blachą: tak albo nie; pominięte = nie",
+      "enum": [
+       "tak",
+       "nie"
+      ]
+     },
+     "ostroga_profil": {
+      "type": "string",
+      "description": "profil ostrogi, np. HEA100 (pominięty = HEA100)"
+     },
+     "ostroga_dlugosc_mm": {
+      "type": "number",
+      "description": "długość ostrogi pod blachą w mm, np. 200 (pominięta = 200)"
+     },
+     "material": {
+      "type": "string",
+      "description": "gatunek materiału, np. S235JR (pominięty = S235JR)"
+     },
+     "klasa": {
+      "type": "string",
+      "description": "klasa elementu (numer 1-14, w Tekli to kolor), np. 3 (pominięta = 1)"
+     }
+    },
+    "required": [
+     "id",
+     "grubosc_blachy_mm",
+     "dlugosc_x_mm",
+     "szerokosc_y_mm"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/wstaw_podstawe_slupa.cs"
+  },
+  {
+   "nazwa": "wstaw_glowice_slupa",
+   "opis": "Dodaje na górze pionowego słupa blachę głowicy (nad słupem). Zwraca id blachy.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "grubosc_mm": {
+      "type": "number",
+      "description": "grubość blachy głowicy w mm, np. 20"
+     },
+     "dlugosc_x_mm": {
+      "type": "number",
+      "description": "wymiar blachy wzdłuż X w mm, np. 300"
+     },
+     "szerokosc_y_mm": {
+      "type": "number",
+      "description": "wymiar blachy wzdłuż Y w mm, np. 300"
+     },
+     "material": {
+      "type": "string",
+      "description": "gatunek materiału, np. S235JR (pominięty = S235JR)"
+     },
+     "klasa": {
+      "type": "string",
+      "description": "klasa elementu (numer 1-14, w Tekli to kolor), np. 3 (pominięta = 1)"
+     }
+    },
+    "required": [
+     "id",
+     "grubosc_mm",
+     "dlugosc_x_mm",
+     "szerokosc_y_mm"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/wstaw_glowice_slupa.cs"
+  },
+  {
+   "nazwa": "zmien_profil",
+   "opis": "Zmienia profil istniejącego elementu (np. słupa HEB300 na HEB320).",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "profil": {
+      "type": "string",
+      "description": "nowy profil z katalogu Tekli, zapis bez spacji, np. HEB320"
+     }
+    },
+    "required": [
+     "id",
+     "profil"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/zmien_profil.cs"
+  },
+  {
+   "nazwa": "zmien_material",
+   "opis": "Zmienia gatunek materiału istniejącego elementu (np. na S355J2).",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "material": {
+      "type": "string",
+      "description": "nowy gatunek materiału, np. S355J2"
+     }
+    },
+    "required": [
+     "id",
+     "material"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/zmien_material.cs"
+  },
+  {
+   "nazwa": "zmien_klase",
+   "opis": "Zmienia klasę (kolor) istniejącego elementu.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "klasa": {
+      "type": "string",
+      "description": "nowa klasa elementu, numer 1-14, np. 3"
+     }
+    },
+    "required": [
+     "id",
+     "klasa"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/zmien_klase.cs"
+  },
+  {
+   "nazwa": "zmien_nazwe",
+   "opis": "Zmienia nazwę istniejącego elementu.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "nazwa": {
+      "type": "string",
+      "description": "nowa nazwa elementu, np. S1"
+     }
+    },
+    "required": [
+     "id",
+     "nazwa"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/zmien_nazwe.cs"
+  },
+  {
+   "nazwa": "przesun_element",
+   "opis": "Przesuwa istniejący element o wektor (dx, dy, dz) w milimetrach.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "dx_mm": {
+      "type": "number",
+      "description": "przesunięcie w kierunku X w mm, np. 500 (pominięte = 0)"
+     },
+     "dy_mm": {
+      "type": "number",
+      "description": "przesunięcie w kierunku Y w mm, np. 0 (pominięte = 0)"
+     },
+     "dz_mm": {
+      "type": "number",
+      "description": "przesunięcie w pionie w mm, w górę dodatnie, np. 200 (pominięte = 0)"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/przesun_element.cs"
+  },
+  {
+   "nazwa": "kopiuj_element",
+   "opis": "Kopiuje istniejący element z przesunięciem (dx, dy, dz) w milimetrach. Zwraca id kopii.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "dx_mm": {
+      "type": "number",
+      "description": "przesunięcie w kierunku X w mm, np. 500 (pominięte = 0)"
+     },
+     "dy_mm": {
+      "type": "number",
+      "description": "przesunięcie w kierunku Y w mm, np. 0 (pominięte = 0)"
+     },
+     "dz_mm": {
+      "type": "number",
+      "description": "przesunięcie w pionie w mm, w górę dodatnie, np. 200 (pominięte = 0)"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/kopiuj_element.cs"
+  },
+  {
+   "nazwa": "ustaw_poziom_dolu_slupa",
+   "opis": "Zmienia poziom dołu istniejącego pionowego słupa (x i y bez zmian); poziom w metrach.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "poziom_dol_m": {
+      "type": "number",
+      "description": "nowy poziom dołu słupa w metrach, np. -0.5"
+     }
+    },
+    "required": [
+     "id",
+     "poziom_dol_m"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/ustaw_poziom_dolu_slupa.cs"
+  },
+  {
+   "nazwa": "ustaw_poziom_gory_slupa",
+   "opis": "Zmienia poziom góry istniejącego pionowego słupa (x i y bez zmian); poziom w metrach.",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "poziom_gora_m": {
+      "type": "number",
+      "description": "nowy poziom góry słupa w metrach, np. 4.2"
+     }
+    },
+    "required": [
+     "id",
+     "poziom_gora_m"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/ustaw_poziom_gory_slupa.cs"
+  },
+  {
+   "nazwa": "obroc_element",
+   "opis": "Ustawia obrót profilu belki lub słupa wokół własnej osi (kąt w stopniach, np. 90).",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     },
+     "kat_stopni": {
+      "type": "number",
+      "description": "kąt obrotu profilu wokół osi w stopniach, np. 90"
+     }
+    },
+    "required": [
+     "id",
+     "kat_stopni"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/obroc_element.cs"
+  },
+  {
+   "nazwa": "usun_element",
+   "opis": "Usuwa element z modelu (tylko na wyraźne polecenie użytkownika).",
+   "zmienia_model": true,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/usun_element.cs"
+  },
+  {
+   "nazwa": "zaznacz_element",
+   "opis": "Zaznacza w modelu jeden element o podanym id (zastępuje bieżącą selekcję).",
+   "zmienia_model": false,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/zaznacz_element.cs"
+  },
+  {
+   "nazwa": "wyselekcjonuj",
+   "opis": "Zaznacza w modelu wszystkie elementy spełniające filtry (typ, profil, materiał, nazwa, klasa, poziom z tolerancją); zastępuje bieżącą selekcję. Zwraca liczbę i id.",
+   "zmienia_model": false,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "typ": {
+      "type": "string",
+      "description": "rodzaj elementu: slup, belka, plyta (strop betonowy), blacha (stalowa) albo wszystko; pominięty = wszystko",
+      "enum": [
+       "slup",
+       "belka",
+       "plyta",
+       "blacha",
+       "wszystko"
+      ]
+     },
+     "profil": {
+      "type": "string",
+      "description": "profil, np. HEB300; z gwiazdką na końcu = prefiks, np. HEB* (pominięty = dowolny)"
+     },
+     "material": {
+      "type": "string",
+      "description": "gatunek materiału, np. S355J2 (pominięty = dowolny)"
+     },
+     "nazwa": {
+      "type": "string",
+      "description": "fragment nazwy elementu, np. S1 (pominięty = dowolna)"
+     },
+     "klasa": {
+      "type": "string",
+      "description": "klasa elementu, np. 3 (pominięta = dowolna)"
+     },
+     "poziom_m": {
+      "type": "number",
+      "description": "poziom w metrach, np. 3.53 (pominięty = bez filtra poziomu)"
+     },
+     "poziom_dotyczy": {
+      "type": "string",
+      "description": "czego dotyczy poziom: gora, dol albo srodek elementu; pominięte = gora",
+      "enum": [
+       "gora",
+       "dol",
+       "srodek"
+      ]
+     },
+     "tolerancja_m": {
+      "type": "number",
+      "description": "tolerancja poziomu w metrach, np. 0.01 (pominięta = 0.002)"
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/wyselekcjonuj.cs"
+  },
+  {
+   "nazwa": "dodaj_do_selekcji",
+   "opis": "Dodaje do bieżącej selekcji elementy spełniające filtry (jak w poleceniu wyselekcjonuj), nie usuwając tego, co już zaznaczone.",
+   "zmienia_model": false,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "typ": {
+      "type": "string",
+      "description": "rodzaj elementu: slup, belka, plyta (strop betonowy), blacha (stalowa) albo wszystko; pominięty = wszystko",
+      "enum": [
+       "slup",
+       "belka",
+       "plyta",
+       "blacha",
+       "wszystko"
+      ]
+     },
+     "profil": {
+      "type": "string",
+      "description": "profil, np. HEB300; z gwiazdką na końcu = prefiks, np. HEB* (pominięty = dowolny)"
+     },
+     "material": {
+      "type": "string",
+      "description": "gatunek materiału, np. S355J2 (pominięty = dowolny)"
+     },
+     "nazwa": {
+      "type": "string",
+      "description": "fragment nazwy elementu, np. S1 (pominięty = dowolna)"
+     },
+     "klasa": {
+      "type": "string",
+      "description": "klasa elementu, np. 3 (pominięta = dowolna)"
+     },
+     "poziom_m": {
+      "type": "number",
+      "description": "poziom w metrach, np. 3.53 (pominięty = bez filtra poziomu)"
+     },
+     "poziom_dotyczy": {
+      "type": "string",
+      "description": "czego dotyczy poziom: gora, dol albo srodek elementu; pominięte = gora",
+      "enum": [
+       "gora",
+       "dol",
+       "srodek"
+      ]
+     },
+     "tolerancja_m": {
+      "type": "number",
+      "description": "tolerancja poziomu w metrach, np. 0.01 (pominięta = 0.002)"
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/dodaj_do_selekcji.cs"
+  },
+  {
+   "nazwa": "wyczysc_selekcje",
+   "opis": "Odznacza wszystko w modelu (czyści selekcję).",
+   "zmienia_model": false,
+   "parametry": {
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/wyczysc_selekcje.cs"
+  },
+  {
+   "nazwa": "policz_elementy",
+   "opis": "Liczy elementy spełniające filtry (np. ile słupów HEB300) w całym modelu albo wśród zaznaczonych. Niczego nie zaznacza ani nie zmienia.",
+   "zmienia_model": false,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "typ": {
+      "type": "string",
+      "description": "rodzaj elementu: slup, belka, plyta (strop betonowy), blacha (stalowa) albo wszystko; pominięty = wszystko",
+      "enum": [
+       "slup",
+       "belka",
+       "plyta",
+       "blacha",
+       "wszystko"
+      ]
+     },
+     "profil": {
+      "type": "string",
+      "description": "profil, np. HEB300; z gwiazdką na końcu = prefiks, np. HEB* (pominięty = dowolny)"
+     },
+     "material": {
+      "type": "string",
+      "description": "gatunek materiału, np. S355J2 (pominięty = dowolny)"
+     },
+     "nazwa": {
+      "type": "string",
+      "description": "fragment nazwy elementu, np. S1 (pominięty = dowolna)"
+     },
+     "klasa": {
+      "type": "string",
+      "description": "klasa elementu, np. 3 (pominięta = dowolna)"
+     },
+     "poziom_m": {
+      "type": "number",
+      "description": "poziom w metrach, np. 3.53 (pominięty = bez filtra poziomu)"
+     },
+     "poziom_dotyczy": {
+      "type": "string",
+      "description": "czego dotyczy poziom: gora, dol albo srodek elementu; pominięte = gora",
+      "enum": [
+       "gora",
+       "dol",
+       "srodek"
+      ]
+     },
+     "tolerancja_m": {
+      "type": "number",
+      "description": "tolerancja poziomu w metrach, np. 0.01 (pominięta = 0.002)"
+     },
+     "zakres": {
+      "type": "string",
+      "description": "gdzie liczyć: model (cały model) albo selekcja (tylko zaznaczone); pominięty = model",
+      "enum": [
+       "model",
+       "selekcja"
+      ]
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/policz_elementy.cs"
+  },
+  {
+   "nazwa": "pokaz_selekcje",
+   "opis": "Pokazuje listę zaznaczonych elementów: liczbę, podsumowanie wg typu i profilu oraz pierwsze wiersze z id, nazwą i materiałem.",
+   "zmienia_model": false,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "maks_wierszy": {
+      "type": "integer",
+      "description": "ile wierszy listy pokazać, np. 20 (pominięte = 30)"
+     }
+    },
+    "required": [],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/pokaz_selekcje.cs"
+  },
+  {
+   "nazwa": "odczytaj_wlasciwosci",
+   "opis": "Odczytuje właściwości jednego elementu: typ, profil, materiał, klasa, nazwa, punkty i poziomy, długość, masa, numery pozycji.",
+   "zmienia_model": false,
+   "parametry": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "identyfikator elementu w Tekli (liczba całkowita, np. 1001), zwrócony wcześniej przez polecenie wstawiające"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "additionalProperties": false
+   },
+   "szablon": "szablony/odczytaj_wlasciwosci.cs"
+  }
+ ]
+}

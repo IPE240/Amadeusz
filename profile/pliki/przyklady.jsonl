@@ -1,0 +1,10 @@
+{"uzytkownik": "utwórz folder Raporty w C:\\ODS\\Projekty", "wywolania": [{"narzedzie": "utworz_folder", "argumenty": {"sciezka": "C:\\ODS\\Projekty\\Raporty"}}]}
+{"uzytkownik": "cd C:\\ODS\\1095_WSP a potem mkdir R02", "wywolania": [{"narzedzie": "przejdz_do_folderu", "argumenty": {"sciezka": "C:\\ODS\\1095_WSP"}}, {"narzedzie": "utworz_folder", "argumenty": {"sciezka": "R02"}}]}
+{"uzytkownik": "co jest w tym folderze?", "wywolania": [{"narzedzie": "pokaz_zawartosc", "argumenty": {}}]}
+{"uzytkownik": "pokaż PDF-y w C:\\ODS\\Wydruki", "wywolania": [{"narzedzie": "pokaz_zawartosc", "argumenty": {"sciezka": "C:\\ODS\\Wydruki", "wzorzec": "*.pdf"}}]}
+{"uzytkownik": "zmień nazwę folderu Nowy na Archiwum", "wywolania": [{"narzedzie": "przenies", "argumenty": {"zrodlo": "Nowy", "cel": "Archiwum"}}]}
+{"uzytkownik": "skopiuj notka.docx do folderu R01", "wywolania": [{"narzedzie": "kopiuj", "argumenty": {"zrodlo": "notka.docx", "cel": "R01"}}]}
+{"uzytkownik": "otwórz ten folder", "wywolania": [{"narzedzie": "otworz_w_eksploratorze", "argumenty": {}}]}
+{"uzytkownik": "usuń folder Stare", "wywolania": [], "pytanie": "Nie mam polecenia do kasowania — usuń folder ręcznie w Eksploratorze. Mogę go otworzyć albo przenieść do folderu Archiwum."}
+{"uzytkownik": "utwórz folder", "wywolania": [], "pytanie": "Jak ma się nazywać folder i gdzie go utworzyć?"}
+{"uzytkownik": "przenieś wszystkie stare rewizje do archiwum", "wywolania": [], "pytanie": "Które foldery to stare rewizje i gdzie jest archiwum? Podaj ścieżki — przeniosę je po kolei."}

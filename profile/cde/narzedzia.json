@@ -1,0 +1,27 @@
+{
+  "narzedzia": [
+    {
+      "nazwa": "zapytanie_sql",
+      "opis": "Wykonuje jedno zapytanie SELECT (PostgreSQL 15) w bazie CDE biura ODS, tylko do odczytu, i zwraca wiersze. Wszystkie rachunki (SUM, COUNT, ROUND, AVG) wykonuj w SQL, nigdy w pamięci. Używaj tylko relacji z karty bazy i zawsze aliasów tabel. Godziny osoby tylko z timesheet.v_my_hours z filtrem person_id = '{{ja}}'. Przy listach dodawaj ORDER BY i LIMIT.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sql": {
+            "type": "string",
+            "description": "jedno zapytanie SELECT (PostgreSQL 15)"
+          },
+          "cel": {
+            "type": "string",
+            "description": "po co to zapytanie, jednym zdaniem"
+          }
+        },
+        "required": [
+          "sql",
+          "cel"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

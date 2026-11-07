@@ -1,0 +1,116 @@
+<UserControl x:Class="LokalneAI.Harness.Wpf.HarnessPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:LokalneAI.Harness.Wpf"
+             FontFamily="Segoe UI" FontSize="13" Background="#F4F5F7"
+             MinWidth="320" MinHeight="300">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <Style x:Key="Selectable" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <DataTemplate x:Key="EntryTemplate" DataType="{x:Type local:PanelEntry}">
+            <Border x:Name="Card" Margin="0,0,0,6" Padding="10,6" CornerRadius="6" Background="#F3F4F6">
+                <DockPanel>
+                    <TextBlock x:Name="MarkText" DockPanel.Dock="Left" Text="{Binding Mark}" Margin="0,0,6,0" FontWeight="Bold" VerticalAlignment="Top" />
+                    <StackPanel>
+                        <TextBox x:Name="MainText" Text="{Binding Text, Mode=OneWay}" Style="{StaticResource Selectable}" />
+                        <TextBox Text="{Binding Detail, Mode=OneWay}" Style="{StaticResource Selectable}" FontSize="12" Foreground="#4B5563"
+                                 Margin="0,2,0,0" Visibility="{Binding HasDetail, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Kind}" Value="User">
+                    <Setter TargetName="Card" Property="Background" Value="#E8F0FE" />
+                    <Setter TargetName="MainText" Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Call">
+                    <Setter TargetName="Card" Property="Background" Value="White" />
+                    <Setter TargetName="Card" Property="BorderBrush" Value="#E5E7EB" />
+                    <Setter TargetName="Card" Property="BorderThickness" Value="1" />
+                    <Setter TargetName="MainText" Property="FontFamily" Value="Consolas" />
+                    <Setter TargetName="MainText" Property="FontSize" Value="12" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Success}" Value="False">
+                    <Setter TargetName="MarkText" Property="Foreground" Value="#B91C1C" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Success}" Value="True">
+                    <Setter TargetName="MarkText" Property="Foreground" Value="#15803D" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Answer">
+                    <Setter TargetName="Card" Property="Background" Value="#ECFDF5" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Question">
+                    <Setter TargetName="Card" Property="Background" Value="#FFF7E6" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Warning">
+                    <Setter TargetName="Card" Property="Background" Value="#FFF7E6" />
+                    <Setter TargetName="MainText" Property="Foreground" Value="#92400E" />
+                    <Setter TargetName="MainText" Property="FontSize" Value="12" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Error">
+                    <Setter TargetName="Card" Property="Background" Value="#FEF2F2" />
+                    <Setter TargetName="MainText" Property="Foreground" Value="#B91C1C" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Info">
+                    <Setter TargetName="Card" Property="Background" Value="Transparent" />
+                    <Setter TargetName="MainText" Property="Foreground" Value="#6B7280" />
+                    <Setter TargetName="MainText" Property="FontSize" Value="12" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Nagłówek: tytuł, licznik kontekstu, nowa sesja -->
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock x:Name="TitleText" Text="Asystent" FontWeight="SemiBold" FontSize="14" />
+                <Grid Margin="0,4,0,0" ToolTip="Ile kontekstu modelu zajmuje ta sesja. Przy zapełnieniu starsza część rozmowy jest skracana.">
+                    <ProgressBar x:Name="ContextBar" Height="14" Maximum="100" Value="0" Foreground="#3B82F6" Background="#E5E7EB" BorderThickness="0" />
+                    <TextBlock x:Name="ContextText" Text="Kontekst: —" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#111827" />
+                </Grid>
+            </StackPanel>
+            <Button Grid.Column="1" x:Name="NewSessionButton" Content="Nowa sesja" Margin="8,0,0,0" Padding="10,3" VerticalAlignment="Top"
+                    Click="NewSession_Click" ToolTip="Zamyka bieżącą sesję i kasuje jej historię" />
+        </Grid>
+
+        <!-- Rozmowa -->
+        <Border Grid.Row="1" Background="White" BorderBrush="#DDE1E6" BorderThickness="1" CornerRadius="6">
+            <ScrollViewer x:Name="Scroll" VerticalScrollBarVisibility="Auto" Padding="8" PreviewMouseWheel="Scroll_PreviewMouseWheel">
+                <ItemsControl x:Name="EntriesList" ItemTemplate="{StaticResource EntryTemplate}" />
+            </ScrollViewer>
+        </Border>
+
+        <!-- Polecenie -->
+        <Grid Grid.Row="2" Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="InputBox" MinHeight="54" MaxHeight="160" AcceptsReturn="True" TextWrapping="Wrap" Padding="6,4"
+                     VerticalScrollBarVisibility="Auto" PreviewKeyDown="Input_PreviewKeyDown" />
+            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                <Button x:Name="SendButton" Content="Wyślij" Width="90" Height="30" Click="Send_Click" FontWeight="SemiBold" />
+                <Button x:Name="StopButton" Content="Stop" Width="90" Height="24" Margin="0,6,0,0" Click="Stop_Click" IsEnabled="False" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

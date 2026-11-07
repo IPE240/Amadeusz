@@ -1,0 +1,45 @@
+LokalneAI - lokalny asystent AI biura ODS
+==========================================
+
+INSTALACJA (bez praw administratora)
+1. Rozpakuj paczke LokalneAI-<wersja>.zip w dowolnym miejscu.
+2. Kliknij dwukrotnie instaluj.bat i poczekaj na "Gotowe".
+
+Model moze liczyc:
+- na tym komputerze: instaluj.bat bez parametrow. Instalator zainstaluje Ollame
+  i pobierze model Bielik 11B v3 (polski, SpeakLeash; ok. 7 GB, potrzebne ok. 8 GB
+  wolnego miejsca). Najlepiej karta graficzna z 8 GB pamieci lub wiecej.
+- na serwerze w biurze: instaluj.bat -SerwerModelu http://<serwer>:11434
+  (Ollama na tym komputerze nie jest wtedy potrzebna).
+
+Inny model: instaluj.bat -Model <nazwa>, np. szybszy i mniejszy
+  -Model SpeakLeash/bielik-minitron-7B-v3.0-instruct:Q4_K_M
+
+URUCHOMIENIE
+Menu Start albo skrot na pulpicie: LokalneAI.
+Przycisk "Pol-harness..." otwiera asystenta z profilami:
+  tekla - polecenia w modelu Tekli (na probe: symulator),
+  cde   - pytania o godziny i projekty w bazie CDE (potrzebny plik polaczenia),
+  pliki - tworzenie folderow, kopiowanie, przenoszenie (bez kasowania),
+  komputer - polecenia PowerShella, uruchamianie programow, czytanie i szukanie
+             plikow. Dziala tylko w "Dozwolonych folderach"; to, co tylko czyta,
+             idzie od razu, a kazda zmiane (tworzenie, kopiowanie, kasowanie,
+             uruchomienie programu) zatwierdzasz w okienku.
+
+DOKUMENTACJA DLA ASYSTENTA
+Przycisk "Zrodla wiedzy..." w oknie asystenta: wklej adres repozytorium (jak do
+git clone) i wzorce plikow, np. README.md; docs/**/*.md. Pliki pobieraja sie od razu
+i potem same co 6 godzin (potrzebny git i dostep do repozytorium).
+Wlasne notatki (.md, .txt) mozna wrzucic do folderu profilu: profile\<nazwa>\wiedza\.
+
+AKTUALIZACJA
+Nowa paczka: instaluj.bat jeszcze raz. Ustawienia, historia, zrodla wiedzy
+i wlasne notatki w folderach wiedza zostaja.
+
+ODINSTALOWANIE
+Ustawienia -> Aplikacje -> LokalneAI. Ollama i modele zostaja (odinstalowuje sie je osobno).
+
+Gdzie co jest:
+  program:    %LOCALAPPDATA%\Programs\LokalneAI
+  ustawienia: %APPDATA%\LokalneAI\ustawienia.json
+  historia:   %LOCALAPPDATA%\LokalneAI\historia.jsonl

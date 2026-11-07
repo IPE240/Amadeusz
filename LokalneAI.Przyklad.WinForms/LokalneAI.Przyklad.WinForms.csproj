@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Przykład osadzenia pół-harnessu w programie WinForms na .NET Framework 4.8 — tak jak most do Tekli
+    albo panel makr. Panel WPF wchodzi do okna WinForms przez ElementHost.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>LokalneAI.Przyklad</AssemblyName>
+    <RootNamespace>LokalneAI.Przyklad</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="WindowsFormsIntegration" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness.Wpf\LokalneAI.Harness.Wpf.csproj" />
+  </ItemGroup>
+
+</Project>

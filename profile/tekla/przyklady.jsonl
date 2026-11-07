@@ -1,0 +1,15 @@
+{"uzytkownik": "wstaw słup HEA200 w punkcie 3000, 4500 od poziomu -0,5 do 4,2", "wywolania": [{"narzedzie": "wstaw_slup", "argumenty": {"x_mm": 3000, "y_mm": 4500, "poziom_dol_m": -0.5, "poziom_gora_m": 4.2, "profil": "HEA200"}}]}
+{"uzytkownik": "belka IPE240 od punktu 0,0 do 5000,0 na poziomie 4,2", "wywolania": [{"narzedzie": "wstaw_belke", "argumenty": {"x1_mm": 0, "y1_mm": 0, "z1_m": 4.2, "x2_mm": 5000, "y2_mm": 0, "z2_m": 4.2, "profil": "IPE240"}}]}
+{"stan": "ostatnio wstawiony słup id=2001", "uzytkownik": "zmień profil na HEB260", "wywolania": [{"narzedzie": "zmien_profil", "argumenty": {"id": 2001, "profil": "HEB260"}}]}
+{"uzytkownik": "wstaw strop 6 na 4 metry od zera, górą na poziomie 3,5, grubość 20 cm", "wywolania": [{"narzedzie": "wstaw_strop", "argumenty": {"x1_mm": 0, "y1_mm": 0, "x2_mm": 6000, "y2_mm": 4000, "poziom_gora_m": 3.5, "grubosc_mm": 200}}]}
+{"stan": "ostatnio wstawiony słup id=2001", "uzytkownik": "zrób temu słupowi podstawę: blacha 400x400 grubości 30, kotwy M24, do tego ostroga HEA100 długości 200", "wywolania": [{"narzedzie": "wstaw_podstawe_slupa", "argumenty": {"id": 2001, "grubosc_blachy_mm": 30, "dlugosc_x_mm": 400, "szerokosc_y_mm": 400, "kotwy_srednica_mm": 24, "ostroga": "tak", "ostroga_profil": "HEA100", "ostroga_dlugosc_mm": 200}}]}
+{"stan": "ostatnio wstawiony słup id=2001", "uzytkownik": "podnieś górę tego słupa do 5,1", "wywolania": [{"narzedzie": "ustaw_poziom_gory_slupa", "argumenty": {"id": 2001, "poziom_gora_m": 5.1}}]}
+{"uzytkownik": "ile mamy IPE200 w modelu?", "wywolania": [{"narzedzie": "policz_elementy", "argumenty": {"profil": "IPE200"}}]}
+{"uzytkownik": "zaznacz wszystkie słupy ze stali S355J2", "wywolania": [{"narzedzie": "wyselekcjonuj", "argumenty": {"typ": "slup", "material": "S355J2"}}]}
+{"uzytkownik": "wstaw słup w punkcie 2000, 2000", "wywolania": [], "pytanie": "Jaki profil ma mieć słup oraz od jakiego do jakiego poziomu (w metrach)?"}
+{"uzytkownik": "zmień profil", "wywolania": [], "pytanie": "Którego elementu dotyczy zmiana (podaj id) i na jaki profil?"}
+{"uzytkownik": "narysuj rysunek wykonawczy tej belki", "wywolania": [], "pytanie": "Nie mam polecenia do rysunków. Mogę wstawiać i zmieniać elementy, selekcjonować, liczyć i odczytywać właściwości. Co zrobić w modelu?"}
+{"stan": "ostatnio wstawiony słup id=2001", "uzytkownik": "zmień nazwę na S5 i klasę na 4", "wywolania": [{"narzedzie": "zmien_nazwe", "argumenty": {"id": 2001, "nazwa": "S5"}}, {"narzedzie": "zmien_klase", "argumenty": {"id": 2001, "klasa": "4"}}]}
+{"uzytkownik": "pokaż, co mam zaznaczone", "wywolania": [{"narzedzie": "pokaz_selekcje", "argumenty": {}}]}
+{"stan": "ostatnio wstawiony słup id=2001", "uzytkownik": "przesuń go o 200 mm w X i o minus 1 metr w Y", "wywolania": [{"narzedzie": "przesun_element", "argumenty": {"id": 2001, "dx_mm": 200, "dy_mm": -1000}}]}
+{"uzytkownik": "usuń element 2002", "wywolania": [{"narzedzie": "usun_element", "argumenty": {"id": 2002}}]}

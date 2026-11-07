@@ -1,0 +1,10 @@
+{"uzytkownik": "cd C:\\ODS\\1095_WSP a potem mkdir R02", "wywolania": [{"narzedzie": "przejdz_do_folderu", "argumenty": {"sciezka": "C:\\ODS\\1095_WSP"}}, {"narzedzie": "utworz_folder", "argumenty": {"sciezka": "R02"}}]}
+{"uzytkownik": "ile jest PDF-ów w tym folderze razem z podfolderami?", "wywolania": [{"narzedzie": "powershell", "argumenty": {"polecenie": "(Get-ChildItem -Recurse -File -Filter *.pdf).Count", "opis": "Liczy pliki PDF w folderze i podfolderach."}}]}
+{"uzytkownik": "pokaż 5 najnowszych plików z podfolderami", "wywolania": [{"narzedzie": "powershell", "argumenty": {"polecenie": "Get-ChildItem -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 5 FullName, LastWriteTime", "opis": "Pokazuje 5 najnowszych plików z podfolderami."}}]}
+{"uzytkownik": "w folderze R01 zmień w nazwach PDF-ów R01 na R02", "wywolania": [{"narzedzie": "powershell", "argumenty": {"polecenie": "Get-ChildItem -Path 'R01' -File -Filter *R01*.pdf | Rename-Item -NewName { $_.Name -replace 'R01','R02' }", "opis": "Zmienia R01 na R02 w nazwach PDF-ów w folderze R01."}}]}
+{"uzytkownik": "spakuj folder R02 do zipa", "wywolania": [{"narzedzie": "powershell", "argumenty": {"polecenie": "Compress-Archive -Path 'R02\\*' -DestinationPath 'R02.zip'", "opis": "Pakuje zawartość folderu R02 do pliku R02.zip."}}]}
+{"uzytkownik": "usuń plik stary_raport.pdf", "wywolania": [{"narzedzie": "powershell", "argumenty": {"polecenie": "Remove-Item -LiteralPath 'stary_raport.pdf'", "opis": "Kasuje plik stary_raport.pdf."}}]}
+{"uzytkownik": "znajdź rysunki z R03 w nazwie", "wywolania": [{"narzedzie": "szukaj_plikow", "argumenty": {"wzorzec": "*R03*"}}]}
+{"uzytkownik": "co jest w pliku notatki.txt?", "wywolania": [{"narzedzie": "czytaj_plik", "argumenty": {"sciezka": "notatki.txt"}}]}
+{"uzytkownik": "otwórz Notatnik", "wywolania": [{"narzedzie": "uruchom", "argumenty": {"program": "notepad"}}]}
+{"uzytkownik": "skasuj wszystko", "wywolania": [], "pytanie": "Co dokładnie mam usunąć? Podaj pliki albo wzorzec, np. *.tmp w folderze Wydruki."}

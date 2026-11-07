@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Wykonawca SQL dla profilu „cde”: PostgreSQL tylko do odczytu. Osobno od rdzenia, żeby gospodarze bez bazy nie ciągnęli Npgsql. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>LokalneAI.Harness.Postgres</RootNamespace>
+    <Product>LokalneAI</Product>
+    <Version>0.1.0</Version>
+    <Company>Optimal Design of Structures Sp. z o.o.</Company>
+    <Copyright>Copyright (c) 2026 Optimal Design of Structures Sp. z o.o.</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Npgsql 9 nie obsługuje netstandard2.0 (.NET Framework 4.8), więc gałąź 8.0. Licencja PostgreSQL (MIT-podobna). -->
+    <PackageReference Include="Npgsql" Version="8.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,37 @@
+{
+  "nazwa": "cde",
+  "opis": "Pytania o dane biura w bazie CDE (godziny, projekty, tony stali). Model pisze SQL tylko do odczytu, liczy baza.",
+  "zakonczenie": "model",
+  "narzedzia_wbudowane": [
+    "kalkulator",
+    "szukaj_wiedzy"
+  ],
+  "narzedzia_sql": [
+    "zapytanie_sql"
+  ],
+  "sprawdzaj_liczby": true,
+  "max_krokow": 6,
+  "max_wywolan_w_kroku": 2,
+  "sql_reguly": [
+    {
+      "jesli": "v_my_hours",
+      "wymaga": "{{ja}}",
+      "komunikat": "Widok timesheet.v_my_hours zawiera godziny wszystkich osób — zawsze dodaj warunek h.person_id = '{{ja}}' (godziny pytającego). Godziny projektu ogółem bierz z timesheet.v_hours_project_month.",
+      "wymaga_wzorca": "person_id\\s*=\\s*'\\{\\{ja\\}\\}'"
+    }
+  ],
+  "sql_zabronione": [
+    "timesheet.entry",
+    "timesheet.overlap_mark",
+    "people.",
+    "org.",
+    "change.",
+    "audit.",
+    "agent.",
+    "crm.party_alias",
+    "ingest.raw_row",
+    "szpieg2.",
+    "pg_catalog.pg_authid",
+    "pg_shadow"
+  ]
+}

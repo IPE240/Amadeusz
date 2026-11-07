@@ -1,0 +1,14 @@
+{
+  "zrodla": [
+    {
+      "typ": "git",
+      "repo": "https://github.com/Optimal-Design-of-Structures/CDE.git",
+      "galaz": "repo_do_rozmowy_z_CDE_mw1",
+      "pliki": [
+        "cdeReposForAI/rozmowa_z_baza_cde/OPIS_KOLUMN.md",
+        "cdeReposForAI/rozmowa_z_baza_cde/NOTATKI_dokumentacja_md.md",
+        "handbook/glossary.md"
+      ]
+    }
+  ]
+}

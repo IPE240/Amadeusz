@@ -1,0 +1,209 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace LokalneAI.Harness.Llm
+{
+    /// <summary>Ustawienia połączenia z Ollamą (lokalną albo na serwerze w biurze).</summary>
+    public sealed class OllamaOptions
+    {
+        /// <summary>Np. <c>http://127.0.0.1:11434</c> albo <c>http://serwer-ai:11434</c>.</summary>
+        public string Url { get; set; } = "http://127.0.0.1:11434";
+
+        public string Model { get; set; } = "SpeakLeash/bielik-11b-v3.0-instruct:Q4_K_M";
+
+        /// <summary>Długość kontekstu. Ollama po cichu obcina dłuższy prompt, więc podajemy ją zawsze.</summary>
+        public int ContextLength { get; set; } = 8192;
+
+        public double Temperature { get; set; } = 0.1;
+
+        /// <summary>Jak długo trzymać model w pamięci po odpowiedzi, np. <c>10m</c>; null = domyślnie serwera.</summary>
+        public string KeepAlive { get; set; }
+
+        /// <summary>Limit na jedną odpowiedź modelu (ładowanie modelu potrafi trwać kilkanaście sekund).</summary>
+        public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromMinutes(5);
+    }
+
+    /// <summary>Klient Ollamy: <c>POST /api/chat</c> bez strumienia, z <c>format</c> = JSON Schema.</summary>
+    public sealed class OllamaLlmClient : ILlmClient, IDisposable
+    {
+        private readonly HttpClient _http;
+        private readonly OllamaOptions _options;
+        private readonly string _baseUrl;
+
+        public OllamaLlmClient(OllamaOptions options, HttpMessageHandler handler = null)
+        {
+            _options = options ?? new OllamaOptions();
+            _baseUrl = (_options.Url ?? "").Trim().TrimEnd('/');
+            if (_baseUrl.Length == 0)
+            {
+                _baseUrl = "http://127.0.0.1:11434";
+            }
+
+            if (_baseUrl.IndexOf("://", StringComparison.Ordinal) < 0)
+            {
+                _baseUrl = "http://" + _baseUrl;
+            }
+
+            _http = handler == null ? new HttpClient() : new HttpClient(handler, false);
+            _http.Timeout = Timeout.InfiniteTimeSpan;
+        }
+
+        public string ModelName => _options.Model;
+
+        public int ContextLength => _options.ContextLength;
+
+        public async Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken cancellationToken)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            var body = BuildBody(request);
+            using (var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+            using (var message = new HttpRequestMessage(HttpMethod.Post, _baseUrl + "/api/chat"))
+            {
+                limit.CancelAfter(_options.RequestTimeout);
+                message.Content = new StringContent(body, Encoding.UTF8, "application/json");
+                var clock = Stopwatch.StartNew();
+                HttpResponseMessage response;
+                try
+                {
+                    response = await _http.SendAsync(message, limit.Token).ConfigureAwait(false);
+                }
+                catch (HttpRequestException e)
+                {
+                    throw new LlmUnavailableException(_baseUrl, e);
+                }
+                catch (OperationCanceledException e) when (!cancellationToken.IsCancellationRequested)
+                {
+                    throw new LlmException("Model nie odpowiedział w ciągu " + _options.RequestTimeout.TotalSeconds.ToString("0", Text.Pl) + " s.", e);
+                }
+
+                using (response)
+                {
+                    var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new LlmException(DescribeError(response.StatusCode, text));
+                    }
+
+                    return Parse(text, clock.Elapsed);
+                }
+            }
+        }
+
+        public void Dispose() => _http.Dispose();
+
+        internal string BuildBody(LlmRequest request)
+        {
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new Utf8JsonWriter(stream, Text.CompactWriter))
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("model", _options.Model);
+                    writer.WriteStartArray("messages");
+                    foreach (var m in request.Messages)
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteString("role", m.Role);
+                        writer.WriteString("content", m.Content);
+                        writer.WriteEndObject();
+                    }
+
+                    writer.WriteEndArray();
+                    writer.WriteBoolean("stream", false);
+                    if (!string.IsNullOrEmpty(request.JsonSchema))
+                    {
+                        writer.WritePropertyName("format");
+                        using (var schema = JsonDocument.Parse(request.JsonSchema))
+                        {
+                            schema.RootElement.WriteTo(writer);
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(_options.KeepAlive))
+                    {
+                        writer.WriteString("keep_alive", _options.KeepAlive);
+                    }
+
+                    writer.WriteStartObject("options");
+                    writer.WriteNumber("temperature", request.Temperature ?? _options.Temperature);
+                    writer.WriteNumber("num_ctx", _options.ContextLength);
+                    writer.WriteEndObject();
+                    writer.WriteEndObject();
+                }
+
+                return Encoding.UTF8.GetString(stream.ToArray());
+            }
+        }
+
+        private string DescribeError(HttpStatusCode status, string body)
+        {
+            var detail = body;
+            try
+            {
+                using (var document = JsonDocument.Parse(body))
+                {
+                    if (document.RootElement.ValueKind == JsonValueKind.Object && document.RootElement.TryGetProperty("error", out var error))
+                    {
+                        detail = error.ValueKind == JsonValueKind.String ? error.GetString() : error.GetRawText();
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // Treść błędu nie jest JSON-em — zostaje surowa.
+            }
+
+            if (status == HttpStatusCode.NotFound && detail != null && detail.IndexOf("not found", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "Na serwerze modelu nie ma modelu „" + _options.Model + "”. Pobierz go: ollama pull " + _options.Model;
+            }
+
+            return "Serwer modelu zgłosił błąd (" + (int)status + "): " + Text.Shorten(detail, 300);
+        }
+
+        private static LlmResponse Parse(string json, TimeSpan elapsed)
+        {
+            try
+            {
+                using (var document = JsonDocument.Parse(json))
+                {
+                    var root = document.RootElement;
+                    var content = root.TryGetProperty("message", out var message) && message.TryGetProperty("content", out var c)
+                        ? c.GetString()
+                        : "";
+                    return new LlmResponse
+                    {
+                        Content = content ?? "",
+                        PromptTokens = ReadInt(root, "prompt_eval_count"),
+                        OutputTokens = ReadInt(root, "eval_count"),
+                        Duration = root.TryGetProperty("total_duration", out var total) && total.TryGetInt64(out var ns)
+                            ? TimeSpan.FromTicks(ns / 100)
+                            : elapsed,
+                        LoadDuration = root.TryGetProperty("load_duration", out var load) && load.TryGetInt64(out var loadNs)
+                            ? TimeSpan.FromTicks(loadNs / 100)
+                            : TimeSpan.Zero,
+                        Model = root.TryGetProperty("model", out var model) ? model.GetString() : null,
+                    };
+                }
+            }
+            catch (JsonException e)
+            {
+                throw new LlmException("Nieczytelna odpowiedź serwera modelu: " + Text.Shorten(json, 200), e);
+            }
+        }
+
+        private static int ReadInt(JsonElement root, string name)
+            => root.TryGetProperty(name, out var value) && value.TryGetInt32(out var number) ? number : 0;
+    }
+}

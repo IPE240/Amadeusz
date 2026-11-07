@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>LokalneAI</AssemblyName>
+    <RootNamespace>LokalneAI.App</RootNamespace>
+    <Version>0.1.0</Version>
+    <Product>LokalneAI</Product>
+    <Company>Optimal Design of Structures Sp. z o.o.</Company>
+    <Copyright>Copyright (c) 2026 Optimal Design of Structures Sp. z o.o.</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LokalneAI.Core\LokalneAI.Core.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness.Postgres\LokalneAI.Harness.Postgres.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness.Wpf\LokalneAI.Harness.Wpf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+{
+  "nazwa": "pliki",
+  "opis": "Proste porządki w plikach: utwórz folder, pokaż zawartość, kopiuj, przenieś/zmień nazwę, otwórz w Eksploratorze. Bez kasowania i bez poleceń powłoki.",
+  "zakonczenie": "auto",
+  "narzedzia_wbudowane": [],
+  "max_krokow": 4,
+  "max_wywolan_w_kroku": 4
+}

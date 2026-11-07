@@ -1,0 +1,9 @@
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+dist/
+wyniki/
+profile/*/wiedza/zrodla/
+*.local.json

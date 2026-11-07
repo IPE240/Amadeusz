@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pół-harness: cienka biblioteka osadzana w programach biura (WinForms/WPF na .NET Framework 4.8
+    i .NET 10). Model działa w Ollamie albo na serwerze zgodnym z API OpenAI — lokalnie albo na
+    komputerze w biurze. Biblioteka składa polecenie dla modelu, wymusza format odpowiedzi, sprawdza
+    wywołania narzędzi i przekazuje je gospodarzowi do wykonania.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>LokalneAI.Harness</RootNamespace>
+    <Product>LokalneAI</Product>
+    <Version>0.1.0</Version>
+    <Company>Optimal Design of Structures Sp. z o.o.</Company>
+    <Copyright>Copyright (c) 2026 Optimal Design of Structures Sp. z o.o.</Copyright>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LokalneAI.Harness.Tests" />
+  </ItemGroup>
+
+</Project>
