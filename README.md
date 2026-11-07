@@ -26,6 +26,12 @@ Są dwie części:
 
    Jak osadzić: [docs/osadzanie.md](docs/osadzanie.md). Serwer modelu w biurze: [docs/serwer-modelu.md](docs/serwer-modelu.md).
    Format profilu: [docs/profile.md](docs/profile.md). Wybór modelu: [docs/wybor-modelu.md](docs/wybor-modelu.md).
+
+   **Opisy dla AI:**
+   - agenci kodujący (Claude, Cursor) czytają [AGENTS.md](AGENTS.md) i [docs/biblioteki-dla-agentow.md](docs/biblioteki-dla-agentow.md);
+   - gdzie wkładać dokumentację dla lokalnych modeli i jak ją pisać: [docs/wiedza-dla-modeli.md](docs/wiedza-dla-modeli.md);
+   - zasady dla programistów: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md);
+   - szablony profilu i plików dla repozytoriów programów: [szablony](szablony).
 2. **Okno testowe** (`LokalneAI.App`). Czat z modelem, statystyki „gdzie liczył” i przycisk „Pół-harness…”, który
    otwiera panel do próby obu profili. Opis niżej.
 
@@ -111,7 +117,9 @@ Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie w WinForms (.NET Framework 4.8) | |
 | `LokalneAI.Core`, `LokalneAI.App`, `LokalneAI.Core.Tests` | okno testowe, jego klient Ollamy i testy | .NET 10 |
 | `profile\tekla`, `cde`, `pliki`, `komputer` | wiedza, polecenia, przykłady i testy profili | |
-| `docs\` | osadzanie, serwer modelu, format profilu, wybór modelu, raporty z badań | |
+| `szablony\` | szablon profilu i plików `AGENTS`, `CLAUDE`, `lokalne-ai\` dla repozytoriów programów | |
+| `narzedzia\sprawdz_przyklady` | kompiluje i uruchamia przykłady z `docs\biblioteki-dla-agentow.md` | .NET 10 i .NET Framework 4.8, C# 7.3 |
+| `docs\` | osadzanie, opisy dla AI, wiedza dla modeli, serwer modelu, format profilu, wybór modelu, raporty z badań | |
 
 ## Instalator
 
@@ -139,12 +147,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\porownaj_modele.ps
 ```
 
 `rozmiar` mierzy, ile tokenów zajmuje polecenie systemowe profilu. `test` przechodzi zestaw `testy.jsonl`.
+`szukaj --profil <folder> --fraza "kotwy M24"` pokazuje, co model dostałby z narzędzia `szukaj_wiedzy` (bez modelu),
+a `wiedza --profil <folder>` aktualizuje dokumentację z `zrodla.json`.
 Dla profilu `cde` każde zapytanie wzorcowe liczy się na żywej bazie (tylko odczyt) i porównuje z wynikiem SQL modelu.
 Pełne odpowiedzi lądują w `wyniki\`, który jest poza gitem (są tam godziny ludzi).
 
 ## Dalej
 
-- Repozytorium na GitHubie.
 - Dokończenie porównania modeli (Gemma 4, Qwen3.5 4B, Qwen bez „myślenia”) — [docs/wybor-modelu.md](docs/wybor-modelu.md).
 - Rola bazy tylko do odczytu dla asystenta (na każdą osobę) i sposób łączenia od użytkownika.
 - Test profilu `tekla` na kopii prawdziwego modelu przez most TeklaBridge (szablony są tylko skompilowane).

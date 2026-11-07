@@ -8,6 +8,7 @@ namespace LokalneAI.Harness.Tools
     /// <summary>Wywołanie narzędzia zaproponowane przez model i sprawdzone przez bibliotekę.</summary>
     public sealed class ToolCall
     {
+        /// <summary>Tworzy wywołanie. W programie robi to sesja; ręcznie przydaje się w testach wykonawcy.</summary>
         public ToolCall(ToolDefinition definition, JsonElement arguments, int step, int index)
         {
             Definition = definition;
@@ -16,13 +17,16 @@ namespace LokalneAI.Harness.Tools
             Index = index;
         }
 
+        /// <summary>Definicja narzędzia z profilu.</summary>
         public ToolDefinition Definition { get; }
 
+        /// <summary>Nazwa narzędzia, np. <c>wstaw_slup</c>.</summary>
         public string Name => Definition.Name;
 
         /// <summary>Argumenty po podstawieniu zmiennych sesji (np. <c>{{ja}}</c>).</summary>
         public JsonElement Arguments { get; }
 
+        /// <summary>Argumenty jako zwarty JSON.</summary>
         public string ArgumentsJson => Text.Compact(Arguments);
 
         /// <summary>Numer kroku modelu w turze (od 1).</summary>
@@ -31,8 +35,10 @@ namespace LokalneAI.Harness.Tools
         /// <summary>Kolejność w kroku (od 1).</summary>
         public int Index { get; }
 
+        /// <summary>Argument tekstowy albo null, gdy go nie ma albo nie jest tekstem.</summary>
         public string GetString(string name) => Arguments.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 
+        /// <summary>Argument liczbowy (także całkowity) albo null, gdy go nie ma albo nie jest liczbą.</summary>
         public double? GetNumber(string name) => Arguments.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : (double?)null;
 
         /// <summary>Treść pytania o zgodę przygotowana przez wykonawcę (<see cref="IConfirmingExecutor"/>); null = opis domyślny.</summary>
@@ -44,6 +50,7 @@ namespace LokalneAI.Harness.Tools
         /// <summary>Czy wywołanie coś zmienia (wymagało zgody). Ustala to sesja przed wykonaniem.</summary>
         public bool Mutating { get; internal set; }
 
+        /// <summary>Np. „wstaw_slup {"x_mm":6000}”.</summary>
         public override string ToString() => Name + " " + ArgumentsJson;
     }
 
@@ -56,14 +63,22 @@ namespace LokalneAI.Harness.Tools
             Text = text ?? "";
         }
 
+        /// <summary>Czy polecenie się udało.</summary>
         public bool Success { get; }
 
+        /// <summary>Tekst wyniku dla modelu.</summary>
         public string Text { get; }
 
+        /// <summary>
+        /// Udało się. Tekst wraca do modelu, więc ma być krótki i konkretny. Po wstawieniu elementu dopisz <c>id=&lt;liczba&gt;</c>:
+        /// model użyje go w poleceniach „zmień go…”.
+        /// </summary>
         public static ToolResult Ok(string text) => new ToolResult(true, text);
 
+        /// <summary>Nie udało się. Napisz zdanie, co poszło nie tak i czego brakuje: model poprawi wywołanie albo zapyta użytkownika.</summary>
         public static ToolResult Error(string text) => new ToolResult(false, text);
 
+        /// <summary>Tekst wyniku; przy błędzie z „[błąd] ” na początku.</summary>
         public override string ToString() => (Success ? "" : "[błąd] ") + Text;
     }
 
@@ -73,6 +88,10 @@ namespace LokalneAI.Harness.Tools
     /// </summary>
     public interface IToolExecutor
     {
+        /// <summary>
+        /// Wykonuje sprawdzone wywołanie i zwraca wynik dla modelu. Wołane z wątku w tle: jeśli API gospodarza wymaga wątku okna,
+        /// przełącz się sam (Dispatcher, Control.Invoke). Wyjątek biblioteka zamienia na wynik z błędem dla modelu.
+        /// </summary>
         Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken);
     }
 }

@@ -18,6 +18,7 @@ namespace LokalneAI.Harness.Validation
             @"(?<![\p{L}\d.,])(\d{1,3}(?:[  ]\d{3})+(?:[.,]\d+)?|\d+(?:[.,]\d+)?)(?![\p{L}\d])",
             RegexOptions.Compiled);
 
+        /// <summary>Liczby z tekstu (przecinek albo kropka, spacje w tysiącach), bez liczb sklejonych z literami.</summary>
         public static IList<decimal> Extract(string text)
         {
             var numbers = new List<decimal>();

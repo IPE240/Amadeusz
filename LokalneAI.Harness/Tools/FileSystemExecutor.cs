@@ -60,6 +60,7 @@ namespace LokalneAI.Harness.Tools
 
         private readonly FileSystemOptions _options;
 
+        /// <summary>Tworzy wykonawcę. Pusta lista <see cref="FileSystemOptions.AllowedRoots"/> = żadne polecenie na plikach nie przejdzie.</summary>
         public FileSystemExecutor(FileSystemOptions options)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -68,6 +69,7 @@ namespace LokalneAI.Harness.Tools
         /// <summary>Folder bieżący (zmienia go polecenie <c>przejdz_do_folderu</c>).</summary>
         public string WorkingFolder => _options.WorkingFolder;
 
+        /// <inheritdoc/>
         public async Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken)
         {
             try

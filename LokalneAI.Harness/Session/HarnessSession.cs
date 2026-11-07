@@ -42,6 +42,10 @@ namespace LokalneAI.Harness.Session
         private double _tokensPerEstimate = 1.0;
         private bool _disposed;
 
+        /// <summary>
+        /// Tworzy sesję. <paramref name="executor"/> wykonuje narzędzia gospodarza; null tylko wtedy, gdy profil ma same narzędzia
+        /// wbudowane. Polecenie systemowe składa się raz, tutaj: zmiana profilu albo <see cref="SessionOptions"/> wymaga nowej sesji.
+        /// </summary>
         public HarnessSession(ILlmClient llm, HarnessProfile profile, IToolExecutor executor, SessionOptions options = null)
         {
             _llm = llm ?? throw new ArgumentNullException(nameof(llm));
@@ -77,6 +81,7 @@ namespace LokalneAI.Harness.Session
             }
         }
 
+        /// <summary>Profil tej sesji.</summary>
         public HarnessProfile Profile => _profile;
 
         /// <summary>Wykonuje jedno polecenie użytkownika do końca tury.</summary>

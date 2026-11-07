@@ -20,6 +20,7 @@ namespace LokalneAI.Harness.Tools
         /// <summary>Adres repozytorium, np. <c>https://github.com/Optimal-Design-of-Structures/CDE.git</c>.</summary>
         public string Repo { get; set; }
 
+        /// <summary>Gałąź (<c>galaz</c>); null = domyślna gałąź repozytorium.</summary>
         public string Branch { get; set; }
 
         /// <summary>Wzorce plików w repozytorium, np. <c>docs/*.md</c>, <c>docs/**/*.md</c>, <c>README.md</c>.</summary>
@@ -38,14 +39,19 @@ namespace LokalneAI.Harness.Tools
     /// <summary>Wynik aktualizacji wiedzy.</summary>
     public sealed class KnowledgeSyncResult
     {
+        /// <summary>Kiedy aktualizowano.</summary>
         public DateTime Time { get; set; } = DateTime.Now;
 
+        /// <summary>Ile plików dodano albo zmieniono.</summary>
         public int Updated { get; set; }
 
+        /// <summary>Ile plików było aktualnych.</summary>
         public int Unchanged { get; set; }
 
+        /// <summary>Błędy źródeł; błąd jednego źródła nie zatrzymuje pozostałych.</summary>
         public List<string> Errors { get; } = new List<string>();
 
+        /// <summary>Podsumowanie po polsku, np. „zaktualizowano 2, bez zmian 5”.</summary>
         public override string ToString()
             => "zaktualizowano " + Updated + ", bez zmian " + Unchanged + (Errors.Count > 0 ? ", błędy: " + string.Join("; ", Errors) : "");
     }
@@ -57,9 +63,11 @@ namespace LokalneAI.Harness.Tools
     /// </summary>
     public static class KnowledgeSync
     {
+        /// <summary>Nazwa pliku źródeł w folderze profilu.</summary>
         public const string SourcesFile = "zrodla.json";
         private const string StateFile = ".stan.json";
 
+        /// <summary>Czyta <c>zrodla.json</c> profilu; brak pliku = pusta lista.</summary>
         public static IList<KnowledgeSource> ReadSources(string profileFolder)
         {
             var list = new List<KnowledgeSource>();

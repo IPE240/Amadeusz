@@ -5,12 +5,19 @@ namespace LokalneAI.Harness.Wpf
     /// <summary>Rodzaj wpisu w rozmowie panelu.</summary>
     public enum PanelEntryKind
     {
+        /// <summary>Polecenie użytkownika.</summary>
         User,
+        /// <summary>Wywołanie narzędzia z wynikiem.</summary>
         Call,
+        /// <summary>Odpowiedź.</summary>
         Answer,
+        /// <summary>Pytanie modelu.</summary>
         Question,
+        /// <summary>Ostrzeżenie.</summary>
         Warning,
+        /// <summary>Błąd.</summary>
         Error,
+        /// <summary>Informacja (czas tury, liczba wywołań modelu).</summary>
         Info,
     }
 
@@ -21,6 +28,7 @@ namespace LokalneAI.Harness.Wpf
         private string _detail;
         private bool? _success;
 
+        /// <summary>Tworzy wpis.</summary>
         public PanelEntry(PanelEntryKind kind, string text, string detail = null)
         {
             Kind = kind;
@@ -28,10 +36,13 @@ namespace LokalneAI.Harness.Wpf
             _detail = detail;
         }
 
+        /// <summary>Zmiana tekstu, szczegółów albo wyniku (odświeża widok).</summary>
         public event PropertyChangedEventHandler PropertyChanged;
 
+        /// <summary>Rodzaj wpisu.</summary>
         public PanelEntryKind Kind { get; }
 
+        /// <summary>Główny tekst wpisu.</summary>
         public string Text
         {
             get => _text;
@@ -54,6 +65,7 @@ namespace LokalneAI.Harness.Wpf
             }
         }
 
+        /// <summary>Czy jest druga linia (<see cref="Detail"/>).</summary>
         public bool HasDetail => !string.IsNullOrEmpty(_detail);
 
         /// <summary>Wynik wywołania: true = OK, false = błąd, null = jeszcze trwa.</summary>

@@ -1,0 +1,3 @@
+{"id": "T01", "opis": "wstawienie słupa", "kroki": [{"uzytkownik": "wstaw słup HEA200 w 3000, 0 od -0,5 do 4,2", "oczekiwane": [{"narzedzie": "wstaw_slup", "argumenty": {"x_mm": 3000, "y_mm": 0, "poziom_dol_m": -0.5, "poziom_gora_m": 4.2, "profil": "HEA200"}}], "wyniki": ["OK id=1001"]}]}
+{"id": "T02", "opis": "brak profilu = pytanie", "kroki": [{"uzytkownik": "wstaw słup w 0, 0 od zera do 3", "oczekiwane": [], "pytanie": true}]}
+{"id": "T03", "opis": "liczenie bez filtra poziomu", "kroki": [{"uzytkownik": "ile jest słupów?", "oczekiwane": [{"narzedzie": "policz_elementy", "argumenty": {"typ": "slup"}}], "wyniki": ["słupy: 12"]}]}

@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Kontrola przykładów z docs\biblioteki-dla-agentow.md: kod przepisów jest tu skopiowany 1:1 i musi się kompilować
+    na .NET 10 i .NET Framework 4.8. Program uruchamia przykłady testów z udawanym modelem na szablonie profilu.
+    Uruchomienie: polecenie z AGENTS.md (dotnet run z wyborem frameworku net10.0-windows albo net48).
+    LangVersion 7.3 = domyślny C# dla .NET Framework 4.8: przykłady mają działać także w starszych projektach.
+    Zmiana przepisu w dokumentacji = ta sama zmiana tutaj (i odwrotnie).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net10.0-windows;net48</TargetFrameworks>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>MojProgram</RootNamespace>
+    <AssemblyName>SprawdzPrzyklady</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="WindowsFormsIntegration" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
+    <ProjectReference Include="..\..\LokalneAI.Harness.Wpf\LokalneAI.Harness.Wpf.csproj" />
+  </ItemGroup>
+
+  <!-- Jak w sekcji 4 dokumentu: profil i wiedza z repozytorium trafiają do bin\…\profile\moj_program\. -->
+  <ItemGroup>
+    <None Include="..\..\szablony\profil\**\*" LinkBase="profile\moj_program" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\szablony\repozytorium\lokalne-ai\wiedza\**\*" LinkBase="profile\moj_program\wiedza" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

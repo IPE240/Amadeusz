@@ -21,6 +21,7 @@ namespace LokalneAI.Harness.Postgres
         /// <summary>Ile wierszy wyniku najwyżej trafia do modelu (resztę zastępuje informacja o ucięciu).</summary>
         public int MaxRows { get; set; } = 40;
 
+        /// <summary>Limit czasu jednego zapytania w bazie.</summary>
         public TimeSpan StatementTimeout { get; set; } = TimeSpan.FromSeconds(15);
 
         /// <summary>Nazwa argumentu z zapytaniem.</summary>
@@ -33,10 +34,13 @@ namespace LokalneAI.Harness.Postgres
         /// <summary>Najdłuższa komórka tekstowa w wyniku dla modelu (dłuższe są ucinane, żeby nie zapchać kontekstu).</summary>
         public const int MaxCellLength = 300;
 
+        /// <summary>Nazwy kolumn.</summary>
         public List<string> Columns { get; } = new List<string>();
 
+        /// <summary>Wiersze z wartościami z Npgsql.</summary>
         public List<object[]> Rows { get; } = new List<object[]>();
 
+        /// <summary>Wynik ucięty do <see cref="PostgresReadOnlyOptions.MaxRows"/> wierszy.</summary>
         public bool Truncated { get; set; }
 
         /// <summary>Wszystkie wartości liczbowe wyniku (do porównań w testach).</summary>
@@ -75,6 +79,7 @@ namespace LokalneAI.Harness.Postgres
             return builder.ToString();
         }
 
+        /// <summary>Wartość jako tekst dla modelu: liczby z kropką, daty ISO, <c>NULL</c>, tak/nie; długie teksty ucięte.</summary>
         public static string Format(object value)
         {
             switch (value)
@@ -116,6 +121,7 @@ namespace LokalneAI.Harness.Postgres
     {
         private readonly PostgresReadOnlyOptions _options;
 
+        /// <summary>Tworzy wykonawcę. Każda transakcja na tym połączeniu jest tylko do odczytu i ma limit czasu.</summary>
         public PostgresReadOnlyExecutor(PostgresReadOnlyOptions options)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -135,6 +141,7 @@ namespace LokalneAI.Harness.Postgres
 
         private readonly string _connectionString;
 
+        /// <inheritdoc/>
         public async Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken)
         {
             var sql = call.GetString(_options.SqlArgument);

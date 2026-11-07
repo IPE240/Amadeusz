@@ -14,11 +14,13 @@ namespace LokalneAI.Harness.Tools
     {
         private readonly Func<ToolCall, CancellationToken, Task<ToolResult>> _execute;
 
+        /// <summary>Tworzy wykonawcę z funkcji.</summary>
         public DelegateExecutor(Func<ToolCall, CancellationToken, Task<ToolResult>> execute)
         {
             _execute = execute ?? throw new ArgumentNullException(nameof(execute));
         }
 
+        /// <inheritdoc/>
         public Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken) => _execute(call, cancellationToken);
     }
 
@@ -28,17 +30,20 @@ namespace LokalneAI.Harness.Tools
         private readonly Dictionary<string, IToolExecutor> _routes = new Dictionary<string, IToolExecutor>(StringComparer.Ordinal);
         private readonly IToolExecutor _fallback;
 
+        /// <summary>Tworzy rozdzielacz. <paramref name="fallback"/> dostaje polecenia bez własnej trasy; null = błąd „nieobsługiwane” dla modelu.</summary>
         public RoutingExecutor(IToolExecutor fallback = null)
         {
             _fallback = fallback;
         }
 
+        /// <summary>Kieruje narzędzie o tej nazwie do wykonawcy. Zwraca ten sam rozdzielacz, więc wywołania można łączyć.</summary>
         public RoutingExecutor Route(string toolName, IToolExecutor executor)
         {
             _routes[toolName] = executor;
             return this;
         }
 
+        /// <inheritdoc/>
         public Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken)
         {
             if (_routes.TryGetValue(call.Name, out var executor))
@@ -71,13 +76,16 @@ namespace LokalneAI.Harness.Tools
         private readonly List<int> _selection = new List<int>();
         private int _nextId;
 
+        /// <summary>Tworzy pusty symulowany model; pierwszy wstawiony element dostanie <paramref name="firstId"/>.</summary>
         public SimulatedModelExecutor(int firstId = 1001)
         {
             _nextId = firstId;
         }
 
+        /// <summary>Elementy symulowanego modelu: id → właściwości.</summary>
         public IReadOnlyDictionary<int, Dictionary<string, string>> Objects => _objects;
 
+        /// <inheritdoc/>
         public Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken)
         {
             var name = call.Name;
@@ -192,10 +200,13 @@ namespace LokalneAI.Harness.Tools
     {
         private readonly List<ExpectedCall> _pending = new List<ExpectedCall>();
 
+        /// <summary>Wszystkie wywołania od modelu, po kolei.</summary>
         public List<ToolCall> Received { get; } = new List<ToolCall>();
 
+        /// <summary>Oczekiwane wywołania, które się zgodziły.</summary>
         public List<ExpectedCall> Matched { get; } = new List<ExpectedCall>();
 
+        /// <summary>Ustawia oczekiwane wywołania i czyści poprzednie wyniki.</summary>
         public void Expect(IEnumerable<ExpectedCall> calls)
         {
             _pending.Clear();
@@ -204,6 +215,7 @@ namespace LokalneAI.Harness.Tools
             Matched.Clear();
         }
 
+        /// <inheritdoc/>
         public Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken)
         {
             Received.Add(call);
@@ -222,12 +234,16 @@ namespace LokalneAI.Harness.Tools
     /// <summary>Oczekiwane wywołanie: nazwa i argumenty, które muszą się zgadzać (liczby z tolerancją, teksty bez wielkości liter).</summary>
     public sealed class ExpectedCall
     {
+        /// <summary>Nazwa narzędzia.</summary>
         public string Tool { get; set; }
 
+        /// <summary>Argumenty, które muszą się zgadzać; pozostałe mogą być dowolne. Brak = dowolne argumenty.</summary>
         public JsonElement Arguments { get; set; }
 
+        /// <summary>Wynik zwracany modelowi; null = „OK”.</summary>
         public string Result { get; set; }
 
+        /// <summary>Czy wywołanie pasuje: ta sama nazwa i zgodne podane argumenty.</summary>
         public bool Matches(ToolCall call)
         {
             if (!string.Equals(call.Name, Tool, StringComparison.Ordinal))
@@ -251,6 +267,7 @@ namespace LokalneAI.Harness.Tools
             return true;
         }
 
+        /// <summary>Nazwa i oczekiwane argumenty.</summary>
         public override string ToString() => Tool + " " + (Arguments.ValueKind == JsonValueKind.Undefined ? "{}" : Text.Compact(Arguments));
 
         internal static bool Same(JsonElement expected, JsonElement actual)

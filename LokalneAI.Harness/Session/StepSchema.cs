@@ -14,10 +14,14 @@ namespace LokalneAI.Harness.Session
     /// </summary>
     public static class StepSchema
     {
+        /// <summary>Wartość pola <c>krok</c>, gdy model wywołuje narzędzia.</summary>
         public const string Calls = "wywolania";
+        /// <summary>Wartość pola <c>krok</c>, gdy model odpowiada (pole <c>tekst</c>).</summary>
         public const string Answer = "odpowiedz";
+        /// <summary>Wartość pola <c>krok</c>, gdy model pyta użytkownika (pole <c>tekst</c>).</summary>
         public const string Question = "pytanie";
 
+        /// <summary>Buduje JSON Schema kroku: <c>anyOf</c> z wywołaniami (najwyżej <paramref name="maxCalls"/>), odpowiedzią i pytaniem.</summary>
         public static string Build(IReadOnlyList<ToolDefinition> tools, int maxCalls, bool withPlan)
         {
             using (var stream = new MemoryStream())

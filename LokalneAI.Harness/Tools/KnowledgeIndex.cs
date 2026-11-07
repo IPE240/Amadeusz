@@ -22,16 +22,26 @@ namespace LokalneAI.Harness.Tools
         private readonly Dictionary<string, int> _documentFrequency = new Dictionary<string, int>();
         private double _averageLength;
 
+        /// <summary>Plik z opisem folderu dla ludzi; pomijany w indeksie.</summary>
+        public const string ReadMeFile = "CZYTAJ.md";
+
+        /// <summary>Liczba fragmentów w indeksie; 0 = profil bez wiedzy.</summary>
         public int ChunkCount => _chunks.Count;
 
+        /// <summary>
+        /// Indeks wszystkich <c>*.md</c> i <c>*.txt</c> z folderu i podfolderów, bez plików <c>CZYTAJ.md</c> (opisy dla ludzi).
+        /// Brak folderu = pusty indeks.
+        /// </summary>
         public static KnowledgeIndex FromFolder(string folder)
         {
             var index = new KnowledgeIndex();
             if (Directory.Exists(folder))
             {
                 // Z podfolderami — także dokumentacja pobrana automatycznie do wiedza\zrodla\.
+                // CZYTAJ.md to opis folderu dla ludzi („co tu wkładać”) — model go nie dostaje.
                 var files = Directory.GetFiles(folder, "*.md", SearchOption.AllDirectories)
                     .Concat(Directory.GetFiles(folder, "*.txt", SearchOption.AllDirectories))
+                    .Where(f => !string.Equals(Path.GetFileName(f), ReadMeFile, StringComparison.OrdinalIgnoreCase))
                     .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
                 foreach (var file in files)
                 {

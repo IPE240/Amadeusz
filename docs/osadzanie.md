@@ -1,5 +1,8 @@
 # Osadzanie pół-harnessu w programie
 
+Dla agentów AI jest zwięzła i kompletna wersja z przepisami sprawdzanymi kompilacją:
+[biblioteki-dla-agentow.md](biblioteki-dla-agentow.md).
+
 Pół-harness to biblioteka, która łączy program biura z lokalnym modelem językowym.
 Podział pracy wygląda tak:
 

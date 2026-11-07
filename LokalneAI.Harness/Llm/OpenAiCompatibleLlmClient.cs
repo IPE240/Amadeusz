@@ -16,6 +16,7 @@ namespace LokalneAI.Harness.Llm
         /// <summary>Adres bazowy bez <c>/v1</c>, np. <c>http://serwer-ai:8080</c>.</summary>
         public string Url { get; set; } = "http://127.0.0.1:8080";
 
+        /// <summary>Nazwa modelu na serwerze (pole <c>model</c> zapytania).</summary>
         public string Model { get; set; } = "";
 
         /// <summary>Klucz API, gdy serwer stoi za proxy z uwierzytelnianiem; null = bez klucza.</summary>
@@ -24,8 +25,10 @@ namespace LokalneAI.Harness.Llm
         /// <summary>Kontekst ustawiony na serwerze (tu tylko do licznika).</summary>
         public int ContextLength { get; set; } = 8192;
 
+        /// <summary>Losowość odpowiedzi. Do poleceń i SQL 0,1.</summary>
         public double Temperature { get; set; } = 0.1;
 
+        /// <summary>Limit na jedną odpowiedź modelu.</summary>
         public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromMinutes(5);
     }
 
@@ -36,6 +39,7 @@ namespace LokalneAI.Harness.Llm
         private readonly OpenAiCompatibleOptions _options;
         private readonly string _baseUrl;
 
+        /// <summary>Tworzy klienta. Wystarczy jeden na cały program. <c>handler</c> podmienia HTTP w testach; null = zwykłe połączenie.</summary>
         public OpenAiCompatibleLlmClient(OpenAiCompatibleOptions options, HttpMessageHandler handler = null)
         {
             _options = options ?? new OpenAiCompatibleOptions();
@@ -54,10 +58,13 @@ namespace LokalneAI.Harness.Llm
             _http.Timeout = Timeout.InfiniteTimeSpan;
         }
 
+        /// <inheritdoc/>
         public string ModelName => _options.Model;
 
+        /// <inheritdoc/>
         public int ContextLength => _options.ContextLength;
 
+        /// <inheritdoc/>
         public async Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken cancellationToken)
         {
             if (request == null)
@@ -103,6 +110,7 @@ namespace LokalneAI.Harness.Llm
             }
         }
 
+        /// <summary>Zamyka połączenie HTTP. Wywołuj przy zamykaniu programu.</summary>
         public void Dispose() => _http.Dispose();
 
         internal string BuildBody(LlmRequest request)

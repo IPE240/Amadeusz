@@ -1,0 +1,9 @@
+{
+  "nazwa": "moj_program",
+  "opis": "Asystent programu X: wstawia i liczy elementy. Zmień ten opis.",
+  "zakonczenie": "auto",
+  "narzedzia_wbudowane": ["szukaj_wiedzy"],
+  "id_zero_to_poprzedni": true,
+  "max_krokow": 5,
+  "max_wywolan_w_kroku": 3
+}

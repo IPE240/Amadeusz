@@ -16,11 +16,13 @@ namespace LokalneAI.Harness.Llm
         /// <summary>Np. <c>http://127.0.0.1:11434</c> albo <c>http://serwer-ai:11434</c>.</summary>
         public string Url { get; set; } = "http://127.0.0.1:11434";
 
+        /// <summary>Tag modelu w Ollamie, np. <c>SpeakLeash/bielik-11b-v3.0-instruct:Q4_K_M</c>. Model musi być pobrany na serwerze.</summary>
         public string Model { get; set; } = "SpeakLeash/bielik-11b-v3.0-instruct:Q4_K_M";
 
         /// <summary>Długość kontekstu. Ollama po cichu obcina dłuższy prompt, więc podajemy ją zawsze.</summary>
         public int ContextLength { get; set; } = 8192;
 
+        /// <summary>Losowość odpowiedzi. Do poleceń i SQL 0,1: odpowiedzi prawie powtarzalne.</summary>
         public double Temperature { get; set; } = 0.1;
 
         /// <summary>Jak długo trzymać model w pamięci po odpowiedzi, np. <c>10m</c>; null = domyślnie serwera.</summary>
@@ -37,6 +39,7 @@ namespace LokalneAI.Harness.Llm
         private readonly OllamaOptions _options;
         private readonly string _baseUrl;
 
+        /// <summary>Tworzy klienta. Wystarczy jeden na cały program, dla wszystkich sesji. <c>handler</c> podmienia HTTP w testach; null = zwykłe połączenie.</summary>
         public OllamaLlmClient(OllamaOptions options, HttpMessageHandler handler = null)
         {
             _options = options ?? new OllamaOptions();
@@ -55,10 +58,13 @@ namespace LokalneAI.Harness.Llm
             _http.Timeout = Timeout.InfiniteTimeSpan;
         }
 
+        /// <inheritdoc/>
         public string ModelName => _options.Model;
 
+        /// <inheritdoc/>
         public int ContextLength => _options.ContextLength;
 
+        /// <inheritdoc/>
         public async Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken cancellationToken)
         {
             if (request == null)
@@ -100,6 +106,7 @@ namespace LokalneAI.Harness.Llm
             }
         }
 
+        /// <summary>Zamyka połączenie HTTP. Wywołuj przy zamykaniu programu, nie po każdej sesji.</summary>
         public void Dispose() => _http.Dispose();
 
         internal string BuildBody(LlmRequest request)

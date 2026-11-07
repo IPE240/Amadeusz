@@ -1,0 +1,3 @@
+{"uzytkownik": "wstaw słup HEB300 w punkcie 6000, 0 od zera do 3,53", "wywolania": [{"narzedzie": "wstaw_slup", "argumenty": {"x_mm": 6000, "y_mm": 0, "poziom_dol_m": 0, "poziom_gora_m": 3.53, "profil": "HEB300"}}]}
+{"uzytkownik": "wstaw słup w 3000, 4500", "wywolania": [], "pytanie": "Podaj profil słupa oraz poziom dołu i góry (w metrach)."}
+{"uzytkownik": "ile jest belek na poziomie 4,2?", "wywolania": [{"narzedzie": "policz_elementy", "argumenty": {"typ": "belka", "poziom_m": 4.2}}]}

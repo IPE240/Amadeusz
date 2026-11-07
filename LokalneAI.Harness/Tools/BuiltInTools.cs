@@ -7,9 +7,12 @@ namespace LokalneAI.Harness.Tools
     /// <summary>Narzędzia wykonywane przez samą bibliotekę (nie przez gospodarza).</summary>
     public static class BuiltInTools
     {
+        /// <summary>Kalkulator: nazwa do <c>narzedzia_wbudowane</c> w <c>profil.json</c>.</summary>
         public const string CalculatorName = "kalkulator";
+        /// <summary>Wyszukiwarka w <c>wiedza\</c> profilu: nazwa do <c>narzedzia_wbudowane</c>.</summary>
         public const string KnowledgeName = "szukaj_wiedzy";
 
+        /// <summary>Definicja narzędzia wbudowanego albo null dla nieznanej nazwy.</summary>
         public static ToolDefinition Get(string name)
         {
             switch (name)

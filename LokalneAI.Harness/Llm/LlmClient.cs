@@ -8,20 +8,24 @@ namespace LokalneAI.Harness.Llm
     /// <summary>Jedna wiadomość rozmowy z modelem: <c>system</c>, <c>user</c> albo <c>assistant</c>.</summary>
     public sealed class LlmMessage
     {
+        /// <summary>Tworzy wiadomość o podanej roli i treści.</summary>
         public LlmMessage(string role, string content)
         {
             Role = role;
             Content = content;
         }
 
+        /// <summary>Rola: <c>system</c>, <c>user</c> albo <c>assistant</c>.</summary>
         public string Role { get; }
 
+        /// <summary>Treść wiadomości.</summary>
         public string Content { get; }
     }
 
     /// <summary>Zapytanie do modelu: wiadomości i schemat JSON, którego odpowiedź musi się trzymać.</summary>
     public sealed class LlmRequest
     {
+        /// <summary>Cała rozmowa od najstarszej wiadomości: polecenie systemowe i historia.</summary>
         public IReadOnlyList<LlmMessage> Messages { get; set; }
 
         /// <summary>JSON Schema odpowiedzi (tekst); null = zwykły tekst.</summary>
@@ -34,17 +38,22 @@ namespace LokalneAI.Harness.Llm
     /// <summary>Odpowiedź modelu z liczbą tokenów (do licznika kontekstu).</summary>
     public sealed class LlmResponse
     {
+        /// <summary>Tekst odpowiedzi; przy <see cref="LlmRequest.JsonSchema"/> to JSON zgodny ze schematem.</summary>
         public string Content { get; set; }
 
         /// <summary>Tokeny wejścia — cały kontekst wysłany do modelu (Ollama liczy tu cały prompt, także z pamięci podręcznej).</summary>
         public int PromptTokens { get; set; }
 
+        /// <summary>Tokeny wygenerowane przez model.</summary>
         public int OutputTokens { get; set; }
 
+        /// <summary>Czas całego zapytania.</summary>
         public TimeSpan Duration { get; set; }
 
+        /// <summary>Czas ładowania modelu do pamięci (Ollama); zero, gdy model był już załadowany albo serwer tego nie podaje.</summary>
         public TimeSpan LoadDuration { get; set; }
 
+        /// <summary>Nazwa modelu, który odpowiedział.</summary>
         public string Model { get; set; }
     }
 
@@ -57,12 +66,17 @@ namespace LokalneAI.Harness.Llm
         /// <summary>Długość kontekstu w tokenach (do licznika kontekstu).</summary>
         int ContextLength { get; }
 
+        /// <summary>
+        /// Wysyła rozmowę i czeka na całą odpowiedź (bez strumienia). Gdy serwer nie odpowiada: <see cref="LlmUnavailableException"/>;
+        /// inny błąd serwera albo przekroczony czas: <see cref="LlmException"/>; przerwanie: <see cref="OperationCanceledException"/>.
+        /// </summary>
         Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken cancellationToken);
     }
 
     /// <summary>Błąd rozmowy z modelem, z komunikatem dla człowieka.</summary>
     public class LlmException : Exception
     {
+        /// <summary>Tworzy błąd z komunikatem dla człowieka (po polsku).</summary>
         public LlmException(string message, Exception inner = null)
             : base(message, inner)
         {
@@ -72,12 +86,14 @@ namespace LokalneAI.Harness.Llm
     /// <summary>Serwer modelu nie odpowiada (wyłączony, zły adres, zapora).</summary>
     public sealed class LlmUnavailableException : LlmException
     {
+        /// <summary>Tworzy błąd z adresem serwera, który nie odpowiedział.</summary>
         public LlmUnavailableException(string url, Exception inner = null)
             : base("Serwer modelu nie odpowiada pod adresem " + url + ". Sprawdź, czy działa i czy adres jest dobry.", inner)
         {
             Url = url;
         }
 
+        /// <summary>Adres serwera, który nie odpowiedział.</summary>
         public string Url { get; }
     }
 }

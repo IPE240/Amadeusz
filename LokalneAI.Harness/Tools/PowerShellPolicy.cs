@@ -10,6 +10,7 @@ namespace LokalneAI.Harness.Tools
     /// <summary>Wynik oceny polecenia PowerShella przed wykonaniem.</summary>
     public sealed class CommandAnalysis
     {
+        /// <summary>Decyzja: bez pytania, pytanie albo odrzucenie.</summary>
         public ConfirmationKind Verdict { get; internal set; } = ConfirmationKind.None;
 
         /// <summary>Powód odrzucenia (dla <see cref="ConfirmationKind.Reject"/>).</summary>

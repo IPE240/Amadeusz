@@ -27,6 +27,7 @@ namespace LokalneAI.Harness.Wpf
         private PanelEntry _thinking;
         private bool _follow = true;
 
+        /// <summary>Tworzy pusty panel. Przed pierwszym poleceniem ustaw <see cref="SessionFactory"/>.</summary>
         public HarnessPanel()
         {
             InitializeComponent();

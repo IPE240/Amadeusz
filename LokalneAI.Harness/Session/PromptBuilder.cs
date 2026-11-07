@@ -7,6 +7,7 @@ namespace LokalneAI.Harness.Session
     /// <summary>Składa polecenie systemowe: rola, kontekst sesji, karta wiedzy, narzędzia, przykłady i format kroku.</summary>
     public static class PromptBuilder
     {
+        /// <summary>Składa polecenie systemowe. Sesja robi to sama; tu do podglądu i do pomiaru rozmiaru profilu.</summary>
         public static string BuildSystem(HarnessProfile profile, SessionOptions options)
         {
             var builder = new StringBuilder();

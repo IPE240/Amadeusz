@@ -21,6 +21,7 @@ namespace LokalneAI.Harness.Tools
         /// <summary>Kod wyjścia ostatniego programu zewnętrznego (<c>$LASTEXITCODE</c>), jeśli był różny od 0.</summary>
         public int? NativeExitCode { get; internal set; }
 
+        /// <summary>Polecenie przekroczyło limit czasu i zostało zabite razem z procesami potomnymi.</summary>
         public bool TimedOut { get; internal set; }
 
         /// <summary>W wyniku są błędy (PowerShell albo program zewnętrzny).</summary>
@@ -79,6 +80,10 @@ namespace LokalneAI.Harness.Tools
             return builder.Append('\'').ToString();
         }
 
+        /// <summary>
+        /// Uruchamia polecenie w folderze roboczym i czeka najwyżej <paramref name="timeout"/>, potem zabija proces z potomnymi.
+        /// Nie sprawdza uprawnień: najpierw <see cref="PowerShellPolicy.Analyze"/>. Polecenie dłuższe niż ok. 10 tys. znaków: <see cref="ArgumentException"/>.
+        /// </summary>
         public static async Task<CommandRunResult> RunAsync(string executable, string script, string workingFolder, TimeSpan timeout, CancellationToken cancellationToken)
         {
             var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(BuildWrapper(script, workingFolder)));

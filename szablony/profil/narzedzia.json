@@ -1,0 +1,32 @@
+{"narzedzia": [
+  {
+    "nazwa": "wstaw_slup",
+    "opis": "Wstawia słup w punkcie (x, y) od poziomu dołu do poziomu góry. Zwraca id słupa.",
+    "zmienia_model": true,
+    "parametry": {
+      "type": "object",
+      "properties": {
+        "x_mm": {"type": "number", "description": "X w milimetrach, np. 6000"},
+        "y_mm": {"type": "number", "description": "Y w milimetrach, np. 0"},
+        "poziom_dol_m": {"type": "number", "description": "poziom dołu w metrach, np. 0"},
+        "poziom_gora_m": {"type": "number", "description": "poziom góry w metrach, np. 3.53"},
+        "profil": {"type": "string", "description": "profil bez spacji, np. HEB300"}
+      },
+      "required": ["x_mm", "y_mm", "poziom_dol_m", "poziom_gora_m", "profil"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "nazwa": "policz_elementy",
+    "opis": "Liczy elementy danego typu, opcjonalnie tylko na podanym poziomie.",
+    "parametry": {
+      "type": "object",
+      "properties": {
+        "typ": {"type": "string", "enum": ["slup", "belka"]},
+        "poziom_m": {"type": "number", "description": "poziom w metrach; brak = wszystkie poziomy"}
+      },
+      "required": ["typ"],
+      "additionalProperties": false
+    }
+  }
+]}

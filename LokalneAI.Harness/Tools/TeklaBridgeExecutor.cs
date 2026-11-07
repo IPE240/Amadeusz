@@ -39,6 +39,7 @@ namespace LokalneAI.Harness.Tools
         private static readonly Regex Placeholder = new Regex(@"\{\{([a-z0-9_]+)\}\}", RegexOptions.Compiled);
         private readonly TeklaBridgeOptions _options;
 
+        /// <summary>Tworzy wykonawcę mostu.</summary>
         public TeklaBridgeExecutor(TeklaBridgeOptions options)
         {
             _options = options ?? throw new ArgumentNullException(nameof(options));
@@ -78,6 +79,7 @@ namespace LokalneAI.Harness.Tools
             return Fill(template, call);
         }
 
+        /// <inheritdoc/>
         public async Task<ToolResult> ExecuteAsync(ToolCall call, CancellationToken cancellationToken)
         {
             var problem = CheckBridge();

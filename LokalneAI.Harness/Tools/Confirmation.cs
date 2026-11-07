@@ -23,6 +23,7 @@ namespace LokalneAI.Harness.Tools
             Dangerous = dangerous;
         }
 
+        /// <summary>Co zrobić: wykonać bez pytania, zapytać albo odrzucić.</summary>
         public ConfirmationKind Kind { get; }
 
         /// <summary>Treść pytania (dla <see cref="ConfirmationKind.Ask"/>) albo powód odrzucenia.</summary>
@@ -31,10 +32,13 @@ namespace LokalneAI.Harness.Tools
         /// <summary>Polecenie może coś bezpowrotnie zniszczyć (np. kasuje pliki) — okno pytania powinno domyślnie odmawiać.</summary>
         public bool Dangerous { get; }
 
+        /// <summary>Wykonać bez pytania.</summary>
         public static ConfirmationDecision NotNeeded { get; } = new ConfirmationDecision(ConfirmationKind.None, null, false);
 
+        /// <summary>Zapytać użytkownika z tą treścią. <paramref name="dangerous"/> = może coś zniszczyć, okno domyślnie odmawia.</summary>
         public static ConfirmationDecision Ask(string message, bool dangerous = false) => new ConfirmationDecision(ConfirmationKind.Ask, message, dangerous);
 
+        /// <summary>Odrzucić bez pytania; powód wraca do modelu.</summary>
         public static ConfirmationDecision Reject(string reason) => new ConfirmationDecision(ConfirmationKind.Reject, reason, false);
     }
 
@@ -45,6 +49,7 @@ namespace LokalneAI.Harness.Tools
     /// </summary>
     public interface IConfirmingExecutor
     {
+        /// <summary>Ocenia wywołanie przed wykonaniem. null = jak bez tego interfejsu (decyduje <c>zmienia_model</c> z profilu).</summary>
         ConfirmationDecision Decide(ToolCall call);
     }
 }

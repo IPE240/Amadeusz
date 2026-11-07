@@ -28,6 +28,10 @@ Gotowe profile:
 | Dłuższa dokumentacja, instrukcje, opisy | `wiedza\*.md` | dowolnie dużo; model szuka w niej narzędziem `szukaj_wiedzy`, gdy czegoś nie wie |
 | Dokumentacja z repozytorium | przycisk **Źródła wiedzy…** w oknie asystenta (zapisuje `zrodla.json`) | wklej adres repozytorium i wzorce plików; aktualizuje się samo (niżej) |
 
+Gdzie trzymać wiedzę o programach biura (folder `lokalne-ai\` w ich repozytoriach) i jak pisać notatki, żeby model je
+znalazł: [wiedza-dla-modeli.md](wiedza-dla-modeli.md). `CZYTAJ.md` w `wiedza\` to opis folderu dla ludzi; model go
+nie widzi. Nowy profil zaczyna się od kopii [szablony/profil](../szablony/profil).
+
 ## zrodla.json — automatyczna aktualizacja dokumentacji
 
 ```json

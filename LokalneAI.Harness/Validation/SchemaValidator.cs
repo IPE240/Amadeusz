@@ -13,6 +13,7 @@ namespace LokalneAI.Harness.Validation
     /// </summary>
     public static class SchemaValidator
     {
+        /// <summary>Sprawdza wartość ze schematem. Zwraca błędy po polsku; pusta lista = wartość zgodna.</summary>
         public static IList<string> Validate(JsonElement value, JsonElement schema)
         {
             var errors = new List<string>();

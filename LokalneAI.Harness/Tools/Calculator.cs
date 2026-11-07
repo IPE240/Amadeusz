@@ -12,6 +12,7 @@ namespace LokalneAI.Harness.Tools
     /// </summary>
     public static class Calculator
     {
+        /// <summary>Liczy wyrażenie. Błąd składni: <see cref="FormatException"/>; dzielenie przez zero: <see cref="DivideByZeroException"/>.</summary>
         public static decimal Evaluate(string expression)
         {
             var parser = new Parser(expression ?? "");

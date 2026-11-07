@@ -12,6 +12,10 @@ namespace LokalneAI.Harness.Profiles
     /// </summary>
     public sealed class ToolDefinition
     {
+        /// <summary>
+        /// Tworzy narzędzie: nazwa dla modelu, jednozdaniowy opis, JSON Schema obiektu argumentów (null = bez argumentów),
+        /// czy zmienia model/dane (wtedy sesja pyta o zgodę) i opcjonalna ścieżka szablonu.
+        /// </summary>
         public ToolDefinition(string name, string description, string parametersSchemaJson, bool mutates = false, string template = null)
         {
             if (string.IsNullOrWhiteSpace(name))
@@ -28,8 +32,10 @@ namespace LokalneAI.Harness.Profiles
                 : parametersSchemaJson);
         }
 
+        /// <summary>Nazwa, której używa model, np. <c>wstaw_slup</c>.</summary>
         public string Name { get; }
 
+        /// <summary>Opis dla modelu: jedno zdanie, co robi polecenie.</summary>
         public string Description { get; }
 
         /// <summary>Czy polecenie zmienia model/dane (gospodarz może wtedy pytać o potwierdzenie).</summary>

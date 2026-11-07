@@ -10,6 +10,7 @@
     <Version>0.1.0</Version>
     <Company>Optimal Design of Structures Sp. z o.o.</Company>
     <Copyright>Copyright (c) 2026 Optimal Design of Structures Sp. z o.o.</Copyright>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

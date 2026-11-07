@@ -15,15 +15,37 @@ using LokalneAI.Harness.Validation;
 //   LokalneAI.Eval rozmiar --profil profile\tekla [--model X] [--ctx 8192]
 //   LokalneAI.Eval test --profil profile\tekla --model X [--ctx 8192] [--limit N] [--wyniki folder]
 //   LokalneAI.Eval test --profil profile\cde --model X --polaczenie polaczenie.local.json --ja <uuid>
+//   LokalneAI.Eval wiedza --profil profile\cde                       (aktualizacja wiedzy z zrodla.json)
+//   LokalneAI.Eval szukaj --profil profile\tekla --fraza "kotwy M24" (co dostałby model z szukaj_wiedzy)
 //
 // Wyniki: <wyniki>\<profil>_<model>_<czas>.json (pełne odpowiedzi — zostają na tym PC) i podsumowanie na ekranie.
 Console.OutputEncoding = Encoding.UTF8;
 var options = Args.Parse(args);
-if (options.Command is not ("rozmiar" or "test" or "wiedza"))
+if (options.Command is not ("rozmiar" or "test" or "wiedza" or "szukaj"))
 {
-    Console.WriteLine("Użycie: LokalneAI.Eval (rozmiar|test|wiedza) --profil <folder> [--model X] [--url http://127.0.0.1:11434] [--ctx 8192]");
-    Console.WriteLine("        [--limit N] [--wyniki folder] [--polaczenie plik.json] [--ja uuid] [--plan] [--temp 0.1]");
+    Console.WriteLine("Użycie: LokalneAI.Eval (rozmiar|test|wiedza|szukaj) --profil <folder> [--model X] [--url http://127.0.0.1:11434] [--ctx 8192]");
+    Console.WriteLine("        [--limit N] [--wyniki folder] [--polaczenie plik.json] [--ja uuid] [--plan] [--temp 0.1] [--fraza \"słowa\"]");
     return 1;
+}
+
+if (options.Command == "szukaj")
+{
+    // Dokładnie to, co dostałby model z narzędzia szukaj_wiedzy — do sprawdzania notatek w wiedza\.
+    var searched = HarnessProfile.Load(options.Profile);
+    var hits = searched.Knowledge.Search(options.Phrase ?? "");
+    Console.WriteLine($"{searched.Name}: fragmentów wiedzy {searched.Knowledge.ChunkCount}, trafień {hits.Count} dla „{options.Phrase}”");
+    if (!searched.Settings.BuiltInTools.Contains(BuiltInTools.KnowledgeName))
+    {
+        Console.WriteLine($"UWAGA: profil nie ma narzędzia {BuiltInTools.KnowledgeName} (\"narzedzia_wbudowane\" w profil.json), więc model nie sięga do wiedzy.");
+    }
+
+    foreach (var hit in hits)
+    {
+        Console.WriteLine();
+        Console.WriteLine(hit);
+    }
+
+    return hits.Count > 0 ? 0 : 3;
 }
 
 if (options.Command == "wiedza")
@@ -71,6 +93,7 @@ internal sealed class Args
     public bool Plan { get; set; }
     public double Temperature { get; set; } = 0.1;
     public string Only { get; set; }
+    public string Phrase { get; set; }
 
     public static Args Parse(string[] args)
     {
@@ -91,6 +114,7 @@ internal sealed class Args
                 case "--plan": a.Plan = true; break;
                 case "--temp": a.Temperature = double.Parse(Next(), CultureInfo.InvariantCulture); break;
                 case "--tylko": a.Only = Next(); break;
+                case "--fraza": a.Phrase = Next(); break;
             }
         }
 

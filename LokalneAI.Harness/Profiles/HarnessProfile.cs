@@ -27,6 +27,7 @@ namespace LokalneAI.Harness.Profiles
     /// <summary>Ustawienia profilu z <c>profil.json</c>.</summary>
     public sealed class ProfileSettings
     {
+        /// <summary>Jak kończy się tura (<c>zakonczenie</c>: <c>model</c>, <c>auto</c> albo <c>mieszane</c>).</summary>
         public FinishMode Finish { get; set; } = FinishMode.Model;
 
         /// <summary>Wbudowane narzędzia: <c>kalkulator</c>, <c>szukaj_wiedzy</c>.</summary>
@@ -69,26 +70,32 @@ namespace LokalneAI.Harness.Profiles
     /// <summary>Reguła profilu dla SQL: gdy zapytanie zawiera <see cref="When"/>, musi zawierać <see cref="Requires"/>.</summary>
     public sealed class SqlRule
     {
+        /// <summary>Fragment zapytania, który włącza regułę, np. <c>v_my_hours</c> (<c>jesli</c>).</summary>
         public string When { get; set; }
 
+        /// <summary>Tekst, który wtedy musi być w zapytaniu, np. <c>{{ja}}</c> (<c>wymaga</c>).</summary>
         public string Requires { get; set; }
 
         /// <summary>Wyrażenie regularne, które musi pasować do zapytania (bez komentarzy), np. <c>person_id\s*=\s*'\{\{ja\}\}'</c>.</summary>
         public string RequiresPattern { get; set; }
 
+        /// <summary>Komunikat dla modelu, gdy reguła nie jest spełniona (<c>komunikat</c>).</summary>
         public string Message { get; set; }
     }
 
     /// <summary>Jeden przykład few-shot: polecenie użytkownika i oczekiwany krok modelu.</summary>
     public sealed class FewShotExample
     {
+        /// <summary>Stan przed poleceniem, np. „ostatnio wstawiony słup id=1001” (<c>stan</c>); null = brak.</summary>
         public string State { get; set; }
 
+        /// <summary>Polecenie użytkownika (<c>uzytkownik</c>).</summary>
         public string User { get; set; }
 
         /// <summary>Zwarty JSON wywołań (tablica) albo null, gdy przykład to pytanie doprecyzowujące.</summary>
         public string CallsJson { get; set; }
 
+        /// <summary>Pytanie doprecyzowujące, gdy model ma dopytać zamiast wykonywać (<c>pytanie</c>); inaczej null.</summary>
         public string Question { get; set; }
     }
 
@@ -98,6 +105,10 @@ namespace LokalneAI.Harness.Profiles
     /// </summary>
     public sealed class HarnessProfile
     {
+        /// <summary>
+        /// Profil złożony w kodzie, bez folderu. Zwykle wygodniej <see cref="Load"/>.
+        /// Narzędzia wbudowane z <see cref="ProfileSettings.BuiltInTools"/> są dokładane do <paramref name="tools"/> same.
+        /// </summary>
         public HarnessProfile(string name, string systemText, IEnumerable<ToolDefinition> tools, ProfileSettings settings = null,
             string cardText = null, IEnumerable<FewShotExample> examples = null, KnowledgeIndex knowledge = null, string folder = null)
         {
@@ -122,25 +133,37 @@ namespace LokalneAI.Harness.Profiles
             Tools = all;
         }
 
+        /// <summary>Nazwa profilu: <c>nazwa</c> z <c>profil.json</c> albo nazwa folderu.</summary>
         public string Name { get; }
 
+        /// <summary>Opis profilu (<c>opis</c> z <c>profil.json</c>), np. do listy profili w oknie.</summary>
         public string Description { get; set; } = "";
 
+        /// <summary>Treść <c>system.md</c>: rola modelu i zasady.</summary>
         public string SystemText { get; }
 
+        /// <summary>Treść <c>karta.md</c>, doklejana do każdego polecenia; pusta, gdy pliku nie ma.</summary>
         public string CardText { get; }
 
+        /// <summary>Narzędzia z <c>narzedzia.json</c> i wbudowane z <c>narzedzia_wbudowane</c>.</summary>
         public IReadOnlyList<ToolDefinition> Tools { get; }
 
+        /// <summary>Przykłady z <c>przyklady.jsonl</c>.</summary>
         public IReadOnlyList<FewShotExample> Examples { get; }
 
+        /// <summary>
+        /// Wyszukiwarka w <c>wiedza\</c> dla narzędzia <c>szukaj_wiedzy</c>. Indeks powstaje przy wczytaniu profilu,
+        /// więc nowa wiedza działa w następnej sesji.
+        /// </summary>
         public KnowledgeIndex Knowledge { get; }
 
+        /// <summary>Ustawienia z <c>profil.json</c>.</summary>
         public ProfileSettings Settings { get; }
 
         /// <summary>Folder profilu na dysku (np. do szablonów); null dla profilu z kodu.</summary>
         public string Folder { get; }
 
+        /// <summary>Narzędzie o tej nazwie albo null.</summary>
         public ToolDefinition FindTool(string name) => Tools.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.Ordinal));
 
         /// <summary>Wczytuje profil z folderu. Brak <c>system.md</c> albo <c>narzedzia.json</c> to błąd.</summary>
