@@ -17,17 +17,44 @@ param(
 $ErrorActionPreference = "Stop"
 $zrodlo = $PSScriptRoot
 $cel = Join-Path $env:LOCALAPPDATA "Programs\LokalneAI"
-$wersja = (Get-Content (Join-Path $zrodlo "WERSJA.txt") -ErrorAction SilentlyContinue | Select-Object -First 1)
-if (-not $wersja) { $wersja = "0.0.0" }
 
 function Krok($tekst) { Write-Host ""; Write-Host "== $tekst" -ForegroundColor Cyan }
+
+# Skąd brać pliki: zbudowana paczka (program\ obok tego skryptu) albo klon repozytorium (instalator\ w repo).
+$program = Join-Path $zrodlo "program"
+$pliki = $zrodlo                      # profile\, docs\
+$wersja = (Get-Content (Join-Path $zrodlo "WERSJA.txt") -ErrorAction SilentlyContinue | Select-Object -First 1)
+if (-not (Test-Path $program)) {
+    $repo = Split-Path $zrodlo -Parent
+    $projekt = Join-Path $repo "LokalneAI.App\LokalneAI.App.csproj"
+    if (-not (Test-Path $projekt)) {
+        throw "Brak folderu 'program' obok instalatora ($zrodlo). Rozpakuj całą paczkę LokalneAI-<wersja>.zip i uruchom instaluj.bat z niej."
+    }
+    Krok "Instalacja z repozytorium ($repo) — buduję program"
+    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+        throw "Do instalacji z repozytorium potrzebny jest .NET SDK 10 (https://dot.net). Bez niego użyj gotowej paczki LokalneAI-<wersja>.zip."
+    }
+    if (-not $wersja) {
+        # Ta sama wersja, którą domyślnie buduje narzedzia\zbuduj_instalator.ps1.
+        $budowa = Get-Content (Join-Path $repo "narzedzia\zbuduj_instalator.ps1") -Raw -ErrorAction SilentlyContinue
+        if ($budowa -match '\$Wersja\s*=\s*"([^"]+)"') { $wersja = $Matches[1] }
+    }
+    if (-not $wersja) { $wersja = "0.0.0" }
+    $program = Join-Path $env:TEMP "LokalneAI-instalacja\program"
+    if (Test-Path $program) { Remove-Item $program -Recurse -Force }
+    & dotnet publish $projekt -c Release -r win-x64 --self-contained true -nologo -v q `
+        -p:Version=$wersja -p:DebugType=none -p:SatelliteResourceLanguages=pl -o $program
+    if ($LASTEXITCODE -ne 0) { throw "Budowanie programu nie powiodło się (opis wyżej)." }
+    $pliki = $repo
+}
+if (-not $wersja) { $wersja = "0.0.0" }
 
 Krok "LokalneAI $wersja → $cel"
 
 # 1. Program (zamknij działającą kopię, żeby dało się podmienić pliki).
 Get-Process LokalneAI -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null; Start-Sleep 2; if (-not $_.HasExited) { $_.Kill() } }
 New-Item -ItemType Directory -Force $cel | Out-Null
-Copy-Item -Path (Join-Path $zrodlo "program\*") -Destination $cel -Recurse -Force
+Copy-Item -Path (Join-Path $program "*") -Destination $cel -Recurse -Force
 # Źródła wiedzy wpisane przez użytkownika (okno „Źródła wiedzy”) przeżywają aktualizację; własne notatki w wiedza\ też
 # (kopiowanie niczego nie kasuje, a pliki użytkownika mają inne nazwy niż pliki z paczki).
 $zachowane = @{}
@@ -39,13 +66,14 @@ if (Test-Path $profileCel) {
     }
 }
 foreach ($folder in @("profile", "docs")) {
-    if (Test-Path (Join-Path $zrodlo $folder)) {
-        Copy-Item -Path (Join-Path $zrodlo $folder) -Destination $cel -Recurse -Force
+    if (Test-Path (Join-Path $pliki $folder)) {
+        Copy-Item -Path (Join-Path $pliki $folder) -Destination $cel -Recurse -Force
     }
 }
 foreach ($plik in $zachowane.Keys) { [System.IO.File]::WriteAllBytes($plik, $zachowane[$plik]) }
 if ($zachowane.Count -gt 0) { Write-Host "Źródła wiedzy użytkownika zostają bez zmian ($($zachowane.Count) profili)." }
-Copy-Item -Path (Join-Path $zrodlo "odinstaluj.ps1"), (Join-Path $zrodlo "WERSJA.txt"), (Join-Path $zrodlo "CZYTAJ.txt") -Destination $cel -Force
+Copy-Item -Path (Join-Path $zrodlo "odinstaluj.ps1"), (Join-Path $zrodlo "CZYTAJ.txt") -Destination $cel -Force
+Set-Content (Join-Path $cel "WERSJA.txt") $wersja -Encoding ASCII
 # Pliki z internetu (zip z maila) Windows oznacza jako obce — zdejmujemy oznaczenie, żeby program się uruchamiał.
 Get-ChildItem $cel -Recurse -File | Unblock-File
 Write-Host "Skopiowano program."
