@@ -3,6 +3,12 @@
 Model może liczyć na mocnym komputerze w biurze, a laptopy wysyłają tylko tekst. Na laptopie działa wtedy
 program z biblioteką `LokalneAI.Harness` (lekki), a cała praca karty graficznej odbywa się na serwerze.
 
+**Najprościej i najbezpieczniej: brama okna LokalneAI** ([siec.md](siec.md)). Na mocnym komputerze zaznacza się
+w oknie „Pozwalaj na przeliczanie zapytań z innych komputerów”, a na laptopie wybiera ten komputer
+w „Gdzie liczyć”. Ollama zostaje wtedy na `127.0.0.1`. Brama przepuszcza tylko liczenie, tylko z podsieci, pokazuje
+kolejkę i daje pierwszeństwo właścicielowi. Opis niżej (Ollama otwarta w sieci) dotyczy serwera bez okna albo
+innych programów niż LokalneAI.
+
 ## Ollama na serwerze (najprościej)
 
 1. Instalacja (PowerShell, bez praw administratora):

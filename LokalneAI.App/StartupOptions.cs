@@ -5,7 +5,7 @@ namespace LokalneAI.App;
 /// <code>LokalneAI.exe --autotest "pytanie" --wynik C:\folder [--url http://...] [--model nazwa] [--rozwin]</code>
 /// Wtedy okno zadaje pytanie, zapisuje <c>okno.png</c> i <c>wynik.json</c> i się zamyka,
 /// nie zmieniając ustawień ani historii użytkownika. Pytanie „-” = tylko zrzut okna po starcie,
-/// <c>--rozwin</c> = zrzut z rozwiniętymi ustawieniami.
+/// <c>--rozwin</c> = zrzut zakładki Ustawienia (to samo co <c>--zakladka ustawienia</c>).
 /// </summary>
 public sealed record StartupOptions(string? AutoTestQuestion, string? OutputDir, string? Url, string? Model, bool ExpandSettings = false)
 {
@@ -26,10 +26,28 @@ public sealed record StartupOptions(string? AutoTestQuestion, string? OutputDir,
     /// </summary>
     public string? HarnessRoots { get; init; }
 
+    /// <summary><c>--zakladka czat|code|ustawienia</c>: zakładka na zrzucie.</summary>
+    public string? Tab { get; init; }
+
+    /// <summary><c>--cel PC-ODS12</c>: licz na innym komputerze (tylko w tym uruchomieniu kontroli).</summary>
+    public string? ComputeOn { get; init; }
+
+    /// <summary><c>--port 11445</c>: port bramy w kontroli (bez tego dowolny wolny, żeby nie zająć portu okna użytkownika).</summary>
+    public int? Port { get; init; }
+
+    /// <summary>
+    /// <c>--udostepnij</c>: w kontroli brama przyjmuje zapytania „z innych komputerów”, ale tylko z 127.0.0.1
+    /// (próba sieci na jednym komputerze, bez otwierania portu w sieci i bez okienka zapory).
+    /// </summary>
+    public bool Share { get; init; }
+
     public static StartupOptions Parse(IReadOnlyList<string> args)
     {
         string? question = null, output = null, url = null, model = null, harness = null, connection = null, person = null, roots = null;
+        string? tab = null, computeOn = null;
+        int? port = null;
         var expand = false;
+        var share = false;
         for (var i = 0; i < args.Count; i++)
         {
             var value = i + 1 < args.Count ? args[i + 1] : null;
@@ -70,9 +88,34 @@ public sealed record StartupOptions(string? AutoTestQuestion, string? OutputDir,
                     roots = value;
                     i++;
                     break;
+                case "--zakladka":
+                    tab = value;
+                    i++;
+                    break;
+                case "--cel":
+                    computeOn = value;
+                    i++;
+                    break;
+                case "--port":
+                    port = int.TryParse(value, out var number) ? number : null;
+                    i++;
+                    break;
+                case "--udostepnij":
+                    share = true;
+                    break;
             }
         }
 
-        return new StartupOptions(question, output, url, model, expand) { Harness = harness, HarnessConnection = connection, HarnessPerson = person, HarnessRoots = roots };
+        return new StartupOptions(question, output, url, model, expand)
+        {
+            Harness = harness,
+            HarnessConnection = connection,
+            HarnessPerson = person,
+            HarnessRoots = roots,
+            Tab = tab ?? (expand ? "ustawienia" : null),
+            ComputeOn = computeOn,
+            Port = port,
+            Share = share,
+        };
     }
 }

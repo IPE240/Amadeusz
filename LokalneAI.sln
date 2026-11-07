@@ -25,6 +25,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "narzedzia", "narzedzia", "{
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SprawdzPrzyklady", "narzedzia\sprawdz_przyklady\SprawdzPrzyklady.csproj", "{775C8A92-72BD-4521-A73C-998A3CFBF45F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LokalneAI.Gateway", "LokalneAI.Gateway\LokalneAI.Gateway.csproj", "{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -155,6 +157,18 @@ Global
 		{775C8A92-72BD-4521-A73C-998A3CFBF45F}.Release|x64.Build.0 = Release|Any CPU
 		{775C8A92-72BD-4521-A73C-998A3CFBF45F}.Release|x86.ActiveCfg = Release|Any CPU
 		{775C8A92-72BD-4521-A73C-998A3CFBF45F}.Release|x86.Build.0 = Release|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Debug|x64.Build.0 = Debug|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Debug|x86.Build.0 = Debug|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Release|x64.ActiveCfg = Release|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Release|x64.Build.0 = Release|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Release|x86.ActiveCfg = Release|Any CPU
+		{2B04692B-1EFA-47CE-8B02-AC4492AF6C47}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -16,6 +16,8 @@ public sealed class AppSettings
 
     public static readonly IReadOnlyList<int> ContextChoices = [2048, 4096, 8192, 16384, 32768];
 
+    public const int DefaultGatewayPort = 11435;
+
     public string OllamaUrl { get; set; } = OllamaClient.DefaultUrl;
 
     public string Model { get; set; } = DefaultModel;
@@ -47,6 +49,27 @@ public sealed class AppSettings
     /// <summary>Okno pół-harnessu, profil „pliki”: dozwolone foldery rozdzielone średnikiem.</summary>
     public string? FileRoots { get; set; }
 
+    /// <summary>Zakładka Code: „czyta” (zmiany odrzucane) albo „pytaj” (zgoda na każdą zmianę). „Bez pytania” nie jest zapisywane.</summary>
+    public string CodePermission { get; set; } = "pytaj";
+
+    /// <summary>Port bramy LokalneAI (kolejka i sieć), ten sam na wszystkich komputerach biura.</summary>
+    public int GatewayPort { get; set; } = DefaultGatewayPort;
+
+    /// <summary>Gdzie liczyć: adres bramy innego komputera, np. <c>http://PC-ODS12:11435</c>. Null = ten komputer.</summary>
+    public string? ComputeOn { get; set; }
+
+    /// <summary>Nazwa komputera z <see cref="ComputeOn"/> (z jego odpowiedzi), do okna.</summary>
+    public string? ComputeOnName { get; set; }
+
+    /// <summary>Ostatnio wpisany adres innego komputera (zostaje także po powrocie na „ten komputer”).</summary>
+    public string? RemoteAddress { get; set; }
+
+    /// <summary>Pozwalaj na przeliczanie zapytań z innych komputerów tej samej podsieci.</summary>
+    public bool ShareOnLan { get; set; }
+
+    /// <summary>Największy kontekst dla zapytań z innych komputerów.</summary>
+    public int MaxContextForOthers { get; set; } = 16384;
+
     /// <summary>Poprawia wartości spoza zakresu (np. po ręcznej edycji pliku).</summary>
     public AppSettings Normalize()
     {
@@ -62,6 +85,19 @@ public sealed class AppSettings
         {
             ContextLength = DefaultContextLength;
         }
+
+        if (GatewayPort is < 1024 or > 65535)
+        {
+            GatewayPort = DefaultGatewayPort;
+        }
+
+        if (!ContextChoices.Contains(MaxContextForOthers))
+        {
+            MaxContextForOthers = 16384;
+        }
+
+        CodePermission = CodePermission == "czyta" ? "czyta" : "pytaj";
+        ComputeOn = string.IsNullOrWhiteSpace(ComputeOn) ? null : ComputeOn.Trim();
 
         return this;
     }

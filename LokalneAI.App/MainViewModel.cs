@@ -16,18 +16,25 @@ namespace LokalneAI.App;
 public sealed class MainViewModel : ObservableObject
 {
     private static readonly CultureInfo Pl = CultureInfo.GetCultureInfo("pl-PL");
-    private static readonly Brush GoodBrush = Frozen(0x15, 0x80, 0x3D);
-    private static readonly Brush BadBrush = Frozen(0xB9, 0x1C, 0x1C);
-    private static readonly Brush NeutralBrush = Frozen(0x6B, 0x72, 0x80);
+    // Te same kolory co GoodBrush, BadBrush i MutedBrush w Theme.xaml (styl TransmittalMaster).
+    private static readonly Brush GoodBrush = Frozen(0x2E, 0x7D, 0x4F);
+    private static readonly Brush BadBrush = Frozen(0xB3, 0x26, 0x1E);
+    private static readonly Brush NeutralBrush = Frozen(0x6A, 0x76, 0x86);
 
     private readonly StartupOptions _options;
     private readonly SettingsStore _settingsStore = new();
     private readonly HistoryLog _historyLog = new();
     private readonly AppSettings _settings;
     private readonly TaskCompletionSource _initialized = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    /// <summary>Czat: brama LokalneAI (kolejka, wybrany komputer), a gdy jej nie ma — Ollama na tym PC.</summary>
     private OllamaClient _client;
+
+    /// <summary>Ollama na tym PC: pobieranie modeli, zwalnianie pamięci, uruchamianie.</summary>
+    private OllamaClient _local;
+    private ExchangeViewModel? _waitingExchange;
     private CancellationTokenSource? _cts;
     private string? _gpuName;
+    private string? _gpuDescription;
     private string? _modelToPull;
     private bool _refreshing;
 
@@ -73,15 +80,18 @@ public sealed class MainViewModel : ObservableObject
 
         try
         {
-            _client = new OllamaClient(_settings.OllamaUrl);
+            _local = new OllamaClient(_settings.OllamaUrl);
         }
         catch (ArgumentException e)
         {
-            _client = new OllamaClient();
+            _local = new OllamaClient();
             _bannerText = e.Message + " Używam adresu domyślnego.";
         }
 
-        _ollamaUrl = _client.BaseUrl;
+        _client = _local;
+        _ollamaUrl = _local.BaseUrl;
+        Network = new NetworkViewModel(_settings, options, OnComputeTargetChangedAsync);
+        Network.Queue.CollectionChanged += (_, _) => ShowChatQueuePosition();
         if (_settingsStore.LoadError is { } loadError)
         {
             _statusText = $"Nie odczytałem ustawień ({loadError}), używam domyślnych.";
@@ -99,6 +109,22 @@ public sealed class MainViewModel : ObservableObject
     }
 
     public ObservableCollection<ModelItem> Models { get; } = [];
+
+    /// <summary>Ustawienia → „Gdzie liczyć”, udostępnianie i kolejka.</summary>
+    public NetworkViewModel Network { get; }
+
+    /// <summary>Zmienił się komputer, który liczy (zakładka Code odświeża opis).</summary>
+    public event EventHandler? ComputeTargetChanged;
+
+    /// <summary>Podpowiedź na pustej rozmowie.</summary>
+    public string EmptyChatHint => Network.IsRemote
+        ? $"Wpisz pytanie na dole i naciśnij Enter albo „Wyślij”.\nOdpowiedź policzy komputer {Network.ComputerName}; rozmowa zostaje na tym komputerze."
+        : "Wpisz pytanie na dole i naciśnij Enter albo „Wyślij”.\nOdpowiedź liczy model na tym komputerze, bez internetu.";
+
+    /// <summary>Opis bramy w Ustawieniach.</summary>
+    public string GatewayHint => Network.GatewayUrl is { } url
+        ? $"Brama LokalneAI: {url}. Programy z biblioteką LokalneAI (LocalGateway.ChooseUrl) łączą się przez nią same: jedna kolejka i ten sam komputer co czat."
+        : "Brama LokalneAI nie działa — czat łączy się bezpośrednio z Ollamą.";
 
     public ObservableCollection<ExchangeViewModel> Exchanges { get; } = [];
 
@@ -300,7 +326,10 @@ public sealed class MainViewModel : ObservableObject
             var cards = await Task.Run(() => GpuInfo.Detect());
             var card = cards.FirstOrDefault();
             _gpuName = card?.Name;
+            _gpuDescription = card?.Describe();
             GpuText = card is null ? "Nie wykryłem karty graficznej — model policzy procesor" : "Karta: " + card.Describe();
+            await Network.StartAsync(_local.BaseUrl, card?.Describe());
+            UseGateway();
             await RefreshAsync();
         }
         finally
@@ -317,14 +346,18 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        OllamaStatus = "Sprawdzam Ollamę…";
+        var remote = Network.IsRemote;
+        OllamaStatus = remote ? $"Sprawdzam {Network.ComputerName}…" : "Sprawdzam Ollamę…";
         OllamaStatusBrush = NeutralBrush;
+        GpuText = remote
+            ? "Liczy " + Network.ComputerName + (Network.RemoteGpu is null ? "" : ": " + Network.RemoteGpu)
+            : _gpuDescription is null ? "Nie wykryłem karty graficznej — model policzy procesor" : "Karta: " + _gpuDescription;
         var ollamaWorks = false;
         _refreshing = true;
         try
         {
             var version = await _client.GetVersionAsync();
-            OllamaStatus = $"● Ollama {version} działa";
+            OllamaStatus = remote ? $"● {Network.ComputerName}: Ollama {version}" : $"● Ollama {version} działa";
             OllamaStatusBrush = GoodBrush;
             CanStartOllama = false;
             ShowInstallHint = false;
@@ -349,6 +382,13 @@ public sealed class MainViewModel : ObservableObject
                 CanPull = false;
                 BannerText = "";
             }
+            else if (remote)
+            {
+                CanPull = false;
+                BannerText = Models.Count == 0
+                    ? $"Na komputerze {Network.ComputerName} nie ma żadnego modelu."
+                    : $"Na komputerze {Network.ComputerName} nie ma modelu {wanted}. Wybierz model z listy (to modele tamtego komputera).";
+            }
             else
             {
                 _modelToPull = wanted;
@@ -361,18 +401,28 @@ public sealed class MainViewModel : ObservableObject
         }
         catch (OllamaException e)
         {
-            OllamaStatus = "● Ollama nie odpowiada";
             OllamaStatusBrush = BadBrush;
             Models.Clear();
             SelectedModel = null;
             CanPull = false;
-            var exe = OllamaLauncher.Find();
-            CanStartOllama = exe is not null && IsLoopback(_client.BaseUrl);
-            ShowInstallHint = exe is null;
-            BannerText = exe is null
-                ? $"Na tym komputerze nie ma Ollamy. Zainstaluj ją w PowerShellu poleceniem: {OllamaLauncher.InstallCommand} — potem kliknij „Sprawdź ponownie”."
-                : e.Message;
             StatusText = "";
+            if (remote)
+            {
+                OllamaStatus = $"● {Network.ComputerName} nie odpowiada";
+                CanStartOllama = false;
+                ShowInstallHint = false;
+                BannerText = e.Message + " Zmień komputer w Ustawieniach → Gdzie liczyć.";
+            }
+            else
+            {
+                OllamaStatus = "● Ollama nie odpowiada";
+                var exe = OllamaLauncher.Find();
+                CanStartOllama = exe is not null && IsLoopback(_local.BaseUrl);
+                ShowInstallHint = exe is null;
+                BannerText = exe is null
+                    ? $"Na tym komputerze nie ma Ollamy. Zainstaluj ją w PowerShellu poleceniem: {OllamaLauncher.InstallCommand} — potem kliknij „Sprawdź ponownie”."
+                    : e.Message;
+            }
         }
         finally
         {
@@ -409,7 +459,7 @@ public sealed class MainViewModel : ObservableObject
 
         var model = selected.Name;
         var messages = BuildMessages(question);
-        var exchange = new ExchangeViewModel(question, model);
+        var exchange = new ExchangeViewModel(question, model, Network.IsRemote ? Network.ComputerName : null);
         Exchanges.Add(exchange);
         Question = "";
         IsBusy = true;
@@ -423,6 +473,7 @@ public sealed class MainViewModel : ObservableObject
 
         var cts = new CancellationTokenSource();
         _cts = cts;
+        _waitingExchange = exchange;
         var request = new ChatRequest
         {
             Model = model,
@@ -445,6 +496,7 @@ public sealed class MainViewModel : ObservableObject
                     if (firstToken is null)
                     {
                         firstToken = clock.Elapsed;
+                        _waitingExchange = null;
                         exchange.Stats = "Odpowiada…";
                     }
 
@@ -467,7 +519,7 @@ public sealed class MainViewModel : ObservableObject
             var running = await TryGetRunningAsync(model);
             if (last is not null)
             {
-                exchange.StatsData = ChatStats.From(last, firstToken, clock.Elapsed, running?.GpuShare, _gpuName);
+                exchange.StatsData = ChatStats.From(last, firstToken, clock.Elapsed, running?.GpuShare, Network.IsRemote ? Network.RemoteGpu : _gpuName);
                 exchange.Stats = exchange.StatsData.Describe();
             }
             else
@@ -496,6 +548,7 @@ public sealed class MainViewModel : ObservableObject
         finally
         {
             _cts = null;
+            _waitingExchange = null;
             cts.Dispose();
             IsBusy = false;
         }
@@ -517,6 +570,8 @@ public sealed class MainViewModel : ObservableObject
     {
         _cts?.Cancel();
         SaveSettings();
+        // Zamyka port bramy (inne komputery dostaną „nie ma połączenia”), najwyżej 3 s.
+        Task.Run(Network.StopAsync).Wait(TimeSpan.FromSeconds(3));
     }
 
     /// <summary>Ustawienia dla okna pół-harnessu: ten sam serwer, model i kontekst co w oknie głównym.</summary>
@@ -526,6 +581,7 @@ public sealed class MainViewModel : ObservableObject
         return new HarnessContext
         {
             OllamaUrl = _client.BaseUrl,
+            ComputeWhere = Network.IsRemote ? "liczy: " + Network.ComputerName : "liczy: ten komputer",
             Model = SelectedModel?.Name ?? _settings.Model,
             // Prompt profilu (karta, narzędzia, przykłady) zajmuje 4–8 tys. tokenów — mniej niż 16 384 nie ma sensu.
             ContextLength = Math.Max(16384, ContextLength),
@@ -576,7 +632,7 @@ public sealed class MainViewModel : ObservableObject
         var sinceUpdate = Stopwatch.StartNew();
         try
         {
-            await foreach (var progress in _client.PullAsync(model, cts.Token))
+            await foreach (var progress in _local.PullAsync(model, cts.Token))
             {
                 tracker.Add(progress);
                 if (sinceUpdate.ElapsedMilliseconds >= 250 || tracker.Succeeded)
@@ -641,7 +697,7 @@ public sealed class MainViewModel : ObservableObject
                 await Task.Delay(1000);
                 try
                 {
-                    await _client.GetVersionAsync();
+                    await _local.GetVersionAsync();
                     break;
                 }
                 catch (OllamaException)
@@ -662,16 +718,16 @@ public sealed class MainViewModel : ObservableObject
     {
         try
         {
-            var running = await _client.ListRunningAsync();
+            var running = await _local.ListRunningAsync();
             if (running.Count == 0)
             {
-                StatusText = "Żaden model nie zajmuje teraz pamięci.";
+                StatusText = "Żaden model nie zajmuje teraz pamięci tego komputera.";
                 return;
             }
 
             foreach (var model in running)
             {
-                await _client.UnloadAsync(model.Name);
+                await _local.UnloadAsync(model.Name);
             }
 
             StatusText = "Zwolniono pamięć: " + string.Join(", ", running.Select(m => ModelItem.ShortName(m.Name))) + ".";
@@ -733,11 +789,11 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        var place = ChatStats.DescribePlacement(running.GpuShare, _gpuName);
+        var place = ChatStats.DescribePlacement(running.GpuShare, Network.IsRemote ? Network.RemoteGpu : _gpuName);
         var until = running.ExpiresAt is { } expires && expires.Year < 2100
             ? $"; zwolni pamięć sam o {expires.ToLocalTime():HH:mm}"
             : "";
-        StatusText = $"Model w pamięci — {place}; kontekst {running.ContextLength}{until}.";
+        StatusText = $"Model w pamięci{(Network.IsRemote ? " komputera " + Network.ComputerName : "")} — {place}; kontekst {running.ContextLength}{until}.";
     }
 
     private void AppendHistory(
@@ -787,7 +843,7 @@ public sealed class MainViewModel : ObservableObject
         _settings.ContextLength = ContextLength;
         _settings.RememberConversation = RememberConversation;
         _settings.SaveHistory = SaveHistory;
-        _settings.OllamaUrl = _client.BaseUrl;
+        _settings.OllamaUrl = _local.BaseUrl;
         if (SelectedModel is not null)
         {
             _settings.Model = SelectedModel.Name;
@@ -821,10 +877,17 @@ public sealed class MainViewModel : ObservableObject
             return false;
         }
 
-        if (!string.Equals(url, _client.BaseUrl, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(url, _local.BaseUrl, StringComparison.OrdinalIgnoreCase))
         {
-            _client.Dispose();
-            _client = new OllamaClient(url);
+            var old = _local;
+            _local = new OllamaClient(url);
+            if (ReferenceEquals(_client, old))
+            {
+                _client = _local;
+            }
+
+            old.Dispose();
+            _ = Network.SetOllamaUrlAsync(url);
         }
 
         if (_ollamaUrl != url)
@@ -834,6 +897,54 @@ public sealed class MainViewModel : ObservableObject
         }
 
         return true;
+    }
+
+    /// <summary>Czat łączy się przez bramę (kolejka, wybrany komputer), gdy ta działa.</summary>
+    private void UseGateway()
+    {
+        if (Network.GatewayUrl is { } url && !string.Equals(url, _client.BaseUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!ReferenceEquals(_client, _local))
+            {
+                _client.Dispose();
+            }
+
+            _client = new OllamaClient(url) { ClientName = "Czat" };
+        }
+
+        OnPropertyChanged(nameof(GatewayHint));
+        OnPropertyChanged(nameof(EmptyChatHint));
+    }
+
+    private async Task OnComputeTargetChangedAsync()
+    {
+        UseGateway();
+        ComputeTargetChanged?.Invoke(this, EventArgs.Empty);
+        if (!IsBusy)
+        {
+            await RefreshAsync();
+        }
+    }
+
+    /// <summary>Czat czeka w kolejce bramy (liczy inny program albo komputer): pokaż to pod pytaniem.</summary>
+    private void ShowChatQueuePosition()
+    {
+        if (_waitingExchange is not { } exchange)
+        {
+            return;
+        }
+
+        var rows = Network.Queue.ToList();
+        var mine = rows.FindIndex(r => r.Program == "Czat" && r.State == LokalneAI.Gateway.QueueState.Waiting);
+        if (mine >= 0)
+        {
+            var ahead = rows.Take(mine).Select(r => r.Program + (r.Who == "ten komputer" ? "" : " (" + r.Who + ")")).ToList();
+            exchange.Stats = "Czeka w kolejce — przed nim: " + string.Join(", ", ahead) + "…";
+        }
+        else if (exchange.Stats.StartsWith("Czeka w kolejce", StringComparison.Ordinal))
+        {
+            exchange.Stats = "Model liczy…";
+        }
     }
 
     private static bool SameModel(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);

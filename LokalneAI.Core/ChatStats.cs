@@ -12,6 +12,7 @@ namespace LokalneAI.Core;
 /// <param name="FirstToken">Od kliknięcia do pierwszego słowa odpowiedzi.</param>
 /// <param name="GpuShare">Udział karty graficznej 0–1 (z <c>/api/ps</c>); null = nieznany.</param>
 /// <param name="Device">Nazwa karty graficznej, jeśli znana.</param>
+/// <param name="Queued">Czekanie przed liczeniem (kolejka bramy, inny program albo komputer liczył); zero, gdy poniżej 1 s.</param>
 public sealed record ChatStats(
     int PromptTokens,
     int OutputTokens,
@@ -21,23 +22,29 @@ public sealed record ChatStats(
     TimeSpan Total,
     TimeSpan? FirstToken,
     double? GpuShare,
-    string? Device)
+    string? Device,
+    TimeSpan Queued = default)
 {
     public double? TokensPerSecond => OutputTokens > 0 && Eval > TimeSpan.Zero ? OutputTokens / Eval.TotalSeconds : null;
 
     public static ChatStats From(ChatChunk done, TimeSpan? firstToken, TimeSpan wallClock, double? gpuShare, string? device)
     {
         ArgumentNullException.ThrowIfNull(done);
+        var total = done.TotalDuration is > 0 ? FromNanoseconds(done.TotalDuration) : wallClock;
+
+        // Ollama mierzy tylko swoje liczenie. Dłuższy czas u nas to czekanie w kolejce bramy (albo na innym komputerze).
+        var queued = wallClock - total;
         return new ChatStats(
             done.PromptEvalCount ?? 0,
             done.EvalCount ?? 0,
             FromNanoseconds(done.LoadDuration),
             FromNanoseconds(done.PromptEvalDuration),
             FromNanoseconds(done.EvalDuration),
-            done.TotalDuration is > 0 ? FromNanoseconds(done.TotalDuration) : wallClock,
+            total,
             firstToken,
             gpuShare,
-            device);
+            device,
+            queued >= TimeSpan.FromSeconds(1) ? queued : TimeSpan.Zero);
     }
 
     public static TimeSpan FromNanoseconds(long? nanoseconds)
@@ -76,7 +83,12 @@ public sealed record ChatStats(
             parts.Add(string.Format(pl, "pierwsze słowo po {0:0.0} s", first.TotalSeconds));
         }
 
-        parts.Add(string.Format(pl, "razem {0:0.0} s", Total.TotalSeconds));
+        parts.Add(string.Format(pl, "razem {0:0.0} s", (Total + Queued).TotalSeconds));
+        if (Queued > TimeSpan.Zero)
+        {
+            parts.Add(string.Format(pl, "w tym czekanie w kolejce {0:0.0} s", Queued.TotalSeconds));
+        }
+
         if (Load.TotalSeconds >= 0.5)
         {
             parts.Add(string.Format(pl, "w tym ładowanie modelu {0:0.0} s", Load.TotalSeconds));

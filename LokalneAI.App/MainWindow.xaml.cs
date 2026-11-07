@@ -19,13 +19,59 @@ public partial class MainWindow : Window
         DataContext = _viewModel = viewModel;
         Loaded += async (_, _) =>
         {
+            // Najpierw zakładka Code (kontrola bez klikania czeka tylko na InitializeAsync), potem Ollama i brama.
+            CodeView.Attach(_viewModel.CreateHarnessContext);
             await _viewModel.InitializeAsync();
+            CodeView.RefreshModelText();
             if (IsActive)
             {
                 QuestionBox.Focus();
             }
         };
-        Closing += (_, _) => _viewModel.OnClosing();
+        _viewModel.ComputeTargetChanged += (_, _) => CodeView.RefreshModelText();
+        Tabs.SelectionChanged += (_, e) =>
+        {
+            if (e.OriginalSource == Tabs && Tabs.SelectedItem == CodeTab && IsLoaded)
+            {
+                CodeView.RefreshModelText();
+            }
+        };
+        Closing += (_, _) =>
+        {
+            CodeView.SaveChoices();
+            CodeView.Shutdown();
+            _viewModel.OnClosing();
+        };
+    }
+
+    /// <summary>Okno bez systemowej ramki po maksymalizacji wychodzi poza ekran o jej grubość — zostawiamy margines.</summary>
+    private const double MaximizedEdge = 7;
+
+    private void Window_StateChanged(object? sender, EventArgs e)
+    {
+        var maximized = WindowState == WindowState.Maximized;
+        Root.Margin = new Thickness(maximized ? MaximizedEdge : 0);
+        MaximizeButton.Content = maximized ? "\uE923" : "\uE922";
+        MaximizeButton.ToolTip = maximized ? "Przywróć" : "Maksymalizuj";
+    }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    private void Maximize_Click(object sender, RoutedEventArgs e)
+        => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    /// <summary>Wybiera zakładkę: „czat”, „code” albo „ustawienia” (kontrola bez klikania).</summary>
+    internal void SelectTab(string? name)
+    {
+        Tabs.SelectedItem = (name ?? "").ToLowerInvariant() switch
+        {
+            "code" => CodeTab,
+            "ustawienia" => SettingsTab,
+            _ => ChatTab,
+        };
+        Tabs.UpdateLayout();
     }
 
     /// <summary>Zapisuje wygląd okna do PNG (kontrola bez klikania, <c>--autotest</c>).</summary>
@@ -45,9 +91,6 @@ public partial class MainWindow : Window
         using var file = File.Create(path);
         encoder.Save(file);
     }
-
-    private void OpenHarness_Click(object sender, RoutedEventArgs e)
-        => new HarnessWindow(_viewModel.CreateHarnessContext()) { Owner = this }.Show();
 
     private void QuestionBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {

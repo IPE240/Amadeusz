@@ -45,6 +45,8 @@ public partial class SourcesWindow : Window
         Grid.ItemsSource = _rows;
     }
 
+    private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
+
     private void Add_Click(object sender, RoutedEventArgs e) => _rows.Add(new SourceRow());
 
     private void Remove_Click(object sender, RoutedEventArgs e)

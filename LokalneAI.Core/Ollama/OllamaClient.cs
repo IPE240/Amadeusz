@@ -13,7 +13,10 @@ public sealed class OllamaClient : IDisposable
 {
     public const string DefaultUrl = "http://127.0.0.1:11434";
 
+    private const string ProgramHeader = "X-LokalneAI-Program";
+
     private readonly HttpClient _http;
+    private string? _clientName;
 
     public OllamaClient(string? baseUrl = null, HttpMessageHandler? handler = null)
     {
@@ -27,6 +30,24 @@ public sealed class OllamaClient : IDisposable
     }
 
     public string BaseUrl { get; }
+
+    /// <summary>
+    /// Nazwa programu w kolejce bramy LokalneAI (nagłówek <c>X-LokalneAI-Program</c>), np. „Czat”.
+    /// Ollama nagłówek pomija.
+    /// </summary>
+    public string? ClientName
+    {
+        get => _clientName;
+        set
+        {
+            _clientName = value;
+            _http.DefaultRequestHeaders.Remove(ProgramHeader);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                _http.DefaultRequestHeaders.TryAddWithoutValidation(ProgramHeader, Uri.EscapeDataString(value.Trim()));
+            }
+        }
+    }
 
     /// <summary>Limit dla krótkich zapytań (wersja, lista modeli). Po nim Ollama „nie odpowiada”.</summary>
     public TimeSpan MetadataTimeout { get; set; } = TimeSpan.FromSeconds(5);

@@ -28,8 +28,14 @@ namespace LokalneAI.Harness.Llm
         /// <summary>Jak długo trzymać model w pamięci po odpowiedzi, np. <c>10m</c>; null = domyślnie serwera.</summary>
         public string KeepAlive { get; set; }
 
-        /// <summary>Limit na jedną odpowiedź modelu (ładowanie modelu potrafi trwać kilkanaście sekund).</summary>
+        /// <summary>Limit na jedną odpowiedź modelu (ładowanie modelu potrafi trwać kilkanaście sekund, a w kolejce bramy można czekać).</summary>
         public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromMinutes(5);
+
+        /// <summary>
+        /// Nazwa programu widoczna w kolejce okna LokalneAI, np. „Tekla”, „CDE”. Idzie w nagłówku <c>X-LokalneAI-Program</c>;
+        /// Ollama go pomija. Null = bez nazwy.
+        /// </summary>
+        public string ClientName { get; set; }
     }
 
     /// <summary>Klient Ollamy: <c>POST /api/chat</c> bez strumienia, z <c>format</c> = JSON Schema.</summary>
@@ -78,6 +84,11 @@ namespace LokalneAI.Harness.Llm
             {
                 limit.CancelAfter(_options.RequestTimeout);
                 message.Content = new StringContent(body, Encoding.UTF8, "application/json");
+                if (!string.IsNullOrWhiteSpace(_options.ClientName))
+                {
+                    message.Headers.TryAddWithoutValidation(LocalGateway.ProgramHeader, Uri.EscapeDataString(_options.ClientName.Trim()));
+                }
+
                 var clock = Stopwatch.StartNew();
                 HttpResponseMessage response;
                 try

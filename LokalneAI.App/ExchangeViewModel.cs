@@ -4,7 +4,7 @@ using LokalneAI.Core.Ollama;
 namespace LokalneAI.App;
 
 /// <summary>Jedno pytanie z odpowiedzią w oknie rozmowy.</summary>
-public sealed class ExchangeViewModel(string question, string model) : ObservableObject
+public sealed class ExchangeViewModel(string question, string model, string? computer = null) : ObservableObject
 {
     private string _answer = "";
     private string _stats = "Model liczy…";
@@ -15,7 +15,7 @@ public sealed class ExchangeViewModel(string question, string model) : Observabl
     public string Model { get; } = model;
 
     /// <summary>Krótka nazwa modelu nad odpowiedzią, np. „bielik-11b-v3.0-instruct:Q4_K_M”.</summary>
-    public string ModelLabel { get; } = ModelItem.ShortName(model);
+    public string ModelLabel { get; } = ModelItem.ShortName(model) + (computer is null ? "" : " · liczy " + computer);
 
     public string Answer
     {

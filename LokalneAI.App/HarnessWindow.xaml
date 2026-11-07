@@ -1,47 +1,33 @@
 <Window x:Class="LokalneAI.App.HarnessWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:wpf="clr-namespace:LokalneAI.Harness.Wpf;assembly=LokalneAI.Harness.Wpf"
-        Title="LokalneAI — pół-harness (próba osadzenia)"
+        xmlns:local="clr-namespace:LokalneAI.App"
+        Title="LokalneAI — Code"
         Width="900" Height="780" MinWidth="600" MinHeight="500"
-        FontFamily="Segoe UI" FontSize="13" Background="#F4F5F7">
-    <Border x:Name="Root" Background="#F4F5F7" Padding="10">
-        <DockPanel>
-            <!-- Ustawienia próby: profil i wykonawca. W prawdziwym programie robi to gospodarz w kodzie. -->
-            <Border DockPanel.Dock="Top" Background="White" BorderBrush="#DDE1E6" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,8">
-                <StackPanel>
-                    <WrapPanel>
-                        <TextBlock Text="Profil" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ComboBox x:Name="ProfileBox" Width="140" SelectionChanged="Profile_Changed" />
-                        <TextBlock x:Name="ModelText" VerticalAlignment="Center" Margin="14,0,0,0" Foreground="#4B5563" />
-                        <CheckBox x:Name="StepsBox" Content="Pokaż kroki modelu (JSON)" VerticalAlignment="Center" Margin="14,0,0,0"
-                                  Checked="Steps_Changed" Unchecked="Steps_Changed" />
-                        <Button Content="Źródła wiedzy…" Margin="14,0,0,0" Padding="8,2" Click="Sources_Click"
-                                ToolTip="Repozytoria i adresy, z których asystent bierze dokumentację (wklej link do repozytorium)" />
-                        <Button x:Name="SyncButton" Content="Aktualizuj wiedzę" Margin="6,0,0,0" Padding="8,2" Click="Sync_Click"
-                                ToolTip="Pobiera nowe wersje dokumentacji z repozytoriów wpisanych w zrodla.json profilu" />
-                    </WrapPanel>
-                    <WrapPanel x:Name="TeklaOptions" Margin="0,8,0,0">
-                        <RadioButton x:Name="SimulatorRadio" Content="Symulator (bez Tekli)" IsChecked="True" VerticalAlignment="Center" Checked="Executor_Changed" />
-                        <RadioButton x:Name="BridgeRadio" Content="TeklaBridge — folder wymiany:" Margin="14,0,6,0" VerticalAlignment="Center" Checked="Executor_Changed" />
-                        <TextBox x:Name="ExchangeBox" Width="330" VerticalContentAlignment="Center" LostFocus="Executor_Changed" />
-                    </WrapPanel>
-                    <WrapPanel x:Name="CdeOptions" Margin="0,8,0,0">
-                        <TextBlock Text="Plik połączenia z bazą (JSON):" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBox x:Name="ConnectionBox" Width="330" VerticalContentAlignment="Center" LostFocus="Executor_Changed" />
-                        <Button Content="Wybierz…" Margin="6,0,0,0" Padding="8,2" Click="PickConnection_Click" />
-                        <TextBlock Text="Twój person_id:" VerticalAlignment="Center" Margin="14,0,6,0" />
-                        <TextBox x:Name="PersonBox" Width="260" VerticalContentAlignment="Center" LostFocus="Executor_Changed" />
-                    </WrapPanel>
-                    <WrapPanel x:Name="FilesOptions" Margin="0,8,0,0">
-                        <TextBlock Text="Dozwolone foldery (rozdziel ;):" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBox x:Name="RootsBox" Width="420" VerticalContentAlignment="Center" LostFocus="Executor_Changed"
-                                 ToolTip="Asystent czyta, tworzy, kopiuje, przenosi i wykonuje polecenia tylko w tych folderach (z podfolderami). Programy może uruchamiać też z Program Files. Pierwszy folder jest bieżącym na start." />
-                    </WrapPanel>
-                    <TextBlock x:Name="HintText" Margin="0,6,0,0" Foreground="#6B7280" FontSize="12" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-            <wpf:HarnessPanel x:Name="Panel" />
+        Background="{StaticResource PageBrush}"
+        Foreground="{StaticResource TextBrush}"
+        FontFamily="Segoe UI" FontSize="13"
+        TextOptions.TextFormattingMode="Display"
+        StateChanged="Window_StateChanged">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="42" CornerRadius="0" GlassFrameThickness="0" ResizeBorderThickness="6" UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <!-- Ta sama zakładka Code co w oknie głównym, w osobnym oknie (np. obok Tekli), z własną rozmową. -->
+    <Grid x:Name="Root" Background="{StaticResource PageBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="42" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <DockPanel Background="{StaticResource AccentDarkBrush}">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" Click="Minimize_Click" ToolTip="Minimalizuj" />
+                <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" Content="&#xE922;" Click="Maximize_Click" ToolTip="Maksymalizuj" />
+                <Button Style="{StaticResource CaptionButton}" Content="&#xE8BB;" Click="Close_Click" ToolTip="Zamknij" />
+            </StackPanel>
+            <TextBlock Margin="16,0" VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Foreground="White" Text="LokalneAI — Code" />
         </DockPanel>
-    </Border>
+        <local:HarnessView x:Name="View" Grid.Row="1" Margin="14,12,14,14" />
+    </Grid>
 </Window>

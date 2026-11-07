@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Brama okna LokalneAI: jeden punkt wejścia do modelu na tym komputerze.
+    - Kolejkuje zapytania wszystkich programów z tego PC i (gdy użytkownik pozwoli) innych komputerów z podsieci.
+    - Przekazuje je do Ollamy na tym PC albo do bramy na innym komputerze (mocniejsza karta).
+    - Przepuszcza tylko liczenie i odczyt listy modeli; pobieranie i kasowanie modeli zostaje zablokowane.
+    Serwer HTTP to Kestrel z ASP.NET Core: nie wymaga praw administratora ani rezerwacji adresu (netsh urlacl).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>LokalneAI.Gateway</RootNamespace>
+    <Product>LokalneAI</Product>
+    <Company>Optimal Design of Structures Sp. z o.o.</Company>
+    <Copyright>Copyright (c) 2026 Optimal Design of Structures Sp. z o.o.</Copyright>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LokalneAI.Core.Tests" />
+  </ItemGroup>
+
+</Project>

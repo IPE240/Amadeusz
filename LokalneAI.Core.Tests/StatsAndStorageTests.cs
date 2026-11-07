@@ -34,6 +34,19 @@ public class ChatStatsTests
         => Assert.Equal(expected, ChatStats.DescribePlacement(share, "RTX"));
 
     [Fact]
+    public void Describe_PokazujeCzekanieWKolejce()
+    {
+        var done = new ChatChunk { Done = true, EvalCount = 10, EvalDuration = 500_000_000, TotalDuration = 800_000_000 };
+
+        var stats = ChatStats.From(done, TimeSpan.FromSeconds(9.9), TimeSpan.FromSeconds(10.7), 1.0, "RTX");
+
+        Assert.Equal(TimeSpan.FromSeconds(9.9), stats.Queued);
+        Assert.Equal(
+            "RTX: cały model w VRAM · 10 tok. · 20,0 tok/s · pierwsze słowo po 9,9 s · razem 10,7 s · w tym czekanie w kolejce 9,9 s",
+            stats.Describe());
+    }
+
+    [Fact]
     public void From_BezCzasuOllamy_BierzeCzasZegara()
     {
         var stats = ChatStats.From(new ChatChunk { Done = true }, null, TimeSpan.FromSeconds(2), null, null);

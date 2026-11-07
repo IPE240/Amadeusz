@@ -133,7 +133,8 @@ namespace MojProgram   // x:Class w XAML = przestrzeń nazw + nazwa klasy
         // Jeden klient na program (tu: na okno). Adres i model z ustawień programu, nie na sztywno.
         private readonly OllamaLlmClient _llm = new OllamaLlmClient(new OllamaOptions
         {
-            Url = "http://127.0.0.1:11434",                     // albo serwer w biurze, np. http://serwer-ai:11434
+            Url = LocalGateway.ChooseUrl(),                     // okno LokalneAI działa: jego kolejka i komputer z ustawień; nie działa: Ollama na tym PC
+            ClientName = "MojProgram",                          // nazwa w kolejce okna LokalneAI
             Model = "SpeakLeash/bielik-11b-v3.0-instruct:Q4_K_M",
             ContextLength = 16384,                              // mniej niż prompt profilu = Ollama po cichu obetnie początek
             KeepAlive = "10m",
@@ -321,8 +322,13 @@ Gdzie wkładać dokumentację biura i jak ją pisać: [wiedza-dla-modeli.md](wie
 - **`OllamaOptions.ContextLength`:** domyślnie 8192. Profil `tekla` potrzebuje 16384, bo jego prompt to ok. 7,8 tys.
   tokenów. Za krótki kontekst to błąd bez komunikatu: Ollama obetnie początek polecenia systemowego.
 - **`Temperature` 0,1** do poleceń i SQL. Profil może ją zmienić (`"temperatura"` w `profil.json`).
-- **Adres serwera bierz z ustawień programu.** Model może działać na serwerze w biurze
-  ([serwer-modelu.md](serwer-modelu.md)), a wtedy laptop nie potrzebuje karty graficznej.
+- **Adres: `LocalGateway.ChooseUrl()`**, chyba że program ma własne ustawienie adresu. Gdy na tym PC działa okno
+  LokalneAI, zwraca jego bramę `http://127.0.0.1:11435`. Wtedy zapytania wszystkich programów idą przez jedną
+  kolejkę, a liczy komputer wybrany w oknie (ten albo mocniejszy w biurze, [siec.md](siec.md)). Gdy okno nie działa,
+  zwraca Ollamę na tym PC. Wybór zapada raz, przy tworzeniu klienta.
+- **`OllamaOptions.ClientName`**: nazwa programu w kolejce okna („Tekla”, „CDE”). Bez niej w kolejce widać „?”.
+- Brama przepuszcza tylko czat, generowanie, embeddingi i listę modeli. `ollama pull` i usuwanie modeli robi się
+  w Ollamie danego komputera.
 
 ## 13. Testy
 
@@ -388,6 +394,8 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | `InvalidOperationException: Sesja jeszcze pracuje` | drugie `SendAsync` przed końcem pierwszego | zablokuj „Wyślij” do końca tury (panel robi to sam) |
 | polecenie zmieniające wykonało się bez pytania | `ConfirmMutation` = null | podłącz pytanie (sekcja 9) |
 | `szukaj_wiedzy` nic nie znajduje | słowa w notatkach inne niż w pytaniach albo brak narzędzia w `profil.json` | [wiedza-dla-modeli.md](wiedza-dla-modeli.md); `"narzedzia_wbudowane": ["szukaj_wiedzy"]` |
+| odpowiedź długo nie przychodzi, choć model jest szybki | zapytanie czeka w kolejce okna LokalneAI (liczy inny program albo inny komputer) | okno LokalneAI → Ustawienia → kolejka; ewentualnie dłuższy `RequestTimeout` |
+| „Nie ma połączenia z PC-…” | w oknie LokalneAI wybrano inny komputer, a on jest wyłączony albo nie udostępnia | okno LokalneAI → Ustawienia → Gdzie liczyć |
 | aktualizacja wiedzy: brak dostępu | folder profilu tylko do odczytu albo `git` bez logowania do prywatnego repozytorium | profil w `%LOCALAPPDATA%`; `git clone` raz ręcznie |
 
 ## 15. Mapa API
@@ -419,7 +427,8 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `KnowledgeSync`, `KnowledgeSource`, `KnowledgeSyncResult` | aktualizacja wiedzy z `zrodla.json` |
 | | `BuiltInTools`, `Calculator` | narzędzia wbudowane: `kalkulator`, `szukaj_wiedzy` |
 | `LokalneAI.Harness.Llm` | `ILlmClient` | dostęp do modelu (własna implementacja: testy, inny serwer) |
-| | `OllamaLlmClient`, `OllamaOptions` | Ollama `/api/chat` |
+| | `OllamaLlmClient`, `OllamaOptions` | Ollama `/api/chat`; `ClientName` = nazwa w kolejce okna |
+| | `LocalGateway` | brama okna LokalneAI na tym PC: `ChooseUrl()`, `IsRunningAsync()` |
 | | `OpenAiCompatibleLlmClient`, `OpenAiCompatibleOptions` | serwery z API OpenAI `/v1/chat/completions` |
 | | `LlmRequest`, `LlmResponse`, `LlmMessage` | zapytanie i odpowiedź modelu |
 | | `LlmException`, `LlmUnavailableException` | błędy serwera modelu |

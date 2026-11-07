@@ -169,3 +169,16 @@ var llm = new OpenAiCompatibleLlmClient(new OpenAiCompatibleOptions
 ```
 
 Konfiguracja serwera w biurze: [serwer-modelu.md](serwer-modelu.md). Format profilu: [profile.md](profile.md).
+
+## Przez okno LokalneAI (kolejka i wybór komputera)
+
+```csharp
+var llm = new OllamaLlmClient(new OllamaOptions
+{
+    Url = LocalGateway.ChooseUrl(),   // okno LokalneAI działa → jego brama; nie działa → Ollama na tym PC
+    ClientName = "Tekla",             // nazwa w kolejce okna
+});
+```
+
+Gdy na komputerze działa okno LokalneAI, program czeka w tej samej kolejce co czat, a liczy komputer wybrany
+w oknie (ten albo mocniejszy w biurze). Szczegóły: [siec.md](siec.md).

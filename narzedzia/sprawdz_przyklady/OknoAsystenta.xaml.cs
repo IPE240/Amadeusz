@@ -14,7 +14,8 @@ public partial class OknoAsystenta : Window
     // Jeden klient na program (tu: na okno). Adres i model z ustawień programu, nie na sztywno.
     private readonly OllamaLlmClient _llm = new OllamaLlmClient(new OllamaOptions
     {
-        Url = "http://127.0.0.1:11434",                     // albo serwer w biurze, np. http://serwer-ai:11434
+        Url = LocalGateway.ChooseUrl(),                     // okno LokalneAI działa: jego kolejka i komputer z ustawień; nie działa: Ollama na tym PC
+        ClientName = "MojProgram",                          // nazwa w kolejce okna LokalneAI
         Model = "SpeakLeash/bielik-11b-v3.0-instruct:Q4_K_M",
         ContextLength = 16384,                              // mniej niż prompt profilu = Ollama po cichu obetnie początek
         KeepAlive = "10m",

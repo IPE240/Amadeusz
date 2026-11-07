@@ -52,3 +52,26 @@ public sealed class RelayCommand : ICommand
 
     public async void Execute(object? parameter) => await _execute();
 }
+
+/// <summary>Polecenie z parametrem (np. wiersz listy, przy którym kliknięto przycisk).</summary>
+public sealed class RelayCommand<T> : ICommand
+{
+    private readonly Func<T?, Task> _execute;
+
+    public RelayCommand(Func<T?, Task> execute) => _execute = execute;
+
+    public RelayCommand(Action<T> execute)
+        : this(p => { if (p is not null) { execute(p); } return Task.CompletedTask; })
+    {
+    }
+
+    public event EventHandler? CanExecuteChanged
+    {
+        add => CommandManager.RequerySuggested += value;
+        remove => CommandManager.RequerySuggested -= value;
+    }
+
+    public bool CanExecute(object? parameter) => true;
+
+    public async void Execute(object? parameter) => await _execute(parameter is T value ? value : default);
+}

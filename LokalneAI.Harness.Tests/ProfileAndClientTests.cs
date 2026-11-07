@@ -143,6 +143,26 @@ public class LlmClientTests
     }
 
     [Fact]
+    public async Task Ollama_PrzedstawiaProgramBramie()
+    {
+        string program = null;
+        var http = new FakeHttp(request =>
+        {
+            program = request.Headers.TryGetValues(LocalGateway.ProgramHeader, out var values) ? values.First() : null;
+            return FakeHttp.Json("{\"message\":{\"content\":\"{}\"},\"done\":true}");
+        });
+        using var client = new OllamaLlmClient(new OllamaOptions { Url = LocalGateway.DefaultUrl, Model = "m", ClientName = "Code: tekla — słup" }, http);
+
+        await client.CompleteAsync(new LlmRequest { Messages = new[] { new LlmMessage("user", "x") } }, CancellationToken.None);
+
+        Assert.Equal("Code: tekla — słup", Uri.UnescapeDataString(program));
+    }
+
+    [Fact]
+    public async Task LocalGateway_NieDzialajacaBramaToFalseBezWyjatku()
+        => Assert.False(await LocalGateway.IsRunningAsync(300, "http://127.0.0.1:1"));
+
+    [Fact]
     public async Task OpenAi_WysylaResponseFormat_CzytaUsage()
     {
         var http = new FakeHttp(_ => FakeHttp.Json(

@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LokalneAI.Core\LokalneAI.Core.csproj" />
+    <ProjectReference Include="..\LokalneAI.Gateway\LokalneAI.Gateway.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -25,6 +25,7 @@ Są dwie części:
    **Źródła wiedzy…** w oknie asystenta; pliki aktualizują się same ([docs/profile.md](docs/profile.md)).
 
    Jak osadzić: [docs/osadzanie.md](docs/osadzanie.md). Serwer modelu w biurze: [docs/serwer-modelu.md](docs/serwer-modelu.md).
+   Kolejka i liczenie na innym komputerze: [docs/siec.md](docs/siec.md).
    Format profilu: [docs/profile.md](docs/profile.md). Wybór modelu: [docs/wybor-modelu.md](docs/wybor-modelu.md).
 
    **Opisy dla AI:**
@@ -32,8 +33,18 @@ Są dwie części:
    - gdzie wkładać dokumentację dla lokalnych modeli i jak ją pisać: [docs/wiedza-dla-modeli.md](docs/wiedza-dla-modeli.md);
    - zasady dla programistów: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md);
    - szablony profilu i plików dla repozytoriów programów: [szablony](szablony).
-2. **Okno testowe** (`LokalneAI.App`). Czat z modelem, statystyki „gdzie liczył” i przycisk „Pół-harness…”, który
-   otwiera panel do próby obu profili. Opis niżej.
+2. **Okno** (`LokalneAI.App`) wygląda jak TransmittalMaster (kolory i style w `LokalneAI.App\Theme.xaml`).
+   Karty są w granatowym pasku tytułu:
+   - **Czat**: rozmowa z modelem i statystyki „gdzie liczył”.
+   - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`). Ma trzy poziomy uprawnień:
+     *Tylko czyta*, *Pyta o każdą zmianę* i *Bez pytania (poza kasowaniem)*.
+   - **Ustawienia**: gdzie liczyć (ten komputer albo mocniejszy komputer w biurze), udostępnianie tego komputera
+     innym z tej samej podsieci, podgląd kolejki i parametry czatu.
+
+   W oknie działa **brama** (`LokalneAI.Gateway`, port 11435). Zapytania czatu, zakładki Code, innych programów
+   na tym PC i innych komputerów czekają przez nią w jednej kolejce, a zapytania z tego komputera mają pierwszeństwo.
+   Opis: [docs/siec.md](docs/siec.md). Co mają inne aplikacje i co dalej:
+   [docs/badania/funkcje-aplikacji.md](docs/badania/funkcje-aplikacji.md).
 
 ## Wymagania
 
@@ -61,10 +72,15 @@ dotnet build LokalneAI.sln
 - **Enter** wysyła pytanie, **Shift+Enter** wstawia nową linię, **Esc** albo **Stop** przerywa.
 - Pod każdą odpowiedzią widać, gdzie liczył model (ile modelu jest w pamięci karty, a ile na procesorze),
   liczbę tokenów, szybkość i czasy.
-- **Zwolnij pamięć GPU** wyrzuca model z karty od razu, np. przed pracą w Tekli. Bez tego Ollama
+- **Zwolnij pamięć GPU** wyrzuca model z karty tego komputera od razu, np. przed pracą w Tekli. Bez tego Ollama
   zwalnia pamięć sama po 5 minutach bezczynności.
-- **Ustawienia**: polecenie systemowe, temperatura (Bielik: 0,1), długość kontekstu, „Pamiętaj rozmowę”
-  (domyślnie wyłączone, więc każde pytanie liczy się od zera), zapis historii i adres Ollamy.
+- **Pamiętaj rozmowę** (pod czatem) jest domyślnie wyłączone, więc każde pytanie liczy się od zera.
+- **Ustawienia** zawierają:
+  - gdzie liczyć: ten komputer albo inny, z przyciskiem „Szukaj w sieci”;
+  - udostępnianie: przełącznik, port, limit kontekstu dla innych, otwarcie portu w zaporze;
+  - kolejkę z przyciskiem „Odrzuć” dla zapytań innych komputerów;
+  - polecenie systemowe czatu, temperaturę (Bielik: 0,1), długość kontekstu, zapis historii i adres Ollamy.
+- Pasek na dole pokazuje, który komputer liczy, i stan kolejki.
 - Gdy Ollama nie działa albo brakuje modelu, baner nad rozmową podpowiada, co zrobić
   (Uruchom Ollamę, Pobierz model, polecenie instalacji).
 
@@ -98,10 +114,13 @@ Nie zmienia przy tym ustawień ani historii. Dodatkowe przełączniki:
 - `--autotest -`: sam zrzut okna po starcie, bez pytania;
 - `--url <adres>`: inny adres Ollamy;
 - `--model <nazwa>`: inny model;
-- `--rozwin`: zrzut z rozwiniętymi ustawieniami;
-- `--harness <profil>`: kontrola okna asystenta, polecenia w `--autotest` rozdziela `||`; zapisuje `harness.png`
+- `--zakladka czat|code|ustawienia`: zakładka na zrzucie (`--rozwin` = Ustawienia);
+- `--harness <profil>`: kontrola zakładki Code, polecenia w `--autotest` rozdziela `||`; zapisuje `harness.png`
   i `harness.json`. Zmiany zatwierdza sama, dlatego profile `pliki` i `komputer` pracują w folderze z `--foldery`
-  albo, bez niego, w pustym folderze tymczasowym (`%TEMP%\LokalneAI_kontrola`).
+  albo, bez niego, w pustym folderze tymczasowym (`%TEMP%\LokalneAI_kontrola`);
+- `--cel <komputer>`: licz na innym komputerze (tylko w tym uruchomieniu);
+- `--udostepnij`: brama przyjmuje zapytania „innych komputerów” tylko z 127.0.0.1 (próba bez otwierania portu w sieci);
+- `--port <n>`: port bramy w kontroli (domyślnie dowolny wolny, żeby nie zająć portu otwartego okna).
 
 Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 
@@ -115,7 +134,8 @@ Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 | `LokalneAI.Harness.Tests` | testy xUnit, uruchamiane na .NET 10 i .NET Framework 4.8 | |
 | `LokalneAI.Eval` | porównanie modeli na testach profili | .NET 10 |
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie w WinForms (.NET Framework 4.8) | |
-| `LokalneAI.Core`, `LokalneAI.App`, `LokalneAI.Core.Tests` | okno testowe, jego klient Ollamy i testy | .NET 10 |
+| `LokalneAI.Gateway` | brama: kolejka, liczenie na innym komputerze, udostępnianie w podsieci | .NET 10, ASP.NET Core (Kestrel) |
+| `LokalneAI.Core`, `LokalneAI.App`, `LokalneAI.Core.Tests` | okno, jego klient Ollamy i testy (także bramy) | .NET 10 |
 | `profile\tekla`, `cde`, `pliki`, `komputer` | wiedza, polecenia, przykłady i testy profili | |
 | `szablony\` | szablon profilu i plików `AGENTS`, `CLAUDE`, `lokalne-ai\` dla repozytoriów programów | |
 | `narzedzia\sprawdz_przyklady` | kompiluje i uruchamia przykłady z `docs\biblioteki-dla-agentow.md` | .NET 10 i .NET Framework 4.8, C# 7.3 |
@@ -157,3 +177,6 @@ Pełne odpowiedzi lądują w `wyniki\`, który jest poza gitem (są tam godziny 
 - Dokończenie porównania modeli (Gemma 4, Qwen3.5 4B, Qwen bez „myślenia”) — [docs/wybor-modelu.md](docs/wybor-modelu.md).
 - Rola bazy tylko do odczytu dla asystenta (na każdą osobę) i sposób łączenia od użytkownika.
 - Test profilu `tekla` na kopii prawdziwego modelu przez most TeklaBridge (szablony są tylko skompilowane).
+- Próba bramy między dwoma komputerami w biurze (na jednym PC sprawdzona przez `127.0.0.1`).
+- Ikona w zasobniku i start z Windows dla komputerów, które udostępniają model; dalsze pomysły
+  w [docs/badania/funkcje-aplikacji.md](docs/badania/funkcje-aplikacji.md).

@@ -18,19 +18,21 @@ internal static class AutoTest
         try
         {
             Directory.CreateDirectory(outputDir);
-            window.SettingsExpander.IsExpanded = options.ExpandSettings;
             await viewModel.WhenInitialized;
             if (options.Harness is not null)
             {
-                exitCode = await RunHarnessAsync(viewModel, options, outputDir);
+                exitCode = await RunHarnessAsync(window, viewModel, options, outputDir);
                 Application.Current.Shutdown(exitCode);
                 return;
             }
+
             if (!string.IsNullOrWhiteSpace(options.AutoTestQuestion) && options.AutoTestQuestion != "-")
             {
                 viewModel.Question = options.AutoTestQuestion;
                 await viewModel.SendAsync();
             }
+
+            window.SelectTab(options.Tab);
 
             // Niech okno dorysuje ostatnie zmiany przed zrzutem.
             await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
@@ -48,6 +50,10 @@ internal static class AutoTest
                 udzialGpu = last?.StatsData?.GpuShare,
                 ollama = viewModel.OllamaStatus,
                 karta = viewModel.GpuText,
+                liczy = viewModel.Network.ComputeWhereText,
+                kolejka = viewModel.Network.QueueText,
+                brama = viewModel.Network.GatewayText,
+                gdzie = viewModel.Network.RemoteDescription,
                 baner = viewModel.BannerText,
                 status = viewModel.StatusText,
             };
@@ -77,15 +83,10 @@ internal static class AutoTest
         Application.Current.Shutdown(exitCode);
     }
 
-    /// <summary>Kontrola okna pół-harnessu: profil, polecenia po kolei, zrzut i zapis rozmowy.</summary>
-    private static async Task<int> RunHarnessAsync(MainViewModel viewModel, StartupOptions options, string outputDir)
+    /// <summary>Kontrola zakładki Code: profil, polecenia po kolei, zrzut i zapis rozmowy.</summary>
+    private static async Task<int> RunHarnessAsync(MainWindow window, MainViewModel viewModel, StartupOptions options, string outputDir)
     {
         var context = viewModel.CreateHarnessContext();
-        // Kontrola nie zapisuje ustawień użytkownika — pracuje na kopii.
-        var copy = JsonSerializer.Deserialize<LokalneAI.Core.Storage.AppSettings>(JsonSerializer.Serialize(context.Settings))!;
-        copy.HarnessProfile = options.Harness;
-        copy.CdeConnectionFile = options.HarnessConnection ?? "";
-        copy.CdePersonId = options.HarnessPerson ?? "";
         // Kontrola sama zatwierdza zmiany, więc bez --foldery pracuje w pustym folderze tymczasowym, nie w C:\ODS.
         var roots = options.HarnessRoots;
         if (string.IsNullOrWhiteSpace(roots))
@@ -94,26 +95,11 @@ internal static class AutoTest
             Directory.CreateDirectory(roots);
         }
 
-        copy.FileRoots = roots;
-        var window = new HarnessWindow(new HarnessContext
-        {
-            OllamaUrl = context.OllamaUrl,
-            Model = context.Model,
-            ContextLength = context.ContextLength,
-            Temperature = context.Temperature,
-            ProfilesRoot = context.ProfilesRoot,
-            Settings = copy,
-            Save = null,
-        })
-        {
-            AutoConfirm = true,
-            ShowActivated = false,
-            ShowInTaskbar = false,
-            WindowStartupLocation = WindowStartupLocation.Manual,
-            Left = -6000,
-            Top = 0,
-        };
-        window.Show();
+        // Ustawienia użytkownika się nie zmienią: w kontroli okno ich nie zapisuje.
+        var view = window.CodeView;
+        window.SelectTab("code");
+        view.AutoConfirm = true;
+        view.ConfigureForTest(options.Harness!, roots, options.HarnessConnection, options.HarnessPerson);
         var commands = (options.AutoTestQuestion ?? "").Split(new[] { "||" }, StringSplitOptions.RemoveEmptyEntries).Select(c => c.Trim()).ToList();
         if (commands.Remove("#zrodla"))
         {
@@ -132,18 +118,18 @@ internal static class AutoTest
             sources.Close();
         }
 
-        await window.RunAsync(commands);
+        await view.RunAsync(commands);
         await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
         await Task.Delay(300);
         window.SavePng(Path.Combine(outputDir, "harness.png"));
-        var entries = window.Panel.Entries.Select(e => new { rodzaj = e.Kind.ToString(), tekst = e.Text, szczegoly = e.Detail, ok = e.Success }).ToList();
+        var entries = view.Panel.Entries.Select(e => new { rodzaj = e.Kind.ToString(), tekst = e.Text, szczegoly = e.Detail, ok = e.Success }).ToList();
         File.WriteAllText(Path.Combine(outputDir, "harness.json"), JsonSerializer.Serialize(new
         {
-            profil = window.ProfileName,
-            kontekst = window.Panel.Session?.Context?.ToString(),
+            profil = view.ProfileName,
+            liczy = context.ComputeWhere,
+            kontekst = view.Panel.Session?.Context?.ToString(),
             wpisy = entries,
         }, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
-        window.Close();
         return entries.Any(e => e.rodzaj == "Error") ? 1 : 0;
     }
 }

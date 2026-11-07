@@ -20,8 +20,9 @@ wykonuje. Nic nie wychodzi do internetu. Nazwa repozytorium to Amadeusz, a proje
 | `LokalneAI.Harness.Wpf` | panel rozmowy `HarnessPanel` (net48 i net10.0-windows) |
 | `LokalneAI.Harness.Postgres` | SQL tylko do odczytu dla profilu `cde` (Npgsql 8) |
 | `LokalneAI.Harness.Tests` | testy xUnit, uruchamiane na net10.0 i net48 |
-| `LokalneAI.App` | okno testowe `LokalneAI.exe`: czat z modelem i przycisk „Pół-harness…” |
-| `LokalneAI.Core`, `LokalneAI.Core.Tests` | klient Ollamy okna testowego i jego testy |
+| `LokalneAI.App` | okno `LokalneAI.exe`: zakładki Czat, Code (asystent z uprawnieniami) i Ustawienia (gdzie liczyć, udostępnianie, kolejka); wygląd jak TransmittalMaster (`Theme.xaml`: te same klucze kolorów i stylów, własny pasek tytułu z kartami) |
+| `LokalneAI.Gateway` | brama okna (Kestrel, net10.0): kolejka zapytań, liczenie na innym komputerze, udostępnianie w podsieci ([docs/siec.md](docs/siec.md)) |
+| `LokalneAI.Core`, `LokalneAI.Core.Tests` | klient Ollamy okna i testy (także bramy: `GatewayTests`) |
 | `LokalneAI.Eval` | testy profili z prawdziwym modelem, rozmiar promptu, aktualizacja i przeszukiwanie wiedzy |
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie (WinForms, .NET Framework 4.8) |
 | `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer` ([docs/profile.md](docs/profile.md)) |
@@ -61,6 +62,12 @@ dotnet run --project narzedzia\sprawdz_przyklady -f net10.0-windows   # przykła
    i zależności spoza niego.
 8. **Bezpieczeństwo poleceń.** Model niczego nie wykonuje sam. Nowe możliwości dodaje się jako narzędzia z opisem,
    sprawdzaniem argumentów i pytaniem o zgodę przy zmianach (`IConfirmingExecutor`, `ConfirmMutation`).
+9. **Brama nie otwiera niczego więcej niż liczenie.** Lista dozwolonych ścieżek jest w `GatewayServer.Routes`.
+   Pobieranie, usuwanie i tworzenie modeli zostają zablokowane. Ollama słucha tylko na `127.0.0.1`. Zapytania spoza
+   podsieci i z przeglądarek (nagłówek `Origin`) są odrzucane.
+10. **Nie otwieraj portów w sieci podczas prób.** Testy i kontrola bez klikania używają `LoopbackCountsAsLan` /
+    `--udostepnij`, bo port tylko na `127.0.0.1` nie wywołuje okna zapory Windows. Nie uruchamiaj
+    `FirewallSetup.SetupAsync` (zmienia zaporę, wymaga administratora) bez prośby użytkownika.
 
 ## Konwencje
 
@@ -105,6 +112,8 @@ Zasady: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md). W tym repo
 | [docs/profile.md](docs/profile.md) | autorzy profili | format plików profilu |
 | [docs/wiedza-dla-modeli.md](docs/wiedza-dla-modeli.md) | wszyscy | gdzie wkładać dokumentację dla lokalnych modeli i jak ją pisać |
 | [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md) | programiści | kiedy i co opisywać dla AI |
+| [docs/siec.md](docs/siec.md) | wszyscy | kolejka, liczenie na innym komputerze, udostępnianie w podsieci, bezpieczeństwo |
 | [docs/serwer-modelu.md](docs/serwer-modelu.md) | administrator | Ollama na serwerze w biurze |
+| [docs/badania/funkcje-aplikacji.md](docs/badania/funkcje-aplikacji.md) | wszyscy | co mają inne aplikacje i harnessy, kolejność dalszych prac |
 | [docs/wybor-modelu.md](docs/wybor-modelu.md) | wszyscy | porównanie modeli |
 | [README.md](README.md) | wszyscy | obsługa okna, instalator, testy |
