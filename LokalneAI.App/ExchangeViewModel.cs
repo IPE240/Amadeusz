@@ -1,10 +1,13 @@
+using System.Windows.Media;
 using LokalneAI.Core;
 using LokalneAI.Core.Ollama;
+using LokalneAI.Core.Storage;
+using LokalneAI.Harness.Llm;
 
 namespace LokalneAI.App;
 
-/// <summary>Jedno pytanie z odpowiedzią w oknie rozmowy.</summary>
-public sealed class ExchangeViewModel(string question, string model, string? computer = null) : ObservableObject
+/// <summary>Jedno pytanie z odpowiedzią w oknie rozmowy. <paramref name="cloud"/> = model w chmurze (etykieta w kolorze dostawcy).</summary>
+public sealed class ExchangeViewModel(string question, string model, string? computer = null, ModelItem? cloud = null) : ObservableObject
 {
     private string _answer = "";
     private string _stats = "Model liczy…";
@@ -14,8 +17,13 @@ public sealed class ExchangeViewModel(string question, string model, string? com
 
     public string Model { get; } = model;
 
-    /// <summary>Krótka nazwa modelu nad odpowiedzią, np. „bielik-11b-v3.0-instruct:Q4_K_M”.</summary>
-    public string ModelLabel { get; } = ModelItem.ShortName(model) + (computer is null ? "" : " · liczy " + computer);
+    /// <summary>Krótka nazwa modelu nad odpowiedzią, np. „bielik-11b-v3.0-instruct:Q4_K_M” albo „Claude Sonnet 5.5 · chmura Anthropic”.</summary>
+    public string ModelLabel { get; } = cloud?.Cloud is { } provider
+        ? cloud.Display + " · chmura " + provider.Name
+        : ModelItem.ShortName(model) + (computer is null ? "" : " · liczy " + computer);
+
+    /// <summary>Kolor etykiety: dostawcy w chmurze albo szary dla modeli lokalnych.</summary>
+    public Brush? LabelBrush { get; } = cloud?.NameBrush;
 
     public string Answer
     {
@@ -41,18 +49,74 @@ public sealed class ExchangeViewModel(string question, string model, string? com
     public ChatStats? StatsData { get; set; }
 }
 
-/// <summary>Pozycja listy modeli.</summary>
-public sealed class ModelItem(LocalModel model)
+/// <summary>
+/// Pozycja listy modeli: model z Ollamy (ten komputer albo inny w sieci) albo model w chmurze dodany w Ustawieniach.
+/// Modele w chmurze mają kolor dostawcy: Claude pomarańczowy, GPT turkusowy, Gemini niebieski.
+/// </summary>
+public sealed class ModelItem : ObservableObject
 {
-    public string Name { get; } = model.Name;
+    private static readonly System.Globalization.CultureInfo Pl = System.Globalization.CultureInfo.GetCultureInfo("pl-PL");
+    private bool _isFavorite;
 
-    public string Display { get; } = string.Format(
-        System.Globalization.CultureInfo.GetCultureInfo("pl-PL"), "{0}   ({1:0.0} GB)", model.Name, model.Size / 1e9);
+    public ModelItem(LocalModel model)
+    {
+        Name = model.Name;
+        Display = model.Name;
+        Detail = string.Format(Pl, "{0:0.0} GB", model.Size / 1e9);
+    }
+
+    public ModelItem(CloudProvider provider, string id, string? name)
+    {
+        Cloud = provider;
+        Name = id;
+        Display = string.IsNullOrWhiteSpace(name) ? id : name;
+        Detail = "chmura " + provider.Name;
+        NameBrush = BrushFor(provider);
+    }
+
+    /// <summary>Nazwa modelu do zapytań (Ollama) albo id u dostawcy.</summary>
+    public string Name { get; }
+
+    /// <summary>Dostawca w chmurze; null = model z Ollamy.</summary>
+    public CloudProvider? Cloud { get; }
+
+    public string? Provider => Cloud?.Id;
+
+    public bool IsCloud => Cloud is not null;
+
+    public string Display { get; }
+
+    /// <summary>Szary dopisek po prawej: rozmiar albo „chmura Anthropic”.</summary>
+    public string Detail { get; }
+
+    /// <summary>Kolor nazwy; null = zwykły kolor tekstu (modele lokalne).</summary>
+    public Brush? NameBrush { get; }
+
+    public string Key => AppSettings.ModelKey(Provider, Name);
+
+    /// <summary>Gwiazdka na liście (ustawia okno przy składaniu listy).</summary>
+    public System.Windows.Input.ICommand? FavoriteCommand { get; set; }
+
+    public bool IsFavorite
+    {
+        get => _isFavorite;
+        set => SetProperty(ref _isFavorite, value);
+    }
+
+    /// <summary>Krótki opis do zakładki Code i paska stanu.</summary>
+    public string Label => IsCloud ? Display : ShortName(Name);
 
     public static string ShortName(string name)
     {
         var slash = name.LastIndexOf('/');
         return slash >= 0 ? name[(slash + 1)..] : name;
+    }
+
+    public static Brush BrushFor(CloudProvider provider)
+    {
+        var brush = (Brush)new BrushConverter().ConvertFromString(provider.Color)!;
+        brush.Freeze();
+        return brush;
     }
 
     public override string ToString() => Display;

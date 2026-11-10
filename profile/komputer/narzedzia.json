@@ -186,6 +186,33 @@
       }
     },
     {
+      "nazwa": "zapisz_plik",
+      "opis": "Zapisuje plik tekstowy: skrypt (ps1, bat, py…), notatkę, csv. W polu tresc cała treść pliku, każda linia w nowej linii. Nie nadpisuje istniejącego pliku bez \"nadpisz\": true.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "np. skrypt.ps1 albo C:\\ODS\\Raporty\\lista.csv"
+          },
+          "tresc": {
+            "type": "string",
+            "description": "cała treść pliku"
+          },
+          "nadpisz": {
+            "type": "boolean",
+            "description": "true = zastąp istniejący plik (domyślnie false)"
+          }
+        },
+        "required": [
+          "sciezka",
+          "tresc"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "nazwa": "szukaj_plikow",
       "opis": "Szuka plików i folderów po nazwie w folderze i wszystkich podfolderach (najwyżej 60 wyników).",
       "zmienia_model": false,

@@ -1,6 +1,8 @@
 {
   "nazwa": "komputer",
   "opis": "Polecenia na komputerze: PowerShell, uruchamianie programów, czytanie i wyszukiwanie plików, foldery — tylko w dozwolonych folderach. Zmiany zatwierdza użytkownik.",
+  "chmura": ["anthropic", "openai", "google"],
+  "internet": true,
   "zakonczenie": "mieszane",
   "narzedzia_wbudowane": ["szukaj_wiedzy"],
   "max_krokow": 6,

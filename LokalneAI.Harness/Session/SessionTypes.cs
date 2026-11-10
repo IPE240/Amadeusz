@@ -29,6 +29,12 @@ namespace LokalneAI.Harness.Session
 
         /// <summary>Ile najnowszych wiadomości zostaje w całości po skróceniu.</summary>
         public int KeepRecentMessages { get; set; } = 8;
+
+        /// <summary>
+        /// Dostęp do internetu dla narzędzi <c>szukaj_w_internecie</c> i <c>czytaj_strone</c> (profil musi je mieć — <see cref="Profiles.HarnessProfile.WithInternet"/>).
+        /// Null = wyłączony: model dostaje błąd zamiast wyników.
+        /// </summary>
+        public Tools.WebAccess Web { get; set; }
     }
 
     /// <summary>Zajętość kontekstu modelu — do licznika w oknie gospodarza.</summary>

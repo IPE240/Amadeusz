@@ -65,6 +65,30 @@ namespace LokalneAI.Harness.Profiles
 
         /// <summary>Relacje, których SQL od modelu nie może czytać (np. tabele z danymi osobowymi).</summary>
         public IList<string> ForbiddenRelations { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Dostawcy w chmurze dozwoleni w tym profilu (<c>chmura</c>), np. <c>["anthropic"]</c>. Pusta lista = tylko modele lokalne
+        /// (ten komputer albo inny w sieci biura). Spoza listy <see cref="Llm.CloudProvider.All"/> nic nie przejdzie.
+        /// </summary>
+        public IList<string> CloudProviders { get; set; } = new List<string>();
+
+        /// <summary>
+        /// Czy profil pozwala na internet (<c>internet</c> w <c>profil.json</c>), gdy użytkownik go włączy. Brak pola = nie:
+        /// np. w profilu z bazą danych model mógłby wysłać dane w zapytaniu do wyszukiwarki.
+        /// </summary>
+        public bool Internet { get; set; }
+
+        /// <summary>Czy model liczony przez <paramref name="cloudProviderId"/> wolno użyć (null = model lokalny, zawsze wolno).</summary>
+        public bool AllowsCloud(string cloudProviderId)
+        {
+            if (cloudProviderId == null)
+            {
+                return true;
+            }
+
+            return Llm.CloudProvider.Find(cloudProviderId) != null
+                && CloudProviders.Any(p => string.Equals(p?.Trim(), cloudProviderId, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     /// <summary>Reguła profilu dla SQL: gdy zapytanie zawiera <see cref="When"/>, musi zawierać <see cref="Requires"/>.</summary>
@@ -131,6 +155,23 @@ namespace LokalneAI.Harness.Profiles
             }
 
             Tools = all;
+        }
+
+        /// <summary>
+        /// Ten sam profil z narzędziami <c>szukaj_w_internecie</c> i <c>czytaj_strone</c> — gdy pozwala na internet
+        /// (<see cref="ProfileSettings.Internet"/>); inaczej ten sam obiekt. Sesja potrzebuje jeszcze <see cref="Session.SessionOptions.Web"/>.
+        /// </summary>
+        public HarnessProfile WithInternet()
+        {
+            if (!Settings.Internet || Tools.Any(t => t.Name == BuiltInTools.WebSearchName))
+            {
+                return this;
+            }
+
+            var tools = Tools.Where(t => !t.IsBuiltIn || BuiltInTools.Get(t.Name) == null).ToList();
+            tools.Add(BuiltInTools.Get(BuiltInTools.WebSearchName));
+            tools.Add(BuiltInTools.Get(BuiltInTools.WebFetchName));
+            return new HarnessProfile(Name, SystemText, tools, Settings, CardText, Examples, Knowledge, Folder) { Description = Description };
         }
 
         /// <summary>Nazwa profilu: <c>nazwa</c> z <c>profil.json</c> albo nazwa folderu.</summary>
@@ -249,6 +290,13 @@ namespace LokalneAI.Harness.Profiles
             return examples;
         }
 
+        /// <summary>
+        /// Same ustawienia z <c>profil.json</c> (bez wiedzy i narzędzi) — szybko, np. żeby przed sesją sprawdzić pole <c>chmura</c>.
+        /// Brak pliku = ustawienia domyślne.
+        /// </summary>
+        public static ProfileSettings LoadSettings(string folder)
+            => ReadSettings(Path.Combine(folder ?? "", "profil.json"), out _, out _);
+
         private static ProfileSettings ReadSettings(string path, out string name, out string description)
         {
             var settings = new ProfileSettings();
@@ -296,6 +344,8 @@ namespace LokalneAI.Harness.Profiles
                 }
 
                 settings.ForbiddenRelations = GetStrings(root, "sql_zabronione");
+                settings.CloudProviders = GetStrings(root, "chmura");
+                settings.Internet = root.TryGetProperty("internet", out var internet) && internet.ValueKind == JsonValueKind.True;
                 if (root.TryGetProperty("sql_reguly", out var rules) && rules.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var rule in rules.EnumerateArray())

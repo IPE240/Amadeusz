@@ -116,7 +116,12 @@ var session = new HarnessSession(llm, HarnessProfile.Load(@"profile\komputer"), 
 ```
 
 - Profil decyduje, które polecenia model widzi: `pliki` ma tylko foldery i kopiowanie, a `komputer` także
-  `powershell`, `uruchom`, `czytaj_plik` i `szukaj_plikow`.
+  `powershell`, `uruchom`, `czytaj_plik`, `zapisz_plik` i `szukaj_plikow`.
+- `zapisz_plik` zapisuje skrypt albo inny plik tekstowy (zawsze z pytaniem o zgodę, istniejący plik tylko z `"nadpisz": true`).
+  Małe modele piszą w JSON-ie `\\n` zamiast nowej linii: treść bez ani jednej nowej linii, za to z `\n` poza ścieżkami,
+  jest naprawiana. Pliki `.ps1` dostają BOM (Windows PowerShell 5.1 bez niego psuje polskie litery), skrypty Windows
+  (`.ps1`, `.bat`, `.cmd`…) — końce linii CRLF. Polecenie PowerShella, które zapisuje plik z `\n` w jednej linii,
+  jest odrzucane z podpowiedzią „użyj zapisz_plik”, bo w PowerShellu `\n` nie jest nową linią.
 - PowerShell to osobny proces `powershell.exe -NoProfile -NonInteractive`, polecenie idzie przez `-EncodedCommand`.
   Wynik (z błędami jako linie `[błąd] …`) jest obcinany do `MaxOutputChars` (4000 znaków).
 - Ocena „tylko czyta” (`PowerShellPolicy`) chroni przed pomyłkami modelu, ale nie jest piaskownicą: PowerShell potrafi

@@ -45,7 +45,7 @@ namespace LokalneAI.Harness.Tools
 
     /// <summary>
     /// Polecenia na komputerze dla profili „pliki” i „komputer”: utworzenie folderu, lista, kopiowanie, zmiana nazwy/przeniesienie,
-    /// otwarcie w Eksploratorze, czytanie i wyszukiwanie plików, uruchamianie programów i polecenia PowerShella.
+    /// otwarcie w Eksploratorze, czytanie, zapis i wyszukiwanie plików, uruchamianie programów i polecenia PowerShella.
     /// Profil decyduje, które z nich model widzi. Każda ścieżka musi leżeć w jednym z dozwolonych folderów
     /// (<see cref="FileSystemOptions.AllowedRoots"/>); kopiowanie i przenoszenie niczego nie nadpisują.
     /// O zgodę pyta sesja według <see cref="Decide"/>: polecenia, które tylko czytają, idą bez pytania.
@@ -133,6 +133,22 @@ namespace LokalneAI.Harness.Tools
 
                     var arguments = call.GetString("argumenty");
                     return ConfirmationDecision.Ask("Uruchomić program?\n\n" + target + (string.IsNullOrWhiteSpace(arguments) ? "" : " " + arguments));
+                }
+
+                case "zapisz_plik":
+                {
+                    var file = PrepareWrite(call, out var content, out var replaced, out var exists, out problem);
+                    if (problem != null)
+                    {
+                        return ConfirmationDecision.Reject(problem);
+                    }
+
+                    var lines = content.Length == 0 ? 0 : content.TrimEnd('\n').Split('\n').Length;
+                    var message = new StringBuilder(exists ? "Nadpisać plik? Obecna treść zniknie.\n\n" : "Zapisać nowy plik?\n\n").Append(file)
+                        .Append("\n(linii: ").Append(lines)
+                        .Append(replaced > 0 ? ", „\\n” od modelu zamienione na nowe linie: " + replaced : "")
+                        .Append(")\n\n").Append(Text.Shorten(content, 1500));
+                    return ConfirmationDecision.Ask(message.ToString(), exists);
                 }
 
                 case "powershell":
@@ -436,6 +452,9 @@ namespace LokalneAI.Harness.Tools
                 case "czytaj_plik":
                     return ReadFile(call);
 
+                case "zapisz_plik":
+                    return WriteFile(call);
+
                 case "szukaj_plikow":
                     return FindFiles(call);
 
@@ -550,6 +569,91 @@ namespace LokalneAI.Harness.Tools
 
             return ToolResult.Ok(header + "\n" + Truncate(text.ToString().TrimEnd('\n'), _options.MaxOutputChars)
                 + (more ? "\n… dalsze linie: czytaj_plik z od_linii=" + (from + shown) : ""));
+        }
+
+        /// <summary>Najdłuższa treść pliku od modelu (znaki).</summary>
+        private const int MaxWriteChars = 500_000;
+
+        /// <summary>Rozszerzenia skryptów Windows: zapisywane z końcem linii CRLF.</summary>
+        private static readonly HashSet<string> WindowsScriptExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".bat", ".cmd", ".ps1", ".psm1", ".vbs", ".reg",
+        };
+
+        /// <summary>
+        /// Sprawdza wywołanie <c>zapisz_plik</c>: ścieżka w dozwolonym folderze, treść, zgoda na nadpisanie.
+        /// Zwraca pełną ścieżkę i treść do zapisu (z „\n” od modelu zamienionym na nowe linie).
+        /// </summary>
+        private string PrepareWrite(ToolCall call, out string content, out int replaced, out bool exists, out string problem)
+        {
+            content = null;
+            replaced = 0;
+            exists = false;
+            var file = Resolve(call.GetString("sciezka"), out problem);
+            if (problem != null)
+            {
+                return null;
+            }
+
+            var raw = call.GetString("tresc");
+            if (raw == null)
+            {
+                problem = "BŁĄD: brak treści pliku (pole tresc).";
+                return null;
+            }
+
+            if (raw.Length > MaxWriteChars)
+            {
+                problem = "BŁĄD: treść ma " + raw.Length + " znaków, najwyżej " + MaxWriteChars + ".";
+                return null;
+            }
+
+            if (Directory.Exists(file))
+            {
+                problem = "BŁĄD: " + file + " to folder. Podaj nazwę pliku, np. " + Path.Combine(file, "skrypt.ps1");
+                return null;
+            }
+
+            exists = File.Exists(file);
+            if (exists && call.GetBool("nadpisz") != true)
+            {
+                problem = "BŁĄD: plik " + file + " już istnieje. Żeby go zastąpić, wywołaj zapisz_plik jeszcze raz z \"nadpisz\": true "
+                    + "(użytkownik to potwierdzi), albo wybierz inną nazwę.";
+                return null;
+            }
+
+            content = EscapedNewlines.Fix(raw, out replaced).Replace("\r\n", "\n");
+            return file;
+        }
+
+        private ToolResult WriteFile(ToolCall call)
+        {
+            var file = PrepareWrite(call, out var content, out var replaced, out var exists, out var problem);
+            if (problem != null)
+            {
+                return ToolResult.Error(problem);
+            }
+
+            var extension = Path.GetExtension(file);
+            if (WindowsScriptExtensions.Contains(extension))
+            {
+                content = content.Replace("\n", "\r\n");
+            }
+
+            // Windows PowerShell 5.1 czyta skrypt bez BOM jako ANSI — polskie litery by się zepsuły.
+            var withBom = string.Equals(extension, ".ps1", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".psm1", StringComparison.OrdinalIgnoreCase);
+            var folder = Path.GetDirectoryName(file);
+            var newFolder = !string.IsNullOrEmpty(folder) && !Directory.Exists(folder);
+            if (newFolder)
+            {
+                Directory.CreateDirectory(folder);
+            }
+
+            File.WriteAllText(file, content, new UTF8Encoding(withBom));
+            var lines = content.Length == 0 ? 0 : content.TrimEnd('\n', '\r').Split('\n').Length;
+            return ToolResult.Ok("OK " + (exists ? "nadpisano" : "zapisano") + ": " + file + " (linii: " + lines + ")"
+                + (newFolder ? ", utworzono folder " + folder : "")
+                + (replaced > 0 ? ". Uwaga: „\\n” zamienione na nowe linie (" + replaced + "×) — w polu tresc pisz zwykłe nowe linie." : ""));
         }
 
         private ToolResult FindFiles(ToolCall call)

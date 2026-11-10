@@ -47,8 +47,11 @@ REGUŁA: tony stali liczy się z `v_steel_by_project` (tylko najdokładniejsze s
 Stan: wykazy stali są wczytane tylko dla projektu 0546 (PMZ, reaktor SCR Pomorzany): trzy gatunki. Dla innych projektów brak wyniku = „brak wykazów stali w bazie", nie „zero ton".
 `library.v_bom_lists b`: wykazy (`b.project_code`, `b.list_kind` materialowa/elementow/zespolow, `b.mass_t`, `b.counted` = liczony do sumy, `b.duplicate_reason`, `b.title`, `b.stage_code`). Dubel (counted = false) nie wchodzi do sum.
 
-## Dokumenty (podstawowo)
-`library.v_document_current d` (jeden wiersz = dokument w obowiązującej rewizji): `d.project_code`, `d.title`, `d.stage_code` (PB/PW/PV/EP lub NULL = nieznane), `d.scope_path`, `d.current_revision`, `d.revision_count`, `d.content_category`. Razem ok. 3199 dokumentów w ok. 203 projektach. Nie czytaj `author_raw` ani `checker_raw` (nazwiska).
+## Dokumenty (biblioteka, schemat library)
+`library.v_document_current d` (jeden wiersz = dokument w obowiązującej rewizji): `d.document_id`, `d.project_code`, `d.project_symbol`, `d.title`, `d.stage_code` (PB/PW/PV/EP lub NULL = nieznane), `d.scope_path` (folder), `d.current_revision`, `d.revision_count`, `d.content_category` (realizacja, zalozenia, obliczenia, wytyczne, dokumentacja albo NULL), `d.file_name`, `d.sha256` (klucz treści). Razem 3199 dokumentów w 199 projektach.
+`library.v_document_history h` (wiersz = rewizja dokumentu): `h.document_id`, `h.project_code`, `h.title`, `h.rev_label`, `h.rev_order` (1 = najstarsza), `h.is_current`, `h.mtime` (data pliku).
+Treść dokumentów: `library.section s` (fragment pod nagłówkiem): `s.heading_path` (rozdział > podrozdział), `s.body` (tekst), `s.tsv` (indeks słów). Tylko obowiązujące rewizje: `JOIN library.v_document_current d ON d.sha256 = s.sha256`. Słowa szukaj `s.tsv @@ to_tsquery('simple', 'kotw:*')`: `:*` = początek słowa (kotwa, kotwy, kotwami), `|` = lub (`'kotw:* | kotew:*'`), `&` = oba słowa w jednym fragmencie (często nic nie znajduje). Indeks nie zna odmiany ani synonimów: przy pustym wyniku skróć początek słowa albo użyj innego. Zawsze `left(s.body, 400)` i `LIMIT` do 10.
+Nie czytaj `author_raw`, `checker_raw` (nazwiska) ani całych treści `text_md`; w odpowiedzi nie przytaczaj nazwisk z dokumentów.
 
 ## Stan danych (listopad 2026)
-Godziny: import vaibro, ostatni 2026-10-02, miesiące 2021-11 do 2026-09; miesiące do 2023-07 mogą być niepełne. Stal: tylko projekt 0546. Dokumenty: wczytane 2026-10-26.
+Godziny: import vaibro, ostatni 2026-10-02, miesiące 2021-11 do 2026-09; miesiące do 2023-07 mogą być niepełne. Stal: tylko projekt 0546. Dokumenty: wczytane 2026-10-26 (3199 dokumentów, 46 tys. fragmentów treści); finansów (wpłaty, faktury) asystent nie czyta.

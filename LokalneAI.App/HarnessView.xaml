@@ -38,17 +38,20 @@
                     <TextBox x:Name="ExchangeBox" Width="330" VerticalContentAlignment="Center" LostFocus="Executor_Changed" />
                 </WrapPanel>
                 <WrapPanel x:Name="CdeOptions" Margin="0,8,0,0">
-                    <TextBlock Text="Plik połączenia z bazą (JSON):" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <TextBox x:Name="ConnectionBox" Width="330" VerticalContentAlignment="Center" LostFocus="Executor_Changed" />
-                    <Button Content="Wybierz…" Margin="6,0,0,0" Padding="8,2" Click="PickConnection_Click" />
-                    <TextBlock Text="Twój person_id:" VerticalAlignment="Center" Margin="14,0,6,0" />
-                    <TextBox x:Name="PersonBox" Width="260" VerticalContentAlignment="Center" LostFocus="Executor_Changed" />
+                    <TextBlock x:Name="CdeText" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <Button Content="Dane logowania…" Padding="8,2" Click="CdeSettings_Click"
+                            ToolTip="Ustawienia → Baza CDE: adres, użytkownik, hasło (zaszyfrowane kontem Windows) i Twój person_id" />
                 </WrapPanel>
                 <WrapPanel x:Name="FilesOptions" Margin="0,8,0,0">
                     <TextBlock Text="Dozwolone foldery (rozdziel ;):" VerticalAlignment="Center" Margin="0,0,6,0" />
                     <TextBox x:Name="RootsBox" Width="420" VerticalContentAlignment="Center" LostFocus="Executor_Changed"
                              ToolTip="Asystent czyta, tworzy, kopiuje, przenosi i wykonuje polecenia tylko w tych folderach (z podfolderami). Programy może uruchamiać też z Program Files. Pierwszy folder jest bieżącym na start." />
                 </WrapPanel>
+                <!-- Model w chmurze: dokąd idą dane (kolor dostawcy) albo ostrzeżenie, że profil na niego nie pozwala. -->
+                <Border x:Name="CloudBar" Margin="0,8,0,0" Padding="10,6" CornerRadius="4" BorderThickness="3,0,0,0"
+                        Background="{StaticResource TileBrush}" Visibility="Collapsed">
+                    <TextBlock x:Name="CloudText" TextWrapping="Wrap" FontSize="12" />
+                </Border>
                 <TextBlock x:Name="HintText" Margin="0,6,0,0" Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
         </Border>

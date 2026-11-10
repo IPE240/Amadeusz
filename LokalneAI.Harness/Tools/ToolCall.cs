@@ -41,6 +41,10 @@ namespace LokalneAI.Harness.Tools
         /// <summary>Argument liczbowy (także całkowity) albo null, gdy go nie ma albo nie jest liczbą.</summary>
         public double? GetNumber(string name) => Arguments.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : (double?)null;
 
+        /// <summary>Argument tak/nie albo null, gdy go nie ma albo nie jest wartością logiczną.</summary>
+        public bool? GetBool(string name)
+            => Arguments.TryGetProperty(name, out var v) && (v.ValueKind == JsonValueKind.True || v.ValueKind == JsonValueKind.False) ? v.GetBoolean() : (bool?)null;
+
         /// <summary>Treść pytania o zgodę przygotowana przez wykonawcę (<see cref="IConfirmingExecutor"/>); null = opis domyślny.</summary>
         public string ConfirmationMessage { get; internal set; }
 

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using LokalneAI.Harness.Llm;
 using LokalneAI.Harness.Postgres;
 using LokalneAI.Harness.Profiles;
@@ -18,7 +19,7 @@ public partial class HarnessView : UserControl
 {
     private Func<HarnessContext>? _contextProvider;
     private HarnessContext _context = new();
-    private OllamaLlmClient? _llm;
+    private ILlmClient? _llm;
     private volatile string _permission = "pytaj";
 
     public HarnessView()
@@ -39,8 +40,6 @@ public partial class HarnessView : UserControl
         _context = contextProvider();
         var settings = _context.Settings;
         ExchangeBox.Text = settings.TeklaExchangeFolder ?? "";
-        ConnectionBox.Text = settings.CdeConnectionFile ?? "";
-        PersonBox.Text = settings.CdePersonId ?? "";
         RootsBox.Text = string.IsNullOrWhiteSpace(settings.FileRoots)
             ? "C:\\ODS;%USERPROFILE%\\Documents;%USERPROFILE%\\Desktop"
             : settings.FileRoots;
@@ -61,19 +60,80 @@ public partial class HarnessView : UserControl
         RefreshModelText();
     }
 
-    /// <summary>Odświeża opis modelu i komputera, który liczy (po zmianie w nagłówku albo w Ustawieniach).</summary>
+    /// <summary>Odświeża opis modelu i komputera, który liczy (po zmianie w nagłówku albo w Ustawieniach), i ostrzeżenie o chmurze.</summary>
+    /// <summary>Kontrola bez klikania: plik połączenia i person_id podane z wiersza poleceń (bez zapisu).</summary>
+    private string? _testConnectionFile;
+
+    private string? _testPerson;
+
     public void RefreshModelText()
     {
         _context = _contextProvider?.Invoke() ?? _context;
-        ModelText.Text = "Model: " + ModelItem.ShortName(_context.Model) + " · kontekst " + _context.ContextLength + " · " + _context.ComputeWhere;
+        if (_context.Cloud is not null)
+        {
+            ModelText.Text = "Model: " + _context.ModelLabel + " · " + _context.ComputeWhere;
+            ModelText.Foreground = _context.ModelBrush ?? (Brush)FindResource("MutedBrush");
+            ModelText.FontWeight = FontWeights.SemiBold;
+        }
+        else
+        {
+            ModelText.Text = "Model: " + _context.ModelLabel + " · kontekst " + _context.ContextLength + " · " + _context.ComputeWhere;
+            ModelText.Foreground = (Brush)FindResource("MutedBrush");
+            ModelText.FontWeight = FontWeights.Normal;
+        }
+
+        ModelText.Text += " · " + InternetText();
+        RefreshCloudText();
+    }
+
+    /// <summary>„internet: tak” albo dlaczego nie (przełącznik w oknie, pole „internet” w profil.json).</summary>
+    private string InternetText()
+    {
+        if (_context.Web is null)
+        {
+            return "internet: zablokowany";
+        }
+
+        var settings = ProfileName == null ? null : CloudViewModel.SafeSettings(Path.Combine(_context.ProfilesRoot, ProfileName));
+        return settings?.Internet == true ? "internet: tak" : "internet: nie w tym profilu";
+    }
+
+    /// <summary>
+    /// Pasek pod nagłówkiem: dokąd idą dane przy modelu w chmurze, a gdy profil na niego nie pozwala (pole „chmura” w profil.json) —
+    /// ostrzeżenie. Sesja i tak odmówi (sprawdza to biblioteka), tu widać to przed wysłaniem.
+    /// </summary>
+    private void RefreshCloudText()
+    {
+        if (_context.Cloud is not { } cloud || ProfileName is null)
+        {
+            CloudBar.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var settings = CloudViewModel.SafeSettings(ProfileFolderPath) ?? new ProfileSettings();
+        CloudBar.Visibility = Visibility.Visible;
+        if (settings.AllowsCloud(cloud.Id))
+        {
+            CloudBar.BorderBrush = _context.ModelBrush ?? (Brush)FindResource("LineBrush");
+            CloudText.Foreground = (Brush)FindResource("TextBrush");
+            CloudText.Text = "Model w chmurze " + cloud.Name + ": polecenia, wyniki narzędzi i dokumentacja profilu " + ProfileName
+                + " idą przez internet do " + cloud.Name + ". Uprawnienia działają tak samo jak przy modelu lokalnym.";
+        }
+        else
+        {
+            CloudBar.BorderBrush = (Brush)FindResource("BadBrush");
+            CloudText.Foreground = (Brush)FindResource("BadBrush");
+            CloudText.Text = "Profil " + ProfileName + ": " + CloudProvider.DescribeAllowed(settings.CloudProviders)
+                + ". Model " + _context.ModelLabel + " (" + cloud.Name + ") tu nie zadziała — wybierz inny model na górze okna.";
+        }
     }
 
     /// <summary>Kontrola bez klikania: profil i ustawienia wykonawcy bez zapisu w ustawieniach użytkownika.</summary>
     internal void ConfigureForTest(string profile, string roots, string? connection, string? person)
     {
         RootsBox.Text = roots;
-        ConnectionBox.Text = connection ?? "";
-        PersonBox.Text = person ?? "";
+        _testConnectionFile = connection;
+        _testPerson = person;
         ProfileBox.SelectedItem = profile;
         Panel.NewSession();
     }
@@ -93,8 +153,6 @@ public partial class HarnessView : UserControl
         var settings = _context.Settings;
         settings.HarnessProfile = ProfileName;
         settings.TeklaExchangeFolder = ExchangeBox.Text.Trim();
-        settings.CdeConnectionFile = ConnectionBox.Text.Trim();
-        settings.CdePersonId = PersonBox.Text.Trim();
         settings.FileRoots = RootsBox.Text.Trim();
         settings.CodePermission = _permission == "czyta" ? "czyta" : "pytaj";
         _context.Save?.Invoke();
@@ -104,7 +162,7 @@ public partial class HarnessView : UserControl
     public void Shutdown()
     {
         Panel.NewSession();
-        _llm?.Dispose();
+        (_llm as IDisposable)?.Dispose();
         _llm = null;
     }
 
@@ -113,35 +171,59 @@ public partial class HarnessView : UserControl
         _context = _contextProvider?.Invoke() ?? _context;
         var folder = ProfileFolderPath;
         var profile = HarnessProfile.Load(folder);
-        _llm?.Dispose();
-        _llm = new OllamaLlmClient(new OllamaOptions
+        (_llm as IDisposable)?.Dispose();
+        _llm = null;
+        if (_context.Cloud is { } cloud)
         {
-            Url = _context.OllamaUrl,
-            Model = _context.Model,
-            ContextLength = _context.ContextLength,
-            Temperature = _context.Temperature,
-            KeepAlive = "10m",
-            ClientName = "Code: " + ProfileName,
-            // W kolejce bramy można poczekać, aż inny program albo komputer skończy.
-            RequestTimeout = TimeSpan.FromMinutes(10),
-        });
+            // Model w chmurze idzie prosto z tego komputera (bez bramy i kolejki). Czy profil na niego pozwala, sprawdza HarnessSession.
+            var key = _context.GetApiKey?.Invoke(cloud);
+            if (string.IsNullOrEmpty(key))
+            {
+                throw new InvalidOperationException("Brak klucza API " + cloud.Name + " — wpisz go w Ustawieniach → Modele w chmurze.");
+            }
+
+            _llm = CloudLlm.Create(cloud, key, _context.Model, _context.Temperature);
+        }
+        else
+        {
+            _llm = new OllamaLlmClient(new OllamaOptions
+            {
+                Url = _context.OllamaUrl,
+                Model = _context.Model,
+                ContextLength = _context.ContextLength,
+                Temperature = _context.Temperature,
+                KeepAlive = "10m",
+                ClientName = "Code: " + ProfileName,
+                // W kolejce bramy można poczekać, aż inny program albo komputer skończy.
+                RequestTimeout = TimeSpan.FromMinutes(10),
+            });
+        }
 
         var options = new SessionOptions { ConfirmMutation = ConfirmAsync };
+        if (_context.Web is { } web && profile.Settings.Internet)
+        {
+            // Internet odblokowany i profil na niego pozwala (cde — nie: dane z bazy nie mogą wyjść w zapytaniu do wyszukiwarki).
+            profile = profile.WithInternet();
+            options.Web = web;
+        }
         IToolExecutor executor;
         if (profile.Settings.SqlTools.Count > 0)
         {
-            if (string.IsNullOrWhiteSpace(ConnectionBox.Text) || !File.Exists(ConnectionBox.Text))
+            // Kontrola bez klikania może podać plik połączenia; zwykle dane są zapamiętane w Ustawieniach → Baza CDE.
+            var connection = !string.IsNullOrWhiteSpace(_testConnectionFile) ? ConnectionFromJson(_testConnectionFile) : _context.GetCdeConnection?.Invoke();
+            if (connection is null)
             {
-                throw new InvalidOperationException("Wskaż plik połączenia z bazą (JSON: host, port, dbname, user, password).");
+                throw new InvalidOperationException("Brak danych logowania do bazy CDE. Wpisz je raz w Ustawieniach → Baza CDE (albo wczytaj plik połączenia) — program je zapamięta.");
             }
 
-            if (string.IsNullOrWhiteSpace(PersonBox.Text))
+            var person = !string.IsNullOrWhiteSpace(_testPerson) ? _testPerson : _context.Settings.CdePersonId;
+            if (string.IsNullOrWhiteSpace(person))
             {
-                throw new InvalidOperationException("Podaj swój person_id (identyfikator osoby w CDE) — model pyta o „moje” godziny.");
+                throw new InvalidOperationException("Podaj swój person_id w Ustawieniach → Baza CDE — model pyta o „moje” godziny.");
             }
 
-            executor = new PostgresReadOnlyExecutor(new PostgresReadOnlyOptions { ConnectionString = ConnectionFromJson(ConnectionBox.Text) });
-            options.Variables["ja"] = PersonBox.Text.Trim();
+            executor = new PostgresReadOnlyExecutor(new PostgresReadOnlyOptions { ConnectionString = connection });
+            options.Variables["ja"] = person.Trim();
             options.ContextNote = "Pytający ma w bazie identyfikator osoby {{ja}} — w SQL wpisuj dosłownie '{{ja}}', program podstawi wartość. Dziś jest "
                 + DateTime.Today.ToString("yyyy-MM-dd") + ".";
         }
@@ -208,10 +290,11 @@ public partial class HarnessView : UserControl
         Panel.ResultPreviewLength = isComputer ? 3000 : 600;
         TeklaOptions.Visibility = isCde || isFiles ? Visibility.Collapsed : Visibility.Visible;
         CdeOptions.Visibility = isCde ? Visibility.Visible : Visibility.Collapsed;
+        RefreshCdeText();
         FilesOptions.Visibility = isFiles ? Visibility.Visible : Visibility.Collapsed;
         Panel.Title = ProfileName == null ? "Asystent" : "Asystent: " + ProfileName;
         HintText.Text = isCde
-            ? "SQL od modelu wykonuje się w transakcji tylko do odczytu; dostęp ustala rola w pliku połączenia. Przykład: „Ile przepracowałem godzin na projekcie WSP?”."
+            ? "SQL od modelu wykonuje się w transakcji tylko do odczytu. Przykłady: „Ile przepracowałem godzin na projekcie WSP?”, „W których dokumentach projektu EDO jest mowa o kotwach?”."
             : isComputer
                 ? "Przykład: „cd C:\\ODS\\Projekty i utwórz folder Raporty”, „ile jest PDF-ów z podfolderami?”, „spakuj R02 do zipa”, „otwórz Notatnik”. "
                   + "Polecenia, które tylko czytają, idą od razu; zmiany zależą od uprawnień."
@@ -219,6 +302,7 @@ public partial class HarnessView : UserControl
                 ? "Przykład: „cd C:\\ODS\\Projekty, a potem utwórz folder Raporty”, „co jest w tym folderze?”, „otwórz go”. Kasowania nie ma."
                 : "Przykład: „wstaw słup HEB300 w punkcie 6000, 0 od zera do 3,53”, potem „zmień go na HEB320”, „dodaj mu podstawę z 4 kotwami M24”.";
         Panel.NewSession();
+        RefreshCloudText();
         _ = AutoSyncAsync();
     }
 
@@ -308,14 +392,29 @@ public partial class HarnessView : UserControl
         }
     }
 
-    private void PickConnection_Click(object sender, RoutedEventArgs e)
+    /// <summary>Przycisk „Dane logowania…” — okno główne otwiera Ustawienia → Baza CDE.</summary>
+    public event EventHandler? CdeSettingsRequested;
+
+    private void CdeSettings_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Filter = "Plik połączenia (*.json)|*.json", Title = "Plik połączenia z bazą CDE" };
-        if (dialog.ShowDialog(Window.GetWindow(this)) == true)
+        if (CdeSettingsRequested is null)
         {
-            ConnectionBox.Text = dialog.FileName;
-            Panel.NewSession();
+            MessageBox.Show(Window.GetWindow(this), "Dane logowania do bazy CDE ustawisz w głównym oknie: Ustawienia → Baza CDE.", "Baza CDE");
+            return;
         }
+
+        CdeSettingsRequested(this, EventArgs.Empty);
+    }
+
+    /// <summary>Opis zapamiętanych danych logowania CDE (albo czerwona prośba o nie).</summary>
+    public void RefreshCdeText()
+    {
+        _context = _contextProvider?.Invoke() ?? _context;
+        var missing = _context.GetCdeConnection is null || string.IsNullOrEmpty(_context.CdeDescription) || _context.CdeDescription.StartsWith("brak", StringComparison.Ordinal);
+        CdeText.Text = missing
+            ? "Baza CDE: brak danych logowania — wpisz je raz w Ustawieniach, program je zapamięta."
+            : "Baza CDE: " + _context.CdeDescription + " (tylko odczyt)";
+        CdeText.Foreground = (Brush)FindResource(missing ? "BadBrush" : "MutedBrush");
     }
 
     private static string ConnectionFromJson(string path)
@@ -334,6 +433,27 @@ public sealed class HarnessContext
     public string OllamaUrl { get; init; } = "";
 
     public string Model { get; init; } = "";
+
+    /// <summary>Nazwa modelu do okna (dla chmury ładna nazwa, np. „Claude Sonnet 5.5”).</summary>
+    public string ModelLabel { get; init; } = "";
+
+    /// <summary>Dostawca w chmurze; null = model z Ollamy (ten komputer albo inny w sieci).</summary>
+    public CloudProvider? Cloud { get; init; }
+
+    /// <summary>Kolor dostawcy w chmurze; null = model lokalny.</summary>
+    public Brush? ModelBrush { get; init; }
+
+    /// <summary>Klucz API dostawcy (z programu albo zmiennej środowiskowej).</summary>
+    public Func<CloudProvider, string?>? GetApiKey { get; init; }
+
+    /// <summary>Połączenie z bazą CDE z Ustawień (hasło odszyfrowane dopiero tutaj); null = brak danych logowania.</summary>
+    public Func<string?>? GetCdeConnection { get; init; }
+
+    /// <summary>Opis danych logowania CDE do zakładki Code, np. „maciej@10.0.0.214:5441/cde”.</summary>
+    public string CdeDescription { get; init; } = "";
+
+    /// <summary>Dostęp do internetu (przełącznik w oknie); null = zablokowany.</summary>
+    public WebAccess? Web { get; init; }
 
     public int ContextLength { get; init; }
 

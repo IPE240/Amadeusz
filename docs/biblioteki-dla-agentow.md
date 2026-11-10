@@ -53,7 +53,15 @@ Model niczego nie wykonuje sam. Wybiera tylko narzędzie z listy i podaje argume
    - Nie zapisuj do folderu `exchange` mostu TeklaBridge, bo skrypt wykona się na otwartym modelu Tekli.
      W testach używaj `SimulatedModelExecutor`.
    - Nie wołaj `POST /api/pull` w Ollamie, żeby coś sprawdzić: to aktualizuje model.
-8. **Teksty dla modelu i użytkownika piszemy po polsku:** opisy narzędzi, `system.md`, wyniki `ToolResult` i komunikaty
+8. **Chmura tylko z listy i tylko tam, gdzie profil pozwala.**
+   - Dostawcy: Anthropic (Claude), OpenAI (GPT), Google (Gemini) — `CloudProvider.All`. DeepSeek, OpenRouter
+     i modele „-cloud” z Ollamy są zablokowane.
+   - Profil wymienia dozwolonych w polu `"chmura"` (`profil.json`); bez pola — tylko modele lokalne. Profil `cde`:
+     tylko `"anthropic"`. `HarnessSession` sprawdza to sam i rzuca `InvalidOperationException`.
+   - Klucz API nigdy w kodzie, repozytorium ani w pliku obok programu. W oknie LokalneAI jest zaszyfrowany kontem
+     Windows; we własnym programie bierz go ze zmiennej środowiskowej (`CloudProvider.KeyVariable`).
+   - Agent nie wysyła płatnych zapytań do chmury bez zgody użytkownika. Testy: podstawiony `HttpMessageHandler`.
+9. **Teksty dla modelu i użytkownika piszemy po polsku:** opisy narzędzi, `system.md`, wyniki `ToolResult` i komunikaty
    błędów. Identyfikatory w kodzie są po angielsku, a klucze w plikach profilu po polsku (`nazwa`, `opis`, `parametry`).
 
 ## 3. Co dodać do programu
@@ -69,6 +77,7 @@ Model niczego nie wykonuje sam. Wybiera tylko narzędzie z listy i podaje argume
 | poleceń w Tekli przez most TeklaBridge | `TeklaBridgeExecutor` i profil `tekla` | `LokalneAI.Harness` |
 | prób bez Tekli | `SimulatedModelExecutor` | `LokalneAI.Harness` |
 | serwera innego niż Ollama (llama.cpp, LM Studio, vLLM) | `OpenAiCompatibleLlmClient` | `LokalneAI.Harness` |
+| modelu w chmurze (Claude, GPT, Gemini), gdy profil pozwala | `CloudLlm.Create` | `LokalneAI.Harness` |
 | aktualizacji wiedzy z repozytoriów | `KnowledgeSync.SyncAsync` | `LokalneAI.Harness` |
 
 ## 4. Podłączenie do projektu
@@ -328,7 +337,12 @@ Gdzie wkładać dokumentację biura i jak ją pisać: [wiedza-dla-modeli.md](wie
   zwraca Ollamę na tym PC. Wybór zapada raz, przy tworzeniu klienta.
 - **`OllamaOptions.ClientName`**: nazwa programu w kolejce okna („Tekla”, „CDE”). Bez niej w kolejce widać „?”.
 - Brama przepuszcza tylko czat, generowanie, embeddingi i listę modeli. `ollama pull` i usuwanie modeli robi się
-  w Ollamie danego komputera.
+  w Ollamie danego komputera. Modeli „-cloud” Ollamy (liczy je ollama.com) brama nie przepuszcza.
+- **Model w chmurze** (do testów, gdy lokalny nie daje rady): `CloudLlm.Create(CloudProvider.Anthropic, klucz, "id-modelu")`
+  zwraca gotowego `ILlmClient`. Claude idzie przez `AnthropicLlmClient` (krok wymuszony narzędziem, pamięć podręczna
+  promptu), GPT i Gemini przez `OpenAiCompatibleLlmClient` ze schematem w poleceniu. Lista modeli i sprawdzenie klucza:
+  `CloudModels.ListAsync` (nic nie kosztuje). Zapytanie idzie prosto z tego komputera, bez bramy i kolejki. Profil
+  i tryb uprawnień działają tak samo jak przy modelu lokalnym, więc model w chmurze dostaje tę samą dokumentację.
 
 ## 13. Testy
 
@@ -396,6 +410,8 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | `szukaj_wiedzy` nic nie znajduje | słowa w notatkach inne niż w pytaniach albo brak narzędzia w `profil.json` | [wiedza-dla-modeli.md](wiedza-dla-modeli.md); `"narzedzia_wbudowane": ["szukaj_wiedzy"]` |
 | odpowiedź długo nie przychodzi, choć model jest szybki | zapytanie czeka w kolejce okna LokalneAI (liczy inny program albo inny komputer) | okno LokalneAI → Ustawienia → kolejka; ewentualnie dłuższy `RequestTimeout` |
 | „Nie ma połączenia z PC-…” | w oknie LokalneAI wybrano inny komputer, a on jest wyłączony albo nie udostępnia | okno LokalneAI → Ustawienia → Gdzie liczyć |
+| `InvalidOperationException: Profil cde: modele lokalne i Claude…` | model w chmurze, na który profil nie pozwala (pole `chmura`) | wybierz model lokalny albo dozwolonego dostawcę; nie dopisuj dostawcy do profilu bez zgody użytkownika |
+| „klucz API nie działa (401)” | zły albo wycofany klucz, konto bez środków | nowy klucz w konsoli dostawcy; okno LokalneAI → Ustawienia → Modele w chmurze |
 | aktualizacja wiedzy: brak dostępu | folder profilu tylko do odczytu albo `git` bez logowania do prywatnego repozytorium | profil w `%LOCALAPPDATA%`; `git clone` raz ręcznie |
 
 ## 15. Mapa API
@@ -411,10 +427,11 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `PromptBuilder` | podgląd polecenia systemowego |
 | | `StepSchema` | schemat JSON kroku modelu (do testów i diagnostyki) |
 | `LokalneAI.Harness.Profiles` | `HarnessProfile` | profil z folderu: `HarnessProfile.Load(folder)` |
-| | `ProfileSettings`, `FinishMode`, `SqlRule`, `FewShotExample` | zawartość `profil.json` i `przyklady.jsonl` |
+| | `ProfileSettings`, `FinishMode`, `SqlRule`, `FewShotExample` | zawartość `profil.json` i `przyklady.jsonl`; `HarnessProfile.LoadSettings(folder)` czyta sam `profil.json`; `AllowsCloud(id)` |
 | | `ToolDefinition` | narzędzie: nazwa, opis, schemat parametrów, `Mutates`, `FinishesTurn` |
 | `LokalneAI.Harness.Tools` | `IToolExecutor` | wykonawca gospodarza |
-| | `ToolCall`, `ToolResult` | wywołanie od modelu (`GetString`, `GetNumber`) i wynik (`Ok`, `Error`) |
+| | `ToolCall`, `ToolResult` | wywołanie od modelu (`GetString`, `GetNumber`, `GetBool`) i wynik (`Ok`, `Error`) |
+| | `WebAccess`, `WebAccessOptions` | internet dla modelu: `SearchAsync` (DuckDuckGo), `FetchAsync` (strona jako tekst); sieć biura zablokowana; włączany przez `SessionOptions.Web` i `HarnessProfile.WithInternet()` w profilach z `"internet": true` |
 | | `IConfirmingExecutor`, `ConfirmationDecision`, `ConfirmationKind` | zgoda zależna od argumentów |
 | | `DelegateExecutor`, `RoutingExecutor` | wykonawca z funkcji; rozdzielanie po nazwie |
 | | `SimulatedModelExecutor` | atrapa modelu konstrukcji do prób bez Tekli |
@@ -429,7 +446,12 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | `LokalneAI.Harness.Llm` | `ILlmClient` | dostęp do modelu (własna implementacja: testy, inny serwer) |
 | | `OllamaLlmClient`, `OllamaOptions` | Ollama `/api/chat`; `ClientName` = nazwa w kolejce okna |
 | | `LocalGateway` | brama okna LokalneAI na tym PC: `ChooseUrl()`, `IsRunningAsync()` |
-| | `OpenAiCompatibleLlmClient`, `OpenAiCompatibleOptions` | serwery z API OpenAI `/v1/chat/completions` |
+| | `OpenAiCompatibleLlmClient`, `OpenAiCompatibleOptions` | serwery z API OpenAI `/v1/chat/completions`; w chmurze GPT i Gemini (`SchemaInPrompt`, `ChatPath`) |
+| | `CloudProvider` | dozwoleni dostawcy w chmurze (`All`, `Find`), `ClassifyUrl` (kto liczy pod adresem), `IsOllamaCloudModel` |
+| | `ICloudAwareLlmClient` | klient mówi, kto liczy (`CloudProviderId`); sprawdza to `HarnessSession` |
+| | `AnthropicLlmClient`, `AnthropicOptions` | Claude: `POST /v1/messages` |
+| | `CloudLlm` | `Create(dostawca, klucz, model)` — klient chmury dobrany do dostawcy |
+| | `CloudModels`, `CloudModelInfo` | lista modeli dostawcy i sprawdzenie klucza (`ListAsync`) |
 | | `LlmRequest`, `LlmResponse`, `LlmMessage` | zapytanie i odpowiedź modelu |
 | | `LlmException`, `LlmUnavailableException` | błędy serwera modelu |
 | `LokalneAI.Harness.Validation` | `SqlGuard` | strażnik SQL: jedno zapytanie, tylko odczyt |

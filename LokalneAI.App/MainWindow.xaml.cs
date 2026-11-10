@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel = viewModel;
+        AttachSettingsSections();
         Loaded += async (_, _) =>
         {
             // Najpierw zakładka Code (kontrola bez klikania czeka tylko na InitializeAsync), potem Ollama i brama.
@@ -29,6 +30,17 @@ public partial class MainWindow : Window
             }
         };
         _viewModel.ComputeTargetChanged += (_, _) => CodeView.RefreshModelText();
+        _viewModel.Cde.SummaryChanged += (_, _) =>
+        {
+            CodeView.RefreshCdeText();
+            CodeView.Panel.NewSession();
+        };
+        CodeView.CdeSettingsRequested += (_, _) => OpenSettingsSection(SectionCde);
+        _viewModel.InternetChanged += (_, _) =>
+        {
+            CodeView.RefreshModelText();
+            CodeView.Panel.NewSession();
+        };
         Tabs.SelectionChanged += (_, e) =>
         {
             if (e.OriginalSource == Tabs && Tabs.SelectedItem == CodeTab && IsLoaded)
@@ -42,6 +54,37 @@ public partial class MainWindow : Window
             CodeView.Shutdown();
             _viewModel.OnClosing();
         };
+    }
+
+    /// <summary>Sekcje zakładki Ustawienia: rozwinięte tak jak ostatnio; każde zwinięcie i rozwinięcie jest zapamiętywane.</summary>
+    private void AttachSettingsSections()
+    {
+        foreach (var section in SettingsPanel.Children.OfType<Expander>())
+        {
+            section.IsExpanded = _viewModel.IsSectionOpen(section.Name);
+            section.Expanded += (_, e) =>
+            {
+                if (e.OriginalSource == section)
+                {
+                    _viewModel.SetSectionOpen(section.Name, true);
+                }
+            };
+            section.Collapsed += (_, e) =>
+            {
+                if (e.OriginalSource == section)
+                {
+                    _viewModel.SetSectionOpen(section.Name, false);
+                }
+            };
+        }
+    }
+
+    /// <summary>Przechodzi do Ustawień, rozwija sekcję i przewija do niej.</summary>
+    private void OpenSettingsSection(Expander section)
+    {
+        Tabs.SelectedItem = SettingsTab;
+        section.IsExpanded = true;
+        Dispatcher.InvokeAsync(() => section.BringIntoView(), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     /// <summary>Okno bez systemowej ramki po maksymalizacji wychodzi poza ekran o jej grubość — zostawiamy margines.</summary>
@@ -72,6 +115,20 @@ public partial class MainWindow : Window
             _ => ChatTab,
         };
         Tabs.UpdateLayout();
+    }
+
+    /// <summary>Kontrola bez klikania: rozwija listę modeli i zapisuje ją do PNG (lista jest w osobnym okienku, poza zrzutem okna).</summary>
+    internal async Task SaveModelListPngAsync(string path)
+    {
+        ModelBox.IsDropDownOpen = true;
+        await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        await Task.Delay(300);
+        if (ModelBox.Template.FindName("PART_Popup", ModelBox) is System.Windows.Controls.Primitives.Popup { Child: FrameworkElement list })
+        {
+            Snapshot.Save(list, path);
+        }
+
+        ModelBox.IsDropDownOpen = false;
     }
 
     /// <summary>Zapisuje wygląd okna do PNG (kontrola bez klikania, <c>--autotest</c>).</summary>

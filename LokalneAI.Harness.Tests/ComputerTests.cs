@@ -109,6 +109,35 @@ public sealed class PowerShellPolicyTests : IDisposable
         // Konkretny podfolder — z pytaniem.
         Assert.Equal(ConfirmationKind.Ask, Analyze("Remove-Item Projekty -Recurse").Verdict);
     }
+
+    [Theory]
+    [InlineData("Set-Content skrypt.py \"import os\\nprint(os.getcwd())\"")]
+    [InlineData("'linia 1\\nlinia 2' | Out-File notatka.txt")]
+    [InlineData("Write-Output \"a = 1\\nb = 2\" > wynik.txt")]
+    [InlineData("Set-Content -Path 'Projekty\\skrypt.bat' -Value \"@echo off\\r\\necho test\"")]
+    public void ZapisZUkosnikiemN_OdrzuconyZPodpowiedzia(string script)
+    {
+        var analysis = Analyze(script);
+
+        Assert.Equal(ConfirmationKind.Reject, analysis.Verdict);
+        Assert.Contains("zapisz_plik", analysis.Reason);
+    }
+
+    [Theory]
+    [InlineData("Set-Content 'Projekty\\notatki.txt' 'abc'")]
+    [InlineData("New-Item -ItemType Directory 'Projekty\\nowy'")]
+    [InlineData("(Get-Content a.txt -Raw) -replace '[\\r\\n]+', ' ' | Set-Content b.txt")]
+    [InlineData("Set-Content a.py @'\nprint(\"a\\nb\")\n'@")]
+    public void UkosnikNWSciezceRegexieIHereStringu_ZwyklePytanie(string script)
+    {
+        var analysis = Analyze(script);
+
+        Assert.True(analysis.Verdict == ConfirmationKind.Ask, analysis.Verdict + ": " + analysis.Reason);
+    }
+
+    [Fact]
+    public void UkosnikNWPelnejSciezce_ZwyklePytanie()
+        => Assert.Equal(ConfirmationKind.Ask, Analyze("Set-Content '" + Path.Combine(_root, "nowy.txt") + "' 'abc'").Verdict);
 }
 
 /// <summary>Wykonawca na prawdziwym Windows PowerShellu i w sesji z profilem „komputer”.</summary>
@@ -232,6 +261,74 @@ public sealed class ComputerExecutorTests : IDisposable
     }
 
     [Fact]
+    public async Task ZapiszPlik_NoweLiniePolskieLiteryISkryptDziala()
+    {
+        var executor = Executor();
+        var call = Call("zapisz_plik", new { sciezka = "Skrypty\\info.ps1", tresc = "$a = 'zażółć'\nWrite-Output \"Napis: $a\"\n" });
+
+        var decision = executor.Decide(call);
+        var result = await executor.ExecuteAsync(call, CancellationToken.None);
+        var run = await executor.ExecuteAsync(Ps("& '.\\Skrypty\\info.ps1'"), CancellationToken.None);
+
+        Assert.Equal(ConfirmationKind.Ask, decision.Kind);
+        Assert.False(decision.Dangerous);
+        Assert.Contains("Zapisać nowy plik", decision.Message);
+        Assert.Contains("Write-Output", decision.Message);
+        Assert.True(result.Success, result.Text);
+        Assert.Contains("utworzono folder", result.Text);
+        var bytes = File.ReadAllBytes(Path.Combine(_root, "Skrypty", "info.ps1"));
+        Assert.Equal(new byte[] { 0xEF, 0xBB, 0xBF }, bytes.Take(3).ToArray());
+        Assert.Equal("$a = 'zażółć'\r\nWrite-Output \"Napis: $a\"\r\n", File.ReadAllText(Path.Combine(_root, "Skrypty", "info.ps1")));
+        Assert.True(run.Success, run.Text);
+        Assert.Contains("Napis: zażółć", run.Text);
+    }
+
+    [Fact]
+    public async Task ZapiszPlik_UkosnikNOdModelu_ZamienionyASciezkaZostaje()
+    {
+        var executor = Executor();
+        var call = Call("zapisz_plik", new { sciezka = "a.py", tresc = "import os\\nprint(1)\\nsciezka = 'C:\\ODS\\nowy'" });
+
+        var decision = executor.Decide(call);
+        var result = await executor.ExecuteAsync(call, CancellationToken.None);
+
+        Assert.Contains("zamienione na nowe linie: 2", decision.Message);
+        Assert.True(result.Success, result.Text);
+        Assert.Contains("zamienione na nowe linie (2×)", result.Text);
+        Assert.Equal("import os\nprint(1)\nsciezka = 'C:\\ODS\\nowy'", File.ReadAllText(Path.Combine(_root, "a.py")));
+    }
+
+    [Fact]
+    public async Task ZapiszPlik_IstniejacyTylkoZNadpiszIPytaniemOstrzegawczym()
+    {
+        var file = Path.Combine(_root, "a.txt");
+        File.WriteAllText(file, "stare");
+        var executor = Executor();
+        var withoutFlag = Call("zapisz_plik", new { sciezka = "a.txt", tresc = "nowe" });
+        var withFlag = Call("zapisz_plik", new { sciezka = "a.txt", tresc = "nowe", nadpisz = true });
+
+        Assert.Equal(ConfirmationKind.Reject, executor.Decide(withoutFlag).Kind);
+        Assert.False((await executor.ExecuteAsync(withoutFlag, CancellationToken.None)).Success);
+        Assert.Equal("stare", File.ReadAllText(file));
+        var decision = executor.Decide(withFlag);
+        Assert.Equal(ConfirmationKind.Ask, decision.Kind);
+        Assert.True(decision.Dangerous);
+        Assert.Contains("Nadpisać", decision.Message);
+        Assert.True((await executor.ExecuteAsync(withFlag, CancellationToken.None)).Success);
+        Assert.Equal("nowe", File.ReadAllText(file));
+    }
+
+    [Fact]
+    public void ZapiszPlik_PozaFolderemIFolderZamiastPliku_Odrzucone()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "Raporty"));
+        var executor = Executor();
+
+        Assert.Equal(ConfirmationKind.Reject, executor.Decide(Call("zapisz_plik", new { sciezka = "C:\\Windows\\x.txt", tresc = "x" })).Kind);
+        Assert.Equal(ConfirmationKind.Reject, executor.Decide(Call("zapisz_plik", new { sciezka = "Raporty", tresc = "x" })).Kind);
+    }
+
+    [Fact]
     public void Uruchom_DokumentBezPytaniaProgramZPytaniemSpozaOdrzucone()
     {
         File.WriteAllText(Path.Combine(_root, "raport.pdf"), "x");
@@ -338,6 +435,20 @@ public sealed class ComputerExecutorTests : IDisposable
 
         Assert.Equal(1, asked);
     }
+}
+
+public sealed class EscapedNewlinesTests
+{
+    [Theory]
+    [InlineData("a\\nb", "a\nb")]
+    [InlineData("a\\r\\nb", "a\nb")]
+    [InlineData("print(\"x\\\\ny\")", "print(\"x\\\\ny\")")]
+    [InlineData("a\nb\\nc", "a\nb\\nc")]
+    [InlineData("cd C:\\ODS\\nowy", "cd C:\\ODS\\nowy")]
+    [InlineData("type Raporty\\notatki.txt", "type Raporty\\notatki.txt")]
+    [InlineData("bez zmian", "bez zmian")]
+    public void Fix_TylkoNoweLiniePozaSciezkami(string input, string expected)
+        => Assert.Equal(expected, EscapedNewlines.Fix(input, out _));
 }
 
 public sealed class RepairEscapesTests

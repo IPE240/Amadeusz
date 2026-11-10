@@ -13,5 +13,6 @@
 - Kasowanie wskazanego pliku: `Remove-Item -LiteralPath 'stary.pdf'`
 - ZIP: `Compress-Archive -Path 'R02\*' -DestinationPath 'R02.zip'`; rozpakowanie: `Expand-Archive 'paczka.zip' -DestinationPath 'paczka'`
 - Lista do pliku: `Get-ChildItem -Name | Set-Content 'lista.txt'`
+- Skrypt albo plik tekstowy napisany przez Ciebie: narzędzie `zapisz_plik` (sciezka, tresc). Nie `Set-Content "...\n..."` — w PowerShellu `\n` to dwa znaki, nie nowa linia.
 
 Teczki projektów mają nazwy `NNNN_SKRÓT_Nazwa` (np. `1095_WSP`), a rewizje to foldery `R00`, `R01`.

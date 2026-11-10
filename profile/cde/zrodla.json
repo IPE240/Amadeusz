@@ -9,6 +9,14 @@
         "cdeReposForAI/rozmowa_z_baza_cde/NOTATKI_dokumentacja_md.md",
         "handbook/glossary.md"
       ]
+    },
+    {
+      "typ": "git",
+      "repo": "https://github.com/Optimal-Design-of-Structures/CDE_serwer_bazy.git",
+      "galaz": "serwerPostgreSQL",
+      "pliki": [
+        "README.md"
+      ]
     }
   ]
 }

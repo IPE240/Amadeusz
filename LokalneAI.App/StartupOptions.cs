@@ -41,10 +41,16 @@ public sealed record StartupOptions(string? AutoTestQuestion, string? OutputDir,
     /// </summary>
     public bool Share { get; init; }
 
+    /// <summary><c>--ustawienia plik.json</c>: ustawienia z innego pliku (kontrola z modelami w chmurze bez ruszania ustawień użytkownika).</summary>
+    public string? SettingsPath { get; init; }
+
+    /// <summary><c>--klucze plik.json</c>: klucze API z innego pliku (kontrola). Bez tego — klucze użytkownika.</summary>
+    public string? KeysPath { get; init; }
+
     public static StartupOptions Parse(IReadOnlyList<string> args)
     {
         string? question = null, output = null, url = null, model = null, harness = null, connection = null, person = null, roots = null;
-        string? tab = null, computeOn = null;
+        string? tab = null, computeOn = null, settingsPath = null, keysPath = null;
         int? port = null;
         var expand = false;
         var share = false;
@@ -103,6 +109,14 @@ public sealed record StartupOptions(string? AutoTestQuestion, string? OutputDir,
                 case "--udostepnij":
                     share = true;
                     break;
+                case "--ustawienia":
+                    settingsPath = value;
+                    i++;
+                    break;
+                case "--klucze":
+                    keysPath = value;
+                    i++;
+                    break;
             }
         }
 
@@ -116,6 +130,8 @@ public sealed record StartupOptions(string? AutoTestQuestion, string? OutputDir,
             ComputeOn = computeOn,
             Port = port,
             Share = share,
+            SettingsPath = settingsPath,
+            KeysPath = keysPath,
         };
     }
 }

@@ -38,6 +38,7 @@ internal static class AutoTest
             await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             await Task.Delay(300);
             window.SavePng(Path.Combine(outputDir, "okno.png"));
+            await window.SaveModelListPngAsync(Path.Combine(outputDir, "lista.png"));
 
             var last = viewModel.Exchanges.LastOrDefault();
             var report = new
@@ -50,7 +51,9 @@ internal static class AutoTest
                 udzialGpu = last?.StatsData?.GpuShare,
                 ollama = viewModel.OllamaStatus,
                 karta = viewModel.GpuText,
-                liczy = viewModel.Network.ComputeWhereText,
+                liczy = viewModel.ComputeWhereText,
+                model = viewModel.SelectedModel?.Key,
+                modele = viewModel.Models.Select(m => (m.IsFavorite ? "★ " : "") + m.Key).ToList(),
                 kolejka = viewModel.Network.QueueText,
                 brama = viewModel.Network.GatewayText,
                 gdzie = viewModel.Network.RemoteDescription,

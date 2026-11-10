@@ -64,9 +64,33 @@ nie widzi. Nowy profil zaczyna się od kopii [szablony/profil](../szablony/profi
   "plan": false,                                 // krótkie zdanie planu przed wywołaniami
   "opis_narzedzi": "zwiezly",                    // albo "pelny" (opisy parametrów — dłuższy prompt)
   "sql_reguly": [{ "jesli": "v_my_hours", "wymaga": "{{ja}}", "komunikat": "…" }],
-  "sql_zabronione": ["timesheet.entry", "people."]
+  "sql_zabronione": ["timesheet.entry", "people."],
+  "chmura": ["anthropic", "openai", "google"]     // dostawcy w chmurze dozwoleni w profilu; bez pola = tylko modele lokalne
 }
 ```
+
+**`chmura`** — zasada biura dla modeli w chmurze (Ustawienia → Modele w chmurze w oknie LokalneAI):
+
+| Profil | `chmura` | Dlaczego |
+|---|---|---|
+| `cde` | `["anthropic"]` | dane osobowe (godziny pracy): tylko modele lokalne i Claude |
+| `tekla`, `pliki`, `komputer` | `["anthropic", "openai", "google"]` | testy obsługi programów przez AI |
+| nowy profil bez pola | — | tylko modele lokalne, dopóki ktoś świadomie nie dopisze dostawców |
+
+Dozwolone wartości: `anthropic`, `openai`, `google`. Innych (np. `deepseek`) biblioteka nie przyjmie. Model w chmurze
+dostaje to samo co lokalny: `system.md`, `karta.md`, przykłady, narzędzia i wyniki `szukaj_wiedzy`.
+
+**`internet`** — czy po włączeniu przełącznika „Odblokuj dostęp do internetu” model dostaje narzędzia
+`szukaj_w_internecie` (DuckDuckGo) i `czytaj_strone` (`HarnessProfile.WithInternet()` + `SessionOptions.Web`).
+
+| Profil | `internet` | Dlaczego |
+|---|---|---|
+| `cde` | `false` | model widzi dane z bazy i mógłby je wysłać w zapytaniu do wyszukiwarki |
+| `tekla`, `pliki`, `komputer` | `true` | dokumentacja, normy, producenci |
+| nowy profil bez pola | — | bez internetu |
+
+Adresy w sieci biura i na tym komputerze (prywatne IP, nazwy bez kropki, `.local`, nazwy wskazujące adres prywatny,
+także po przekierowaniu) są zablokowane — model nie sięgnie „przez internet” do bazy, dysku budowy ani bramy.
 
 ## narzedzia.json
 

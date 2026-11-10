@@ -50,11 +50,33 @@ namespace LokalneAI.Harness.Session
         {
             _llm = llm ?? throw new ArgumentNullException(nameof(llm));
             _profile = profile ?? throw new ArgumentNullException(nameof(profile));
+            EnsureCloudAllowed(llm, profile);
             _executor = executor;
             _options = options ?? new SessionOptions();
             _systemPrompt = PromptBuilder.BuildSystem(_profile, _options);
             _schema = StepSchema.Build(_profile.Tools, _profile.Settings.MaxCallsPerStep, _profile.Settings.Plan);
             Context = new ContextUsage(Text.EstimateTokens(_systemPrompt), _llm.ContextLength, true);
+        }
+
+        /// <summary>
+        /// Zasada biura: model w chmurze tylko od dostawcy dozwolonego w profilu (pole <c>chmura</c>), nigdy spoza listy
+        /// (np. DeepSeek, chmura Ollamy). Niedozwolony model: <see cref="InvalidOperationException"/> z opisem dla człowieka.
+        /// </summary>
+        internal static void EnsureCloudAllowed(ILlmClient llm, HarnessProfile profile)
+        {
+            var cloud = (llm as Llm.ICloudAwareLlmClient)?.CloudProviderId;
+            if (profile.Settings.AllowsCloud(cloud))
+            {
+                return;
+            }
+
+            var provider = Llm.CloudProvider.Find(cloud);
+            var who = provider != null ? provider.Family + " (" + provider.Name + ")"
+                : cloud == Llm.CloudProvider.OllamaCloudId ? "chmura Ollamy (ollama.com) — w biurze wyłączona"
+                : "serwer w internecie spoza listy dozwolonych (Anthropic, OpenAI, Google)";
+            throw new InvalidOperationException(
+                "Profil " + profile.Name + ": " + Llm.CloudProvider.DescribeAllowed(profile.Settings.CloudProviders)
+                + ". Model " + llm.ModelName + " to " + who + ". Wybierz inny model.");
         }
 
         /// <summary>Zdarzenia postępu (krok modelu, wywołanie, wynik, licznik kontekstu). Mogą przyjść z wątku w tle.</summary>
@@ -347,6 +369,18 @@ namespace LokalneAI.Harness.Session
 
         private async Task<ToolResult> RunToolAsync(ToolCall call, CancellationToken cancellationToken)
         {
+            if (call.Definition.IsBuiltIn && BuiltInTools.IsWeb(call.Name))
+            {
+                try
+                {
+                    return await BuiltInTools.ExecuteWebAsync(call.Name, call.Arguments, _options.Web, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception e) when (!(e is OperationCanceledException) || !cancellationToken.IsCancellationRequested)
+                {
+                    return ToolResult.Error("BŁĄD narzędzia " + call.Name + ": " + e.Message);
+                }
+            }
+
             if (call.Definition.IsBuiltIn)
             {
                 try

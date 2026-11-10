@@ -1,6 +1,8 @@
 {
   "nazwa": "cde",
   "opis": "Pytania o dane biura w bazie CDE (godziny, projekty, tony stali). Model pisze SQL tylko do odczytu, liczy baza.",
+  "chmura": ["anthropic"],
+  "internet": false,
   "zakonczenie": "model",
   "narzedzia_wbudowane": [
     "kalkulator",
@@ -31,7 +33,11 @@
     "crm.party_alias",
     "ingest.raw_row",
     "szpieg2.",
+    "fin.",
     "pg_catalog.pg_authid",
-    "pg_shadow"
+    "pg_shadow",
+    "author_raw",
+    "checker_raw",
+    "text_md"
   ]
 }

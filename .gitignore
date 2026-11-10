@@ -7,3 +7,5 @@ dist/
 wyniki/
 profile/*/wiedza/zrodla/
 *.local.json
+/Amadeusz.exe
+/Amadeusz.stary.exe

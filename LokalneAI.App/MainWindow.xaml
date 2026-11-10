@@ -66,12 +66,53 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Model" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource MutedBrush}" />
-                <ComboBox Grid.Column="1" Width="380"
+                <ComboBox x:Name="ModelBox" Grid.Column="1" Width="440" MaxDropDownHeight="520"
                           ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}"
                           IsEnabled="{Binding IsIdle}" VerticalContentAlignment="Center"
-                          ToolTip="Model dla czatu i zakładki Code. Lista pochodzi z komputera, który liczy." />
-                <Button Grid.Column="2" Content="Odśwież" Command="{Binding RefreshCommand}" Margin="8,0,0,0"
-                        ToolTip="Sprawdź jeszcze raz Ollamę (albo inny komputer) i listę modeli" />
+                          ToolTip="Model dla czatu i zakładki Code: modele komputera, który liczy, i dodane w Ustawieniach modele w chmurze (kolorowe). Gwiazdka = ulubiony, na górze listy.">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type local:ModelItem}">
+                            <DockPanel>
+                                <!-- Gwiazdka tylko na rozwiniętej liście (w zamkniętym polu nie ma ComboBoxItem). -->
+                                <Button DockPanel.Dock="Left" Margin="-4,0,4,0" Tag="{Binding IsFavorite}"
+                                        Command="{Binding FavoriteCommand}" CommandParameter="{Binding}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource StarButton}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}, FallbackValue={x:Null}}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <Ellipse DockPanel.Dock="Left" Width="9" Height="9" Margin="0,0,7,0" VerticalAlignment="Center"
+                                         Fill="{Binding NameBrush}" Visibility="{Binding IsCloud, Converter={StaticResource BoolToVis}}" />
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" Margin="12,0,0,0" VerticalAlignment="Center"
+                                           FontSize="11" Foreground="{StaticResource MutedBrush}" />
+                                <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsCloud}" Value="True">
+                                                    <Setter Property="Foreground" Value="{Binding NameBrush}" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Content="Odśwież" Command="{Binding RefreshCommand}" Margin="8,0,0,0"
+                            ToolTip="Sprawdź jeszcze raz Ollamę (albo inny komputer) i listę modeli" />
+                    <CheckBox Style="{StaticResource SwitchToggle}" Content="Odblokuj dostęp do internetu" Margin="16,0,0,0"
+                              IsChecked="{Binding InternetAccess}" IsEnabled="{Binding IsIdle}" VerticalAlignment="Center"
+                              ToolTip="Czat i zakładka Code mogą szukać w internecie (DuckDuckGo) i czytać strony. Profil cde — nigdy (dane z bazy nie mogą wyjść do wyszukiwarki). Adresy w sieci biura są zablokowane." />
+                </StackPanel>
                 <StackPanel Grid.Column="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0">
                     <TextBlock Text="{Binding OllamaStatus}" Foreground="{Binding OllamaStatusBrush}"
                                FontWeight="SemiBold" HorizontalAlignment="Right" />
@@ -135,7 +176,8 @@
                                                     </Border>
                                                     <Border Background="{StaticResource TileBrush}" BorderBrush="{StaticResource RowLineBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,8,0,0">
                                                         <StackPanel>
-                                                            <TextBlock Text="{Binding ModelLabel}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" />
+                                                            <TextBlock Text="{Binding ModelLabel}" FontSize="12" FontWeight="SemiBold"
+                                                                       Foreground="{Binding LabelBrush, TargetNullValue={StaticResource MutedBrush}}" />
                                                             <TextBox Text="{Binding Answer, Mode=OneWay}">
                                                                 <TextBox.Style>
                                                                     <Style TargetType="TextBox" BasedOn="{StaticResource ReadOnlyText}">
@@ -212,11 +254,10 @@
                 <!-- ===== Ustawienia ===== -->
                 <TabItem x:Name="SettingsTab" Header="Ustawienia">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
-                        <StackPanel>
+                        <StackPanel x:Name="SettingsPanel">
                             <!-- Gdzie liczyć -->
-                            <Border Style="{StaticResource PanelBox}">
+                            <Expander x:Name="SectionCompute" Style="{StaticResource PanelExpander}" Header="Gdzie liczyć" Tag="{Binding ComputeWhereText}">
                                 <StackPanel>
-                                    <TextBlock Text="Gdzie liczyć" Style="{StaticResource PanelTitle}" />
                                     <TextBlock Style="{StaticResource Note}" Margin="0,0,0,8"
                                                Text="Dotyczy czatu, zakładki Code i programów, które łączą się przez LokalneAI. Twoja rozmowa (kontekst) zostaje na tym komputerze; wybrany komputer tylko liczy odpowiedź i niczego nie zapisuje." />
                                     <RadioButton Content="Na tym komputerze" IsChecked="{Binding Network.ComputeHere}" Margin="0,0,0,6" />
@@ -271,12 +312,152 @@
                                     <TextBlock Style="{StaticResource Note}" Margin="0,8,0,0"
                                                Text="Treść zapytań idzie przez sieć biura bez szyfrowania (jak pliki na dysku sieciowym). Nie wybieraj innego komputera do pytań o dane, których jego właściciel nie powinien widzieć." />
                                 </StackPanel>
-                            </Border>
+                            </Expander>
+
+                            <!-- Modele w chmurze -->
+                            <Expander x:Name="SectionCloud" Style="{StaticResource PanelExpander}" Header="Modele w chmurze (test)" Tag="{Binding Cloud.Summary}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Note}" Margin="0,0,0,6"
+                                               Text="Do testów obsługi programów przez AI. Pytanie, rozmowa, wyniki poleceń i dokumentacja profilu idą przez internet do dostawcy, a rachunek przychodzi za zużycie. Zasada biura: z chmury tylko Claude (Anthropic), GPT (OpenAI) i Gemini (Google); profil CDE — tylko modele lokalne i Claude; DeepSeek wyłącznie lokalnie. Modele w chmurze liczą się prosto z tego komputera, bez kolejki i bez innych komputerów." />
+                                    <TextBlock Style="{StaticResource Note}" Margin="0,0,0,8"
+                                               Text="Logowanie: programy łączą się kluczem API, nie kontem claude.ai, ChatGPT ani Gemini — abonament ich nie obejmuje. Klucz zakłada się w konsoli dostawcy (przycisk „Załóż klucz…”), wkleja tutaj i zapisuje; program szyfruje go Twoim kontem Windows i nigdzie nie wysyła poza dostawcę." />
+                                    <ItemsControl ItemsSource="{Binding Cloud.Providers}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type local:CloudProviderRow}">
+                                                <Border BorderBrush="{StaticResource RowLineBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,8">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center" Fill="{Binding Brush}" />
+                                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{Binding Brush}" VerticalAlignment="Center" />
+                                                            <TextBlock Text="{Binding KeyStatus}" Margin="12,0,0,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                        <WrapPanel Margin="0,8,0,0">
+                                                            <TextBlock Text="Klucz API" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                            <PasswordBox x:Name="KeyBox" Width="300"
+                                                                         ToolTip="Wklej klucz API (np. z konsoli dostawcy). Po zapisaniu pole się czyści; klucz jest zaszyfrowany kontem Windows." />
+                                                            <Button Content="Zapisz i sprawdź" Margin="8,0,0,0" Style="{StaticResource PrimaryButton}"
+                                                                    Command="{Binding SaveKeyCommand}" CommandParameter="{Binding ElementName=KeyBox}"
+                                                                    ToolTip="Zapisuje klucz i pobiera listę modeli (to nic nie kosztuje)" />
+                                                            <Button Content="Pobierz listę modeli" Margin="8,0,0,0" Command="{Binding FetchCommand}" />
+                                                            <Button Content="Usuń klucz" Margin="8,0,0,0" Command="{Binding RemoveKeyCommand}" />
+                                                            <Button Content="Załóż klucz…" Margin="8,0,0,0" Command="{Binding OpenKeysPageCommand}" ToolTip="{Binding KeysPage}" />
+                                                        </WrapPanel>
+                                                        <TextBlock Text="{Binding Status}" Margin="0,6,0,0" TextWrapping="Wrap">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Foreground" Value="{StaticResource GoodBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding StatusIsError}" Value="True">
+                                                                            <Setter Property="Foreground" Value="{StaticResource BadBrush}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding Status}" Value="">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding AllowedIn}" Style="{StaticResource Note}" Margin="0,4,0,0" />
+                                                        <ItemsControl ItemsSource="{Binding Models}" Margin="0,6,0,0" MaxHeight="170">
+                                                            <ItemsControl.Template>
+                                                                <ControlTemplate>
+                                                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                                                        <ItemsPresenter />
+                                                                    </ScrollViewer>
+                                                                </ControlTemplate>
+                                                            </ItemsControl.Template>
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <WrapPanel />
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate DataType="{x:Type local:CloudModelRow}">
+                                                                    <CheckBox Content="{Binding Display}" IsChecked="{Binding IsAdded}" Width="340" Margin="0,2,8,2"
+                                                                              ToolTip="Zaznaczony = na liście modeli na górze okna" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <WrapPanel Margin="0,6,0,0">
+                                                            <TextBlock Text="Dodaj model po id" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource MutedBrush}" />
+                                                            <TextBox Width="240" Text="{Binding ManualModel, UpdateSourceTrigger=PropertyChanged}"
+                                                                     ToolTip="Gdy modelu nie ma na liście dostawcy, np. nowa wersja. Id jak w dokumentacji dostawcy." />
+                                                            <Button Content="Dodaj" Margin="8,0,0,0" Command="{Binding AddManualCommand}" />
+                                                        </WrapPanel>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- Baza CDE -->
+                            <Expander x:Name="SectionCde" Style="{StaticResource PanelExpander}" Header="Baza CDE (zakładka Code, profil cde)" Tag="{Binding Cde.Summary}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Note}" Margin="0,0,0,8"
+                                               Text="Dane logowania do bazy CDE (PostgreSQL) wpisujesz raz — program je pamięta. Hasło jest zaszyfrowane Twoim kontem Windows i leży w %APPDATA%\LokalneAI, poza repozytorium, więc nie trafi na GitHub. Asystent czyta bazę tylko w transakcji „tylko do odczytu”, niezależnie od uprawnień konta." />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Serwer" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <WrapPanel Grid.Column="1">
+                                            <TextBox Width="160" Text="{Binding Cde.Host, UpdateSourceTrigger=PropertyChanged}" ToolTip="Adres serwera bazy, np. 10.0.0.214" />
+                                            <TextBlock Text="port" VerticalAlignment="Center" Margin="10,0,6,0" />
+                                            <TextBox Width="60" Text="{Binding Cde.PortText, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBlock Text="baza" VerticalAlignment="Center" Margin="10,0,6,0" />
+                                            <TextBox Width="90" Text="{Binding Cde.Database, UpdateSourceTrigger=PropertyChanged}" />
+                                        </WrapPanel>
+                                        <TextBlock Grid.Row="1" Text="Użytkownik" VerticalAlignment="Center" Margin="0,8,10,0" />
+                                        <WrapPanel Grid.Row="1" Grid.Column="1" Margin="0,8,0,0">
+                                            <TextBox Width="160" Text="{Binding Cde.User, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBlock Text="hasło" VerticalAlignment="Center" Margin="10,0,6,0" />
+                                            <PasswordBox x:Name="CdePasswordBox" Width="200"
+                                                         ToolTip="Puste pole = zostaje zapisane hasło. Po zapisaniu pole się czyści." />
+                                            <TextBlock Text="{Binding Cde.KeyStatus}" Margin="10,0,0,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                                        </WrapPanel>
+                                        <TextBlock Grid.Row="2" Text="Twój person_id" VerticalAlignment="Center" Margin="0,8,10,0" />
+                                        <TextBox Grid.Row="2" Grid.Column="1" Width="300" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                                 Text="{Binding Cde.PersonId, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="Twój identyfikator osoby w CDE (uuid). Model pyta o „moje” godziny tylko z nim." />
+                                        <WrapPanel Grid.Row="3" Grid.Column="1" Margin="0,10,0,0">
+                                            <Button Content="Zapisz i sprawdź" Style="{StaticResource PrimaryButton}"
+                                                    Command="{Binding Cde.SaveCommand}" CommandParameter="{Binding ElementName=CdePasswordBox}" />
+                                            <Button Content="Wczytaj z pliku…" Margin="8,0,0,0" Command="{Binding Cde.ImportCommand}"
+                                                    ToolTip="Plik JSON z polami host, port, dbname, user, password — np. polaczenie.local.json z repozytorium CDE (z niego korzystał Claude)" />
+                                            <Button Content="Sprawdź połączenie" Margin="8,0,0,0" Command="{Binding Cde.TestCommand}" />
+                                            <Button Content="Usuń hasło" Margin="8,0,0,0" Command="{Binding Cde.RemoveCommand}" />
+                                        </WrapPanel>
+                                    </Grid>
+                                    <TextBlock Text="{Binding Cde.Status}" Margin="0,8,0,0" TextWrapping="Wrap">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource GoodBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Cde.StatusIsError}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource BadBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Cde.Status}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Expander>
 
                             <!-- Udostępnianie -->
-                            <Border Style="{StaticResource PanelBox}">
+                            <Expander x:Name="SectionShare" Style="{StaticResource PanelExpander}" Header="Udostępnianie tego komputera" Tag="{Binding Network.ShareSummary}">
                                 <StackPanel>
-                                    <TextBlock Text="Udostępnianie tego komputera" Style="{StaticResource PanelTitle}" />
                                     <CheckBox Content="Pozwalaj na przeliczanie zapytań z innych komputerów (tylko z tej samej podsieci)"
                                               IsChecked="{Binding Network.ShareOnLan}" FontWeight="SemiBold" />
                                     <TextBlock Text="{Binding Network.GatewayText}" TextWrapping="Wrap" Margin="0,6,0,0" Foreground="{StaticResource TextBrush}" />
@@ -296,12 +477,11 @@
                                     <TextBlock Style="{StaticResource Note}" Margin="0,8,0,0"
                                                Text="Zapytania z tego komputera mają pierwszeństwo; zapytanie innego komputera po minucie czekania wraca do zwykłej kolejności. Inni nie mogą pobierać ani usuwać modeli. Treści cudzych zapytań nie są nigdzie zapisywane; w kolejce widać tylko, kto, czym i kiedy pyta." />
                                 </StackPanel>
-                            </Border>
+                            </Expander>
 
                             <!-- Kolejka -->
-                            <Border Style="{StaticResource PanelBox}">
+                            <Expander x:Name="SectionQueue" Style="{StaticResource PanelExpander}" Header="Kolejka" Tag="{Binding Network.QueueSummary}">
                                 <StackPanel>
-                                    <TextBlock Text="Kolejka" Style="{StaticResource PanelTitle}" />
                                     <TextBlock Style="{StaticResource Note}" Text="Wszystkie zapytania przez LokalneAI: z czatu, z zakładki Code, z innych programów na tym komputerze i z innych komputerów." />
                                     <TextBlock Text="Nic nie czeka i nic nie liczy." Margin="0,6,0,0" Foreground="{StaticResource MutedBrush}"
                                                Visibility="{Binding Network.IsQueueEmpty, Converter={StaticResource BoolToVis}}" />
@@ -343,11 +523,11 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </StackPanel>
-                            </Border>
+                            </Expander>
 
                             <!-- Czat -->
-                            <Border Style="{StaticResource PanelBox}" IsEnabled="{Binding IsIdle}">
-                                <Grid>
+                            <Expander x:Name="SectionChat" Style="{StaticResource PanelExpander}" Header="Czat" Tag="{Binding ChatSummary}">
+                                <Grid IsEnabled="{Binding IsIdle}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
@@ -357,7 +537,6 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Grid.ColumnSpan="2" Text="Czat" Style="{StaticResource PanelTitle}" />
                                     <TextBlock Grid.Row="1" Text="Polecenie systemowe" Margin="0,4,12,0" VerticalAlignment="Top" />
                                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SystemPrompt, UpdateSourceTrigger=PropertyChanged}"
                                              AcceptsReturn="True" TextWrapping="Wrap" Height="64" VerticalScrollBarVisibility="Auto"
@@ -374,12 +553,11 @@
                                                   VerticalAlignment="Center" Margin="18,0,0,0" ToolTip="{Binding HistoryPath}" />
                                     </WrapPanel>
                                 </Grid>
-                            </Border>
+                            </Expander>
 
                             <!-- Ollama na tym komputerze -->
-                            <Border Style="{StaticResource PanelBox}">
+                            <Expander x:Name="SectionOllama" Style="{StaticResource PanelExpander}" Header="Ollama na tym komputerze" Tag="{Binding OllamaUrl}">
                                 <StackPanel>
-                                    <TextBlock Text="Ollama na tym komputerze" Style="{StaticResource PanelTitle}" />
                                     <WrapPanel>
                                         <TextBlock Text="Adres" VerticalAlignment="Center" Margin="0,0,8,0" />
                                         <TextBox Width="320" Text="{Binding OllamaUrl, UpdateSourceTrigger=LostFocus}"
@@ -388,7 +566,7 @@
                                     </WrapPanel>
                                     <TextBlock Style="{StaticResource Note}" Margin="0,8,0,0" Text="{Binding GatewayHint}" />
                                 </StackPanel>
-                            </Border>
+                            </Expander>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -399,7 +577,7 @@
         <!-- Pasek stanu -->
         <DockPanel Grid.Row="2" Margin="16,0">
             <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Text="{Binding Network.QueueText}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="14,0,0,0" />
-            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Text="{Binding Network.ComputeWhereText}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="14,0,0,0" />
+            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Text="{Binding ComputeWhereText}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding ComputeWhereBrush}" Margin="14,0,0,0" />
             <TextBlock VerticalAlignment="Center" Text="{Binding StatusText}" FontSize="12" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding StatusText}" />
         </DockPanel>
     </Grid>

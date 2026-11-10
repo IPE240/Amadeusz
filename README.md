@@ -38,8 +38,13 @@ Są dwie części:
    - **Czat**: rozmowa z modelem i statystyki „gdzie liczył”.
    - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`). Ma trzy poziomy uprawnień:
      *Tylko czyta*, *Pyta o każdą zmianę* i *Bez pytania (poza kasowaniem)*.
-   - **Ustawienia**: gdzie liczyć (ten komputer albo mocniejszy komputer w biurze), udostępnianie tego komputera
-     innym z tej samej podsieci, podgląd kolejki i parametry czatu.
+   - **Ustawienia**: gdzie liczyć (ten komputer albo mocniejszy komputer w biurze), modele w chmurze (test),
+     udostępnianie tego komputera innym z tej samej podsieci, podgląd kolejki i parametry czatu.
+
+   Lista modeli na górze okna zawiera modele komputera, który liczy, i dodane w Ustawieniach **modele w chmurze**:
+   Claude (pomarańczowy), GPT (turkusowy), Gemini (niebieski). Gwiazdka dodaje model do ulubionych, a ulubione są
+   na górze listy. Zasady: [docs/plan-modele-w-chmurze.md](docs/plan-modele-w-chmurze.md); w profilu `cde` wolno
+   tylko modele lokalne i Claude.
 
    W oknie działa **brama** (`LokalneAI.Gateway`, port 11435). Zapytania czatu, zakładki Code, innych programów
    na tym PC i innych komputerów czekają przez nią w jednej kolejce, a zapytania z tego komputera mają pierwszeństwo.
@@ -67,6 +72,11 @@ dotnet build LokalneAI.sln
 .\LokalneAI.App\bin\Debug\net10.0-windows\LokalneAI.exe
 ```
 
+Każde zbudowanie programu (Debug) odświeża też **`Amadeusz.exe`** w głównym folderze repozytorium. To jeden plik, do
+działania potrzebuje .NET 10 Desktop Runtime i folderu `profile` obok. Robi to [narzedzia/odswiez_amadeusza.ps1](narzedzia/odswiez_amadeusza.ps1),
+a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwarte, stary plik dostaje nazwę
+`Amadeusz.stary.exe`, a nowa wersja startuje przy następnym uruchomieniu. Oba pliki są w `.gitignore`.
+
 ## Obsługa
 
 - **Enter** wysyła pytanie, **Shift+Enter** wstawia nową linię, **Esc** albo **Stop** przerywa.
@@ -75,12 +85,25 @@ dotnet build LokalneAI.sln
 - **Zwolnij pamięć GPU** wyrzuca model z karty tego komputera od razu, np. przed pracą w Tekli. Bez tego Ollama
   zwalnia pamięć sama po 5 minutach bezczynności.
 - **Pamiętaj rozmowę** (pod czatem) jest domyślnie wyłączone, więc każde pytanie liczy się od zera.
-- **Ustawienia** zawierają:
+- **Odblokuj dostęp do internetu** (przełącznik obok listy modeli, zapamiętany): czat i zakładka Code mogą szukać
+  w internecie (DuckDuckGo, bez klucza) i czytać strony, a w odpowiedzi podają źródła. Czat z internetem odpowiada
+  od razu całym tekstem i działa z każdym modelem. W zakładce Code — tylko w profilach z `"internet": true`
+  (nie w `cde`). Adresy w sieci biura są dla modelu zablokowane.
+- **Ustawienia** mają sekcje, które zwija się i rozwija kliknięciem w nagłówek; okno pamięta, które były rozwinięte,
+  a zwinięta sekcja pokazuje po prawej krótki stan (np. „Claude: 2 na liście”). Sekcje:
   - gdzie liczyć: ten komputer albo inny, z przyciskiem „Szukaj w sieci”;
+  - modele w chmurze (test): klucz API każdego dostawcy (zaszyfrowany kontem Windows, „Załóż klucz…” otwiera
+    konsolę dostawcy), lista jego modeli z polami „na liście” i dodawanie modelu po id. Konto claude.ai, ChatGPT
+    albo Gemini nie wystarczy — programy łączą się kluczem API rozliczanym za zużycie;
+  - baza CDE: serwer, użytkownik, hasło i Twój person_id dla profilu `cde` zakładki Code — wpisane raz albo wczytane
+    z pliku `polaczenie.local.json`; hasło zaszyfrowane kontem Windows w `%APPDATA%\LokalneAI`, poza repozytorium.
+    „Zapisz i sprawdź” łączy się tylko do odczytu. Commit z hasłem blokuje `narzedzia\sprawdz_sekrety.ps1`;
   - udostępnianie: przełącznik, port, limit kontekstu dla innych, otwarcie portu w zaporze;
   - kolejkę z przyciskiem „Odrzuć” dla zapytań innych komputerów;
   - polecenie systemowe czatu, temperaturę (Bielik: 0,1), długość kontekstu, zapis historii i adres Ollamy.
-- Pasek na dole pokazuje, który komputer liczy, i stan kolejki.
+- Pasek na dole pokazuje, który komputer liczy (albo chmurę dostawcy, w jego kolorze), i stan kolejki.
+- Model w chmurze w czacie odpowiada od razu całym tekstem (bez pisania na bieżąco). W zakładce Code pasek pod
+  nagłówkiem mówi, dokąd idą dane, a gdy profil nie pozwala na wybrany model — ostrzega na czerwono.
 - Gdy Ollama nie działa albo brakuje modelu, baner nad rozmową podpowiada, co zrobić
   (Uruchom Ollamę, Pobierz model, polecenie instalacji).
 
@@ -120,7 +143,9 @@ Nie zmienia przy tym ustawień ani historii. Dodatkowe przełączniki:
   albo, bez niego, w pustym folderze tymczasowym (`%TEMP%\LokalneAI_kontrola`);
 - `--cel <komputer>`: licz na innym komputerze (tylko w tym uruchomieniu);
 - `--udostepnij`: brama przyjmuje zapytania „innych komputerów” tylko z 127.0.0.1 (próba bez otwierania portu w sieci);
-- `--port <n>`: port bramy w kontroli (domyślnie dowolny wolny, żeby nie zająć portu otwartego okna).
+- `--port <n>`: port bramy w kontroli (domyślnie dowolny wolny, żeby nie zająć portu otwartego okna);
+- `--ustawienia <plik>`, `--klucze <plik>`: ustawienia i klucze API z innych plików (np. próba listy z modelami
+  w chmurze bez ruszania ustawień użytkownika). Kontrola zapisuje też `lista.png`: rozwiniętą listę modeli.
 
 Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 
@@ -178,5 +203,7 @@ Pełne odpowiedzi lądują w `wyniki\`, który jest poza gitem (są tam godziny 
 - Rola bazy tylko do odczytu dla asystenta (na każdą osobę) i sposób łączenia od użytkownika.
 - Test profilu `tekla` na kopii prawdziwego modelu przez most TeklaBridge (szablony są tylko skompilowane).
 - Próba bramy między dwoma komputerami w biurze (na jednym PC sprawdzona przez `127.0.0.1`).
+- Pierwsza prawdziwa próba modeli w chmurze z kluczem użytkownika (Claude, GPT, Gemini) i odpowiedź na bieżąco
+  w czacie — [docs/plan-modele-w-chmurze.md](docs/plan-modele-w-chmurze.md).
 - Ikona w zasobniku i start z Windows dla komputerów, które udostępniają model; dalsze pomysły
   w [docs/badania/funkcje-aplikacji.md](docs/badania/funkcje-aplikacji.md).

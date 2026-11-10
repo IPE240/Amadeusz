@@ -273,6 +273,15 @@ public sealed class GatewayServer : IAsyncDisposable
         };
     }
 
+    /// <summary>Model Ollamy liczony na serwerach ollama.com (tag <c>cloud</c> albo <c>…-cloud</c>), np. <c>deepseek-v3.1:671b-cloud</c>.</summary>
+    internal static bool IsOllamaCloudModel(string? model)
+    {
+        var name = (model ?? "").Trim().ToLowerInvariant();
+        var colon = name.LastIndexOf(':');
+        var tag = colon >= 0 ? name[(colon + 1)..] : "";
+        return tag == "cloud" || tag.EndsWith("-cloud", StringComparison.Ordinal) || name.EndsWith("-cloud", StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Sprawdza zapytanie innego komputera i dopasowuje je do zasad tego PC: kontekst nie większy niż
     /// <see cref="GatewayOptions.MaxContextForOthers"/> (większy = błąd, nie ciche obcięcie) i <c>keep_alive</c> tego PC.
@@ -527,6 +536,13 @@ public sealed class GatewayServer : IAsyncDisposable
         }
 
         var model = json?["model"] is JsonValue m && m.TryGetValue<string>(out var name) ? name : null;
+        if (IsOllamaCloudModel(model))
+        {
+            await WriteErrorAsync(context, 403, $"Model {model} liczy chmura Ollamy (ollama.com), a nie komputer w biurze. W LokalneAI jest wyłączony: "
+                + "z chmury wolno tylko Claude, GPT i Gemini, dodane w Ustawieniach → Modele w chmurze.").ConfigureAwait(false);
+            return;
+        }
+
         var origin = fromThisPc ? RequestOrigin.ThisComputer : RequestOrigin.OtherComputer;
         var item = new QueueItem(origin, computer, remote.ToString(), program, model, DateTimeOffset.Now);
         if (origin == RequestOrigin.OtherComputer && Queue.WaitingFromOthers >= options.MaxWaitingFromOthers)

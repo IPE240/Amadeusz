@@ -26,4 +26,12 @@
     <Using Include="System.IO" />
   </ItemGroup>
 
+  <!-- Po każdym zbudowaniu (Debug) odświeża Amadeusz.exe w głównym folderze repozytorium. Pomijane przy samej
+       publikacji (instalator, ten skrypt) i w buildach projektowych (podpowiedzi edytora). Błąd nie psuje budowania. -->
+  <Target Name="OdswiezAmadeusza" AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Debug' and '$(AmadeuszPublikacja)' != 'true' and '$(DesignTimeBuild)' != 'true'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\narzedzia\odswiez_amadeusza.ps1&quot;"
+          ContinueOnError="WarnAndContinue" />
+  </Target>
+
 </Project>

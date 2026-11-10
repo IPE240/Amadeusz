@@ -180,6 +180,7 @@ public sealed class NetworkViewModel : ObservableObject
         {
             if (SetProperty(ref _shareOnLan, value))
             {
+                OnPropertyChanged(nameof(ShareSummary));
                 _settings.ShareOnLan = value;
                 _ = ApplySharingAsync();
             }
@@ -237,6 +238,15 @@ public sealed class NetworkViewModel : ObservableObject
         get => _queueText;
         private set => SetProperty(ref _queueText, value);
     }
+
+    /// <summary>Nagłówek zwiniętej sekcji „Kolejka” w Ustawieniach.</summary>
+    public string QueueSummary => _gateway is null ? "brak bramy"
+        : $"liczy {Queue.Count(r => r.State != QueueState.Waiting)}, czeka {Queue.Count(r => r.State == QueueState.Waiting)}";
+
+    /// <summary>Nagłówek zwiniętej sekcji „Udostępnianie” w Ustawieniach.</summary>
+    public string ShareSummary => _gateway?.IsListeningOnLan == true ? $"włączone, port {_gateway.Port}"
+        : ShareOnLan ? "włączone, brama nie słucha w sieci (szczegóły po rozwinięciu)"
+        : "wyłączone";
 
     /// <summary>Uruchamia bramę. Gdy port jest zajęty przez inne okno LokalneAI na tym PC, czat używa jego bramy.</summary>
     public async Task StartAsync(string ollamaUrl, string? gpuDescription)
@@ -516,6 +526,7 @@ public sealed class NetworkViewModel : ObservableObject
         GatewayText = _gateway.IsListeningOnLan
             ? $"Udostępniam: inne komputery z podsieci {subnet} mogą liczyć na tym PC. Adres dla nich: {Environment.MachineName} (port {_gateway.Port})."
             : _gateway.LanError ?? $"Nie udostępniam. Brama działa tylko dla programów na tym komputerze (port {_gateway.Port}).";
+        OnPropertyChanged(nameof(ShareSummary));
     }
 
     private void RefreshQueue()
@@ -562,6 +573,8 @@ public sealed class NetworkViewModel : ObservableObject
         var queue = _gateway is null ? "Kolejka: brak bramy" : $"Kolejka: liczy {running}, czeka {waiting}";
         var sharing = _gateway?.IsListeningOnLan == true ? $" · Udostępniam w sieci (policzone dla innych: {served})" : "";
         QueueText = queue + sharing;
+        OnPropertyChanged(nameof(QueueSummary));
+        OnPropertyChanged(nameof(ShareSummary));
         OnPropertyChanged(nameof(IsQueueEmpty));
         OnPropertyChanged(nameof(IsRemote));
         OnPropertyChanged(nameof(ComputerName));

@@ -9,6 +9,12 @@ using System.Windows.Media;
 using LokalneAI.Core;
 using LokalneAI.Core.Ollama;
 using LokalneAI.Core.Storage;
+using System.Net.Http;
+using System.Text.Json;
+using LokalneAI.Harness.Llm;
+using LokalneAI.Harness.Profiles;
+using LokalneAI.Harness.Session;
+using LokalneAI.Harness.Tools;
 
 namespace LokalneAI.App;
 
@@ -22,9 +28,11 @@ public sealed class MainViewModel : ObservableObject
     private static readonly Brush NeutralBrush = Frozen(0x6A, 0x76, 0x86);
 
     private readonly StartupOptions _options;
-    private readonly SettingsStore _settingsStore = new();
+    private readonly SettingsStore _settingsStore;
     private readonly HistoryLog _historyLog = new();
     private readonly AppSettings _settings;
+    /// <summary>Klucze API modeli w chmurze, zaszyfrowane kontem Windows.</summary>
+    private readonly CloudKeyStore _keys;
     private readonly TaskCompletionSource _initialized = new(TaskCreationOptions.RunContinuationsAsynchronously);
     /// <summary>Czat: brama LokalneAI (kolejka, wybrany komputer), a gdy jej nie ma — Ollama na tym PC.</summary>
     private OllamaClient _client;
@@ -37,6 +45,8 @@ public sealed class MainViewModel : ObservableObject
     private string? _gpuDescription;
     private string? _modelToPull;
     private bool _refreshing;
+    /// <summary>Modele z Ollamy (tego albo wybranego komputera), bez modeli „-cloud” liczonych na ollama.com.</summary>
+    private List<LocalModel> _localModels = [];
 
     private ModelItem? _selectedModel;
     private string _question = "";
@@ -61,6 +71,8 @@ public sealed class MainViewModel : ObservableObject
     public MainViewModel(StartupOptions options)
     {
         _options = options;
+        _settingsStore = new SettingsStore(options.SettingsPath);
+        _keys = new CloudKeyStore(options.KeysPath);
         _settings = _settingsStore.Load();
         if (options.Url is not null)
         {
@@ -92,6 +104,15 @@ public sealed class MainViewModel : ObservableObject
         _ollamaUrl = _local.BaseUrl;
         Network = new NetworkViewModel(_settings, options, OnComputeTargetChangedAsync);
         Network.Queue.CollectionChanged += (_, _) => ShowChatQueuePosition();
+        Network.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(NetworkViewModel.ComputeWhereText))
+            {
+                OnPropertyChanged(nameof(ComputeWhereText));
+            }
+        };
+        Cloud = new CloudViewModel(_settings, _keys, RebuildModels, SaveSettings);
+        Cde = new CdeViewModel(_settings, _keys, SaveSettings);
         if (_settingsStore.LoadError is { } loadError)
         {
             _statusText = $"Nie odczytałem ustawień ({loadError}), używam domyślnych.";
@@ -105,6 +126,7 @@ public sealed class MainViewModel : ObservableObject
         UnloadCommand = new RelayCommand(UnloadAsync, () => !IsBusy);
         ClearCommand = new RelayCommand(Clear, () => !IsBusy && Exchanges.Count > 0);
         CopyInstallCommand = new RelayCommand(CopyInstallCommandToClipboard);
+        ToggleFavoriteCommand = new RelayCommand<ModelItem>(ToggleFavorite);
         Exchanges.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsTranscriptEmpty));
     }
 
@@ -113,11 +135,57 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Ustawienia → „Gdzie liczyć”, udostępnianie i kolejka.</summary>
     public NetworkViewModel Network { get; }
 
+    /// <summary>Ustawienia → „Modele w chmurze (test)”: klucze API i modele Claude, GPT, Gemini.</summary>
+    public CloudViewModel Cloud { get; }
+
+    /// <summary>Ustawienia → Baza CDE: zapamiętane dane logowania dla profilu cde.</summary>
+    public CdeViewModel Cde { get; }
+
+    /// <summary>Jeden klient internetu dla czatu i zakładki Code (DuckDuckGo, strony; sieć biura zablokowana).</summary>
+    private readonly WebAccess _web = new();
+
+    /// <summary>Przełącznik „Odblokuj dostęp do internetu” (czat i zakładka Code; zapamiętany).</summary>
+    public bool InternetAccess
+    {
+        get => _settings.InternetAccess;
+        set
+        {
+            if (_settings.InternetAccess == value)
+            {
+                return;
+            }
+
+            _settings.InternetAccess = value;
+            OnPropertyChanged();
+            StatusText = value
+                ? "Internet odblokowany: czat i zakładka Code (poza profilem cde) mogą szukać w sieci i czytać strony. Zapytania wyszukiwania idą do DuckDuckGo."
+                : "Internet zablokowany.";
+            InternetChanged?.Invoke(this, EventArgs.Empty);
+            SaveSettings();
+        }
+    }
+
+    /// <summary>Zmienił się przełącznik internetu (zakładka Code zaczyna nową sesję).</summary>
+    public event EventHandler? InternetChanged;
+
+    /// <summary>Gwiazdka na liście modeli: ulubione są na górze.</summary>
+    public RelayCommand<ModelItem> ToggleFavoriteCommand { get; }
+
+    /// <summary>Pasek stanu: kto liczy — ten komputer, inny komputer albo chmura dostawcy.</summary>
+    public string ComputeWhereText => SelectedModel?.Cloud is { } provider ? "Liczy: chmura " + provider.Name : Network.ComputeWhereText;
+
+    /// <summary>Kolor napisu „Liczy…”: dostawcy w chmurze albo akcent okna.</summary>
+    public Brush ComputeWhereBrush => SelectedModel?.NameBrush
+        ?? Application.Current?.TryFindResource("AccentBrush") as Brush
+        ?? Brushes.SteelBlue;
+
     /// <summary>Zmienił się komputer, który liczy (zakładka Code odświeża opis).</summary>
     public event EventHandler? ComputeTargetChanged;
 
     /// <summary>Podpowiedź na pustej rozmowie.</summary>
-    public string EmptyChatHint => Network.IsRemote
+    public string EmptyChatHint => SelectedModel?.Cloud is { } cloud
+        ? $"Wpisz pytanie na dole i naciśnij Enter albo „Wyślij”.\nOdpowiada model w chmurze {cloud.Name}: pytanie i rozmowa idą przez internet do {cloud.Name}."
+        : Network.IsRemote
         ? $"Wpisz pytanie na dole i naciśnij Enter albo „Wyślij”.\nOdpowiedź policzy komputer {Network.ComputerName}; rozmowa zostaje na tym komputerze."
         : "Wpisz pytanie na dole i naciśnij Enter albo „Wyślij”.\nOdpowiedź liczy model na tym komputerze, bez internetu.";
 
@@ -158,13 +226,23 @@ public sealed class MainViewModel : ObservableObject
         get => _selectedModel;
         set
         {
-            if (!SetProperty(ref _selectedModel, value) || value is null || _refreshing)
+            if (!SetProperty(ref _selectedModel, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(ComputeWhereText));
+            OnPropertyChanged(nameof(ComputeWhereBrush));
+            OnPropertyChanged(nameof(EmptyChatHint));
+            ComputeTargetChanged?.Invoke(this, EventArgs.Empty);
+            if (value is null || _refreshing)
             {
                 return;
             }
 
             // Wybór użytkownika: zapamiętaj go i schowaj baner o brakującym modelu domyślnym.
             _settings.Model = value.Name;
+            _settings.ModelProvider = value.Provider;
             if (CanPull)
             {
                 CanPull = false;
@@ -280,14 +358,29 @@ public sealed class MainViewModel : ObservableObject
     public string TemperatureText
     {
         get => _temperatureText;
-        set => SetProperty(ref _temperatureText, value);
+        set
+        {
+            if (SetProperty(ref _temperatureText, value))
+            {
+                OnPropertyChanged(nameof(ChatSummary));
+            }
+        }
     }
 
     public int ContextLength
     {
         get => _contextLength;
-        set => SetProperty(ref _contextLength, value);
+        set
+        {
+            if (SetProperty(ref _contextLength, value))
+            {
+                OnPropertyChanged(nameof(ChatSummary));
+            }
+        }
     }
+
+    /// <summary>Nagłówek zwiniętej sekcji „Czat” w Ustawieniach.</summary>
+    public string ChatSummary => $"temperatura {TemperatureText} · kontekst {ContextLength} · historia {(SaveHistory ? "zapisywana" : "niezapisywana")}";
 
     public bool RememberConversation
     {
@@ -298,8 +391,32 @@ public sealed class MainViewModel : ObservableObject
     public bool SaveHistory
     {
         get => _saveHistory;
-        set => SetProperty(ref _saveHistory, value);
+        set
+        {
+            if (SetProperty(ref _saveHistory, value))
+            {
+                OnPropertyChanged(nameof(ChatSummary));
+            }
+        }
     }
+
+    /// <summary>Czy sekcja Ustawień (nazwa z okna, np. <c>SectionCloud</c>) jest rozwinięta. Domyślnie tylko „Gdzie liczyć”.</summary>
+    public bool IsSectionOpen(string name) => ((IReadOnlyList<string>?)_settings.OpenSections ?? DefaultOpenSections).Contains(name, StringComparer.Ordinal);
+
+    /// <summary>Zapamiętuje zwinięcie albo rozwinięcie sekcji Ustawień.</summary>
+    public void SetSectionOpen(string name, bool open)
+    {
+        var sections = ((IReadOnlyList<string>?)_settings.OpenSections ?? DefaultOpenSections).Where(s => s != name).ToList();
+        if (open)
+        {
+            sections.Add(name);
+        }
+
+        _settings.OpenSections = sections;
+        SaveSettings();
+    }
+
+    private static readonly IReadOnlyList<string> DefaultOpenSections = ["SectionCompute"];
 
     public string OllamaUrl
     {
@@ -363,29 +480,26 @@ public sealed class MainViewModel : ObservableObject
             ShowInstallHint = false;
 
             var wanted = _settings.Model;
-            var models = (await _client.ListModelsAsync())
+            var all = (await _client.ListModelsAsync())
                 .Where(m => m.Capabilities is null || m.Capabilities.Contains("completion"))
+                .ToList();
+
+            // Modele „-cloud” liczy ollama.com, nie komputer w biurze — z chmury wolno tylko Claude, GPT i Gemini (Ustawienia).
+            _localModels = all.Where(m => !CloudProvider.IsOllamaCloudModel(m.Name))
                 .OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
-            Models.Clear();
-            foreach (var model in models)
-            {
-                Models.Add(new ModelItem(model));
-            }
+            RebuildModels();
+            var hiddenCloud = all.Count - _localModels.Count;
 
-            SelectedModel = Models.FirstOrDefault(m => SameModel(m.Name, wanted))
-                ?? Models.FirstOrDefault(m => SameModel(m.Name, AppSettings.DefaultModel))
-                ?? Models.FirstOrDefault();
-
-            if (Models.Any(m => SameModel(m.Name, wanted)))
+            if (_settings.ModelProvider is not null || _localModels.Any(m => SameModel(m.Name, wanted)))
             {
                 CanPull = false;
-                BannerText = "";
+                BannerText = hiddenCloud > 0 ? $"Ukryto modele z chmury Ollamy ({hiddenCloud}): liczy je ollama.com, a z chmury wolno tylko Claude, GPT i Gemini." : "";
             }
             else if (remote)
             {
                 CanPull = false;
-                BannerText = Models.Count == 0
+                BannerText = _localModels.Count == 0
                     ? $"Na komputerze {Network.ComputerName} nie ma żadnego modelu."
                     : $"Na komputerze {Network.ComputerName} nie ma modelu {wanted}. Wybierz model z listy (to modele tamtego komputera).";
             }
@@ -402,8 +516,9 @@ public sealed class MainViewModel : ObservableObject
         catch (OllamaException e)
         {
             OllamaStatusBrush = BadBrush;
-            Models.Clear();
-            SelectedModel = null;
+            // Modele w chmurze zostają na liście — działają bez Ollamy.
+            _localModels = [];
+            RebuildModels();
             CanPull = false;
             StatusText = "";
             if (remote)
@@ -454,6 +569,18 @@ public sealed class MainViewModel : ObservableObject
         if (!TryParseTemperature(TemperatureText, out var temperature))
         {
             StatusText = "Temperatura musi być liczbą od 0 do 2, np. 0,1.";
+            return;
+        }
+
+        if (InternetAccess)
+        {
+            await SendWithInternetAsync(selected, question, temperature);
+            return;
+        }
+
+        if (selected.Cloud is { } provider)
+        {
+            await SendCloudAsync(selected, provider, question, temperature);
             return;
         }
 
@@ -578,11 +705,20 @@ public sealed class MainViewModel : ObservableObject
     public HarnessContext CreateHarnessContext()
     {
         TryParseTemperature(TemperatureText, out var temperature);
+        var selected = SelectedModel;
         return new HarnessContext
         {
             OllamaUrl = _client.BaseUrl,
-            ComputeWhere = Network.IsRemote ? "liczy: " + Network.ComputerName : "liczy: ten komputer",
-            Model = SelectedModel?.Name ?? _settings.Model,
+            ComputeWhere = selected?.Cloud is { } cloud ? "liczy: chmura " + cloud.Name
+                : Network.IsRemote ? "liczy: " + Network.ComputerName : "liczy: ten komputer",
+            Model = selected?.Name ?? _settings.Model,
+            ModelLabel = selected?.Label ?? ModelItem.ShortName(_settings.Model),
+            Cloud = selected?.Cloud,
+            ModelBrush = selected?.NameBrush,
+            GetApiKey = provider => CloudViewModel.ResolveKey(_keys, provider),
+            GetCdeConnection = () => Cde.ConnectionString,
+            Web = InternetAccess ? _web : null,
+            CdeDescription = Cde.Summary,
             // Prompt profilu (karta, narzędzia, przykłady) zajmuje 4–8 tys. tokenów — mniej niż 16 384 nie ma sensu.
             ContextLength = Math.Max(16384, ContextLength),
             Temperature = temperature,
@@ -596,6 +732,344 @@ public sealed class MainViewModel : ObservableObject
     {
         var normalized = (text ?? "").Trim().Replace(',', '.');
         return double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && value is >= 0 and <= 2;
+    }
+
+    /// <summary>Czat z modelem w chmurze: cała odpowiedź naraz (bez strumienia), statystyki z liczby tokenów.</summary>
+    private async Task SendCloudAsync(ModelItem selected, CloudProvider provider, string question, double temperature)
+    {
+        var key = CloudViewModel.ResolveKey(_keys, provider);
+        if (string.IsNullOrEmpty(key))
+        {
+            StatusText = $"Brak klucza API {provider.Name} — wpisz go w Ustawieniach → Modele w chmurze.";
+            return;
+        }
+
+        var messages = BuildMessages(question);
+        var exchange = new ExchangeViewModel(question, selected.Name, null, selected)
+        {
+            Stats = $"Czekam na odpowiedź z chmury {provider.Name}…",
+        };
+        Exchanges.Add(exchange);
+        Question = "";
+        IsBusy = true;
+        StatusText = $"Liczy {provider.Family} w chmurze {provider.Name}… (Esc albo Stop przerywa)";
+        var cts = new CancellationTokenSource();
+        _cts = cts;
+        var clock = Stopwatch.StartNew();
+        var outcome = "ok";
+        string? error = null;
+        ILlmClient? llm = null;
+        try
+        {
+            llm = CloudLlm.Create(provider, key, selected.Name, temperature);
+            var response = await llm.CompleteAsync(
+                new LlmRequest { Messages = messages.Select(m => new LlmMessage(m.Role, m.Content)).ToList() }, cts.Token);
+            clock.Stop();
+            exchange.Answer = string.IsNullOrWhiteSpace(response.Content) ? "(model nie zwrócił tekstu)" : response.Content;
+            exchange.StatsData = new ChatStats(
+                response.PromptTokens, response.OutputTokens, TimeSpan.Zero, TimeSpan.Zero, clock.Elapsed, clock.Elapsed, clock.Elapsed, null, "chmura " + provider.Name);
+            exchange.Stats = string.Format(
+                Pl, "chmura {0} · {1} tok. wejścia · {2} tok. odpowiedzi · {3:0.0} s", provider.Name, response.PromptTokens, response.OutputTokens, clock.Elapsed.TotalSeconds);
+            exchange.Completed = true;
+            StatusText = $"Odpowiedź z chmury {provider.Name}.";
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            outcome = "przerwano";
+            exchange.Stats = string.Format(Pl, "Przerwano po {0:0.0} s.", clock.Elapsed.TotalSeconds);
+            StatusText = "Przerwano.";
+        }
+        catch (LlmException e)
+        {
+            outcome = "blad";
+            error = e.Message;
+            exchange.IsError = true;
+            exchange.Answer = e.Message;
+            exchange.Stats = "";
+            StatusText = "Błąd — opis w odpowiedzi.";
+        }
+        finally
+        {
+            (llm as IDisposable)?.Dispose();
+            _cts = null;
+            cts.Dispose();
+            IsBusy = false;
+        }
+
+        if (SaveHistory && !_options.IsAutoTest)
+        {
+            AppendHistory(exchange, AppSettings.ModelKey(provider.Id, selected.Name), temperature, messages, outcome, error);
+        }
+
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Czat z dostępem do internetu: pytanie idzie przez sesję harnessu z narzędziami szukaj_w_internecie, czytaj_strone
+    /// i kalkulator (działa z każdym modelem — lokalnym i w chmurze). Odpowiedź przychodzi w całości, ze źródłami.
+    /// </summary>
+    private async Task SendWithInternetAsync(ModelItem selected, string question, double temperature)
+    {
+        string? key = null;
+        if (selected.Cloud is { } cloud)
+        {
+            key = CloudViewModel.ResolveKey(_keys, cloud);
+            if (string.IsNullOrEmpty(key))
+            {
+                StatusText = $"Brak klucza API {cloud.Name} — wpisz go w Ustawieniach → Modele w chmurze.";
+                return;
+            }
+        }
+
+        var messages = BuildMessages(question);
+        var exchange = selected.Cloud is null
+            ? new ExchangeViewModel(question, selected.Name, Network.IsRemote ? Network.ComputerName : null)
+            : new ExchangeViewModel(question, selected.Name, null, selected);
+        exchange.Stats = "Model myśli (z dostępem do internetu)…";
+        Exchanges.Add(exchange);
+        Question = "";
+        IsBusy = true;
+        StatusText = "Model liczy, może szukać w internecie… (Esc albo Stop przerywa)";
+        var cts = new CancellationTokenSource();
+        _cts = cts;
+        var clock = Stopwatch.StartNew();
+        var outcome = "ok";
+        string? error = null;
+        ILlmClient? llm = null;
+        try
+        {
+            llm = selected.Cloud is { } provider
+                ? CloudLlm.Create(provider, key!, selected.Name, temperature)
+                : new OllamaLlmClient(new OllamaOptions
+                {
+                    Url = _client.BaseUrl,
+                    Model = selected.Name,
+                    ContextLength = Math.Max(16384, ContextLength),
+                    Temperature = temperature,
+                    KeepAlive = "10m",
+                    ClientName = "Czat (internet)",
+                    RequestTimeout = TimeSpan.FromMinutes(10),
+                });
+            using var session = new HarnessSession(llm, BuildInternetChatProfile(), null, new SessionOptions
+            {
+                Web = _web,
+                ContextNote = InternetChatNote(),
+            });
+            session.Progress += (_, e) =>
+            {
+                if (e.Kind == HarnessEventKind.ToolStarted && e.Call is { } call)
+                {
+                    var text = DescribeWebCall(call);
+                    Application.Current?.Dispatcher.InvokeAsync(() => exchange.Stats = text + "…");
+                }
+            };
+            var result = await session.SendAsync(question, cts.Token);
+            clock.Stop();
+            var web = result.Calls.Where(c => BuiltInTools.IsWeb(c.Tool)).ToList();
+            exchange.Answer = string.IsNullOrWhiteSpace(result.Text) ? "(model nie zwrócił tekstu)" : result.Text.Trim();
+            exchange.Stats = string.Format(Pl, "{0} · internet: {1} · wywołań modelu: {2} · {3:0.0} s",
+                selected.Cloud is { } c2 ? "chmura " + c2.Name : Network.IsRemote ? Network.ComputerName : "ten komputer",
+                web.Count == 0 ? "nie był potrzebny" : string.Join("; ", web.Select(DescribeWebCall)),
+                result.ModelCalls, clock.Elapsed.TotalSeconds);
+            exchange.Completed = true;
+            StatusText = web.Count == 0 ? "Odpowiedź bez sięgania do internetu." : "Odpowiedź z użyciem internetu.";
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            outcome = "przerwano";
+            exchange.Stats = string.Format(Pl, "Przerwano po {0:0.0} s.", clock.Elapsed.TotalSeconds);
+            StatusText = "Przerwano.";
+        }
+        catch (Exception e) when (e is LlmException or InvalidOperationException or HttpRequestException)
+        {
+            outcome = "blad";
+            error = e.Message;
+            exchange.IsError = true;
+            exchange.Answer = e.Message;
+            exchange.Stats = "";
+            StatusText = "Błąd — opis w odpowiedzi.";
+        }
+        finally
+        {
+            (llm as IDisposable)?.Dispose();
+            _cts = null;
+            cts.Dispose();
+            IsBusy = false;
+        }
+
+        if (SaveHistory && !_options.IsAutoTest)
+        {
+            AppendHistory(exchange, selected.Key, temperature, messages, outcome, error);
+        }
+
+        SaveSettings();
+    }
+
+    /// <summary>Profil czatu z internetem: polecenie systemowe z Ustawień + zasady korzystania z sieci.</summary>
+    private HarnessProfile BuildInternetChatProfile()
+    {
+        var system = (string.IsNullOrWhiteSpace(SystemPrompt) ? AppSettings.DefaultSystemPrompt : SystemPrompt.Trim()) + """
+
+
+            INTERNET
+            - Masz narzędzia szukaj_w_internecie i czytaj_strone. Użyj ich, gdy pytanie dotyczy aktualnych informacji (ceny, wersje, wydarzenia, normy, producenci), gdy nie jesteś pewien faktu albo gdy użytkownik poda adres strony. Na zwykłe pytania i rozmowę odpowiadaj od razu, bez internetu.
+            - Najpierw szukaj, potem przeczytaj 1–2 najlepsze strony. Nie wymyślaj adresów ani treści stron.
+            - Gdy korzystałeś z internetu, na końcu odpowiedzi dopisz „Źródła:” z adresami stron, z których wziąłeś informacje.
+            - Rachunki licz kalkulatorem.
+            """;
+        var settings = new ProfileSettings { Internet = true, MaxSteps = 8, MaxCallsPerStep = 3 };
+        settings.BuiltInTools.Add(BuiltInTools.CalculatorName);
+        foreach (var provider in CloudProvider.All)
+        {
+            settings.CloudProviders.Add(provider.Id);
+        }
+
+        return new HarnessProfile("czat", system, Array.Empty<ToolDefinition>(), settings).WithInternet();
+    }
+
+    /// <summary>Data i (przy „Pamiętaj rozmowę”) wcześniejsze pytania i odpowiedzi czatu, krótko.</summary>
+    private string InternetChatNote()
+    {
+        var note = new StringBuilder("Dziś jest ").Append(DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)).Append('.');
+        if (RememberConversation)
+        {
+            foreach (var earlier in Exchanges.Where(e => e.Completed && !e.IsError).TakeLast(6))
+            {
+                note.Append("\nWcześniej użytkownik: ").Append(Shorten(earlier.Question, 300))
+                    .Append("\nWcześniej Ty: ").Append(Shorten(earlier.Answer, 600));
+            }
+        }
+
+        return note.ToString();
+    }
+
+    private static string Shorten(string? text, int max)
+        => string.IsNullOrEmpty(text) || text.Length <= max ? text ?? "" : text[..max] + "…";
+
+    /// <summary>„szukam: norma PN-EN 1993” albo „czytam: pkn.pl”.</summary>
+    private static string DescribeWebCall(ExecutedCall call)
+    {
+        try
+        {
+            using var args = JsonDocument.Parse(string.IsNullOrEmpty(call.ArgumentsJson) ? "{}" : call.ArgumentsJson);
+            var root = args.RootElement;
+            if (call.Tool == BuiltInTools.WebSearchName && root.TryGetProperty("fraza", out var f))
+            {
+                return "szukam: " + f.GetString();
+            }
+
+            if (call.Tool == BuiltInTools.WebFetchName && root.TryGetProperty("adres", out var a))
+            {
+                var address = a.GetString() ?? "";
+                return "czytam: " + (Uri.TryCreate(address, UriKind.Absolute, out var uri) ? uri.Host : address);
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        return call.Tool;
+    }
+
+    /// <summary>
+    /// Składa listę modeli: z Ollamy i dodane w chmurze; ulubione na górze. Zostawia wybór, a gdy go nie ma — zapamiętany model,
+    /// potem domyślny lokalny. Modelu w chmurze nigdy nie wybiera sam (dane idą do dostawcy tylko z wyboru użytkownika).
+    /// </summary>
+    private void RebuildModels()
+    {
+        var previous = SelectedModel?.Key;
+        var favorites = new HashSet<string>(_settings.FavoriteModels, StringComparer.OrdinalIgnoreCase);
+        var items = _localModels.Select(m => new ModelItem(m)).ToList();
+        foreach (var chosen in _settings.CloudModels)
+        {
+            if (CloudProvider.Find(chosen.Provider) is { } provider)
+            {
+                items.Add(new ModelItem(provider, chosen.Id, chosen.Name));
+            }
+        }
+
+        foreach (var item in items)
+        {
+            item.IsFavorite = favorites.Contains(item.Key);
+            item.FavoriteCommand = ToggleFavoriteCommand;
+        }
+
+        var wasRefreshing = _refreshing;
+        _refreshing = true;
+        try
+        {
+            Models.Clear();
+            foreach (var item in SortModels(items))
+            {
+                Models.Add(item);
+            }
+
+            var wanted = AppSettings.ModelKey(_settings.ModelProvider, _settings.Model);
+            SelectedModel = Models.FirstOrDefault(m => previous is not null && SameModel(m.Key, previous))
+                ?? Models.FirstOrDefault(m => SameModel(m.Key, wanted))
+                ?? Models.FirstOrDefault(m => !m.IsCloud && SameModel(m.Name, AppSettings.DefaultModel))
+                ?? Models.FirstOrDefault(m => !m.IsCloud);
+        }
+        finally
+        {
+            _refreshing = wasRefreshing;
+        }
+
+        if (SelectedModel?.IsCloud == true && !IsBusy)
+        {
+            DescribeCloud(SelectedModel);
+        }
+    }
+
+    /// <summary>Ulubione na górze; dalej modele lokalne alfabetycznie, potem chmura: Anthropic, OpenAI, Google.</summary>
+    private static IEnumerable<ModelItem> SortModels(IEnumerable<ModelItem> items)
+        => items
+            .OrderBy(m => m.IsFavorite ? 0 : 1)
+            .ThenBy(m => m.Cloud is null ? -1 : CloudProvider.All.ToList().IndexOf(m.Cloud))
+            .ThenBy(m => m.IsCloud ? "" : m.Name, StringComparer.OrdinalIgnoreCase);
+
+    private void ToggleFavorite(ModelItem? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        item.IsFavorite = !item.IsFavorite;
+        _settings.FavoriteModels.RemoveAll(f => SameModel(f, item.Key));
+        if (item.IsFavorite)
+        {
+            _settings.FavoriteModels.Add(item.Key);
+        }
+
+        var wasRefreshing = _refreshing;
+        _refreshing = true;
+        try
+        {
+            var sorted = SortModels(Models.ToList()).ToList();
+            for (var i = 0; i < sorted.Count; i++)
+            {
+                var current = Models.IndexOf(sorted[i]);
+                if (current != i)
+                {
+                    Models.Move(current, i);
+                }
+            }
+        }
+        finally
+        {
+            _refreshing = wasRefreshing;
+        }
+
+        SaveSettings();
+    }
+
+    private void DescribeCloud(ModelItem model)
+    {
+        if (model.Cloud is { } provider)
+        {
+            StatusText = $"Model w chmurze {provider.Name}: pytania i rozmowa idą przez internet do {provider.Name}. W zakładce Code tylko w profilach, które na to pozwalają.";
+        }
     }
 
     private List<ChatMessage> BuildMessages(string question)
@@ -664,6 +1138,7 @@ public sealed class MainViewModel : ObservableObject
         if (tracker.Succeeded)
         {
             _settings.Model = model;
+            _settings.ModelProvider = null;
             await RefreshAsync();
         }
     }
@@ -766,6 +1241,12 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
+        if (selected.IsCloud)
+        {
+            DescribeCloud(selected);
+            return;
+        }
+
         DescribeRunning(await TryGetRunningAsync(selected.Name));
     }
 
@@ -847,6 +1328,7 @@ public sealed class MainViewModel : ObservableObject
         if (SelectedModel is not null)
         {
             _settings.Model = SelectedModel.Name;
+            _settings.ModelProvider = SelectedModel.Provider;
         }
 
         try

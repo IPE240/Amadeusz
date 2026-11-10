@@ -20,7 +20,7 @@ wykonuje. Nic nie wychodzi do internetu. Nazwa repozytorium to Amadeusz, a proje
 | `LokalneAI.Harness.Wpf` | panel rozmowy `HarnessPanel` (net48 i net10.0-windows) |
 | `LokalneAI.Harness.Postgres` | SQL tylko do odczytu dla profilu `cde` (Npgsql 8) |
 | `LokalneAI.Harness.Tests` | testy xUnit, uruchamiane na net10.0 i net48 |
-| `LokalneAI.App` | okno `LokalneAI.exe`: zakładki Czat, Code (asystent z uprawnieniami) i Ustawienia (gdzie liczyć, udostępnianie, kolejka); wygląd jak TransmittalMaster (`Theme.xaml`: te same klucze kolorów i stylów, własny pasek tytułu z kartami) |
+| `LokalneAI.App` | okno `LokalneAI.exe`: zakładki Czat, Code (asystent z uprawnieniami) i Ustawienia (gdzie liczyć, modele w chmurze, udostępnianie, kolejka); lista modeli z ulubionymi; wygląd jak TransmittalMaster (`Theme.xaml`: te same klucze kolorów i stylów, własny pasek tytułu z kartami) |
 | `LokalneAI.Gateway` | brama okna (Kestrel, net10.0): kolejka zapytań, liczenie na innym komputerze, udostępnianie w podsieci ([docs/siec.md](docs/siec.md)) |
 | `LokalneAI.Core`, `LokalneAI.Core.Tests` | klient Ollamy okna i testy (także bramy: `GatewayTests`) |
 | `LokalneAI.Eval` | testy profili z prawdziwym modelem, rozmiar promptu, aktualizacja i przeszukiwanie wiedzy |
@@ -68,6 +68,14 @@ dotnet run --project narzedzia\sprawdz_przyklady -f net10.0-windows   # przykła
 10. **Nie otwieraj portów w sieci podczas prób.** Testy i kontrola bez klikania używają `LoopbackCountsAsLan` /
     `--udostepnij`, bo port tylko na `127.0.0.1` nie wywołuje okna zapory Windows. Nie uruchamiaj
     `FirewallSetup.SetupAsync` (zmienia zaporę, wymaga administratora) bez prośby użytkownika.
+11. **Chmura: tylko Anthropic, OpenAI i Google, tylko gdzie profil pozwala.** Decyzja użytkownika (2026-11-07):
+    profil `cde` — modele lokalne i Claude; DeepSeek wyłącznie lokalnie. Pilnują tego `CloudProvider`
+    i `HarnessSession` (pole `chmura` w `profil.json`). Nie dopisuj dostawców do profili bez prośby użytkownika.
+    **Nie wysyłaj płatnych zapytań do chmury bez zgody użytkownika** — testy na podstawionym `HttpMessageHandler`.
+    Kluczy API nie czytaj, nie wypisuj i nie zapisuj poza `CloudKeyStore` (`%APPDATA%\LokalneAI\klucze.json`, DPAPI).
+12. **Hasła i klucze nigdy w repozytorium.** Hasło bazy CDE też trzyma `CloudKeyStore` (klucz `cde`, okno: Ustawienia →
+    Baza CDE). `narzedzia\sprawdz_sekrety.ps1` sprawdza commit (hak `.git\hooks\pre-commit`) i całe repozytorium
+    (test `SekretyTests`). Nie omijaj go (`--no-verify`); fałszywy alarm popraw we wzorcu, nie w danych.
 
 ## Konwencje
 

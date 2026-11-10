@@ -6,5 +6,6 @@
 {"uzytkownik": "usuń plik stary_raport.pdf", "wywolania": [{"narzedzie": "powershell", "argumenty": {"polecenie": "Remove-Item -LiteralPath 'stary_raport.pdf'", "opis": "Kasuje plik stary_raport.pdf."}}]}
 {"uzytkownik": "znajdź rysunki z R03 w nazwie", "wywolania": [{"narzedzie": "szukaj_plikow", "argumenty": {"wzorzec": "*R03*"}}]}
 {"uzytkownik": "co jest w pliku notatki.txt?", "wywolania": [{"narzedzie": "czytaj_plik", "argumenty": {"sciezka": "notatki.txt"}}]}
+{"uzytkownik": "napisz skrypt info.ps1, który pokaże datę i nazwę komputera", "wywolania": [{"narzedzie": "zapisz_plik", "argumenty": {"sciezka": "info.ps1", "tresc": "$data = Get-Date -Format 'yyyy-MM-dd HH:mm'\nWrite-Output \"Data: $data\"\nWrite-Output \"Komputer: $env:COMPUTERNAME\"\n"}}]}
 {"uzytkownik": "otwórz Notatnik", "wywolania": [{"narzedzie": "uruchom", "argumenty": {"program": "notepad"}}]}
 {"uzytkownik": "skasuj wszystko", "wywolania": [], "pytanie": "Co dokładnie mam usunąć? Podaj pliki albo wzorzec, np. *.tmp w folderze Wydruki."}

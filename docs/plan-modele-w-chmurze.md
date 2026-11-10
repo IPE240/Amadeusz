@@ -1,6 +1,17 @@
 # Plan: modele w chmurze (Claude, GPT, Gemini) — do testów
 
-Stan: plan, nic jeszcze nie zbudowano.
+Stan (2026-11-07): fazy 0–3 zbudowane i sprawdzone testami bez sieci; czat z modelem w chmurze działa bez strumienia
+(cała odpowiedź naraz). Brakuje: pierwszej prawdziwej próby z kluczem użytkownika i strumienia w czacie (faza 4).
+
+Co powstało:
+
+- `CloudProvider`, `CloudLlm`, `CloudModels`, `AnthropicLlmClient` i tryb chmury w `OpenAiCompatibleLlmClient`
+  (`LokalneAI.Harness`); `HarnessSession` odmawia modelu, na który profil nie pozwala, serwera w internecie spoza
+  listy i modeli „-cloud” z Ollamy; brama też ich nie przepuszcza.
+- Pole `chmura` w profilach: `cde` — `["anthropic"]`, pozostałe — trzech dostawców.
+- Okno: Ustawienia → „Modele w chmurze (test)” (klucze w `CloudKeyStore`, DPAPI), kolorowa lista modeli z gwiazdką
+  ulubionych, pasek w zakładce Code (dokąd idą dane albo czerwone ostrzeżenie), kolor w pasku stanu.
+- Lista modeli dostawcy jest pobierana z jego API, więc nowe modele pojawiają się same.
 
 ## Po co
 

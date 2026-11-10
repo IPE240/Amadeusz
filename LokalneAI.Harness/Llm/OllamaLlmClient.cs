@@ -39,7 +39,7 @@ namespace LokalneAI.Harness.Llm
     }
 
     /// <summary>Klient Ollamy: <c>POST /api/chat</c> bez strumienia, z <c>format</c> = JSON Schema.</summary>
-    public sealed class OllamaLlmClient : ILlmClient, IDisposable
+    public sealed class OllamaLlmClient : ILlmClient, ICloudAwareLlmClient, IDisposable
     {
         private readonly HttpClient _http;
         private readonly OllamaOptions _options;
@@ -69,6 +69,13 @@ namespace LokalneAI.Harness.Llm
 
         /// <inheritdoc/>
         public int ContextLength => _options.ContextLength;
+
+        /// <summary>
+        /// null = liczy sieć biura; <see cref="CloudProvider.OllamaCloudId"/> dla modeli „-cloud” (liczy ollama.com);
+        /// <see cref="CloudProvider.OutsideListId"/>, gdy adres Ollamy jest w internecie.
+        /// </summary>
+        public string CloudProviderId => CloudProvider.IsOllamaCloudModel(_options.Model) ? CloudProvider.OllamaCloudId
+            : CloudProvider.ClassifyUrl(_baseUrl) == null ? null : CloudProvider.OutsideListId;
 
         /// <inheritdoc/>
         public async Task<LlmResponse> CompleteAsync(LlmRequest request, CancellationToken cancellationToken)

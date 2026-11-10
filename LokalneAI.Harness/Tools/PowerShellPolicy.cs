@@ -146,6 +146,13 @@ namespace LokalneAI.Harness.Tools
                 return analysis;
             }
 
+            var newlines = EscapedNewlines.PowerShellProblem(script);
+            if (newlines != null)
+            {
+                analysis.RejectWith(newlines);
+                return analysis;
+            }
+
             var roots = NormalizeRoots(allowedRoots);
             var programs = NormalizeRoots(programRoots);
             List<Token> tokens;
