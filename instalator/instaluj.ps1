@@ -1,4 +1,4 @@
-﻿# LokalneAI — instalacja na komputerze użytkownika (bez praw administratora).
+﻿# Amadeusz (LokalneAI) — instalacja na komputerze użytkownika (bez praw administratora).
 #
 #   instaluj.bat                                     model liczy na tym PC (instaluje Ollamę i pobiera model)
 #   instaluj.bat -SerwerModelu http://serwer-ai:11434  model liczy na serwerze w biurze (bez Ollamy na tym PC)
@@ -6,8 +6,9 @@
 #
 # Model domyślny: Bielik 11B v3 (SpeakLeash, Q4_K_M) — najlepszy z Bielików w naszych testach (docs\wybor-modelu.md).
 #
-# Program trafia do %LOCALAPPDATA%\Programs\LokalneAI, dostaje skrót w menu Start i na pulpicie
-# oraz wpis w Ustawienia → Aplikacje (odinstalowanie). Ustawienia i historia użytkownika zostają przy aktualizacji.
+# Program trafia do %LOCALAPPDATA%\Programs\LokalneAI, dostaje skrót „Amadeusz” w menu Start i na pulpicie
+# oraz wpis w Ustawienia → Aplikacje (odinstalowanie). Ustawienia, historia, klucze API i hasło do bazy CDE
+# (%APPDATA%\LokalneAI) zostają przy aktualizacji.
 param(
     [string]$SerwerModelu = "",
     [string]$Model = "SpeakLeash/bielik-11b-v3.0-instruct:Q4_K_M",
@@ -28,11 +29,11 @@ if (-not (Test-Path $program)) {
     $repo = Split-Path $zrodlo -Parent
     $projekt = Join-Path $repo "LokalneAI.App\LokalneAI.App.csproj"
     if (-not (Test-Path $projekt)) {
-        throw "Brak folderu 'program' obok instalatora ($zrodlo). Rozpakuj całą paczkę LokalneAI-<wersja>.zip i uruchom instaluj.bat z niej."
+        throw "Brak folderu 'program' obok instalatora ($zrodlo). Rozpakuj całą paczkę Amadeusz-<wersja>.zip i uruchom instaluj.bat z niej."
     }
     Krok "Instalacja z repozytorium ($repo) — buduję program"
     if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-        throw "Do instalacji z repozytorium potrzebny jest .NET SDK 10 (https://dot.net). Bez niego użyj gotowej paczki LokalneAI-<wersja>.zip."
+        throw "Do instalacji z repozytorium potrzebny jest .NET SDK 10 (https://dot.net). Bez niego użyj gotowej paczki Amadeusz-<wersja>.zip."
     }
     if (-not $wersja) {
         # Ta sama wersja, którą domyślnie buduje narzedzia\zbuduj_instalator.ps1.
@@ -49,7 +50,7 @@ if (-not (Test-Path $program)) {
 }
 if (-not $wersja) { $wersja = "0.0.0" }
 
-Krok "LokalneAI $wersja → $cel"
+Krok "Amadeusz $wersja → $cel"
 
 # 1. Program (zamknij działającą kopię, żeby dało się podmienić pliki).
 Get-Process LokalneAI -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null; Start-Sleep 2; if (-not $_.HasExited) { $_.Kill() } }
@@ -151,20 +152,26 @@ if ($SerwerModelu) {
 Krok "Skróty"
 $exe = Join-Path $cel "LokalneAI.exe"
 $powloka = New-Object -ComObject WScript.Shell
-$miejsca = @(Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\LokalneAI.lnk")
-if (-not $BezSkrotuNaPulpicie) { $miejsca += Join-Path ([Environment]::GetFolderPath("Desktop")) "LokalneAI.lnk" }
+$menuStart = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
+$pulpit = [Environment]::GetFolderPath("Desktop")
+# Skróty „LokalneAI” z wersji do 0.3.0 zastępuje skrót „Amadeusz” (usuwamy tylko te, które wskazują ten program).
+foreach ($stary in @((Join-Path $menuStart "LokalneAI.lnk"), (Join-Path $pulpit "LokalneAI.lnk"))) {
+    if ((Test-Path $stary) -and $powloka.CreateShortcut($stary).TargetPath -eq $exe) { Remove-Item $stary -Force }
+}
+$miejsca = @(Join-Path $menuStart "Amadeusz.lnk")
+if (-not $BezSkrotuNaPulpicie) { $miejsca += Join-Path $pulpit "Amadeusz.lnk" }
 foreach ($lnk in $miejsca) {
     New-Item -ItemType Directory -Force (Split-Path $lnk) | Out-Null
     $skrot = $powloka.CreateShortcut($lnk)
     $skrot.TargetPath = $exe
     $skrot.WorkingDirectory = $cel
-    $skrot.Description = "LokalneAI — lokalny asystent AI"
+    $skrot.Description = "Amadeusz — asystent AI biura ODS"
     $skrot.Save()
 }
 
 $klucz = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LokalneAI"
 New-Item -Force $klucz | Out-Null
-Set-ItemProperty $klucz -Name DisplayName -Value "LokalneAI"
+Set-ItemProperty $klucz -Name DisplayName -Value "Amadeusz (LokalneAI)"
 Set-ItemProperty $klucz -Name DisplayVersion -Value $wersja
 Set-ItemProperty $klucz -Name Publisher -Value "Optimal Design of Structures Sp. z o.o."
 Set-ItemProperty $klucz -Name InstallLocation -Value $cel
@@ -174,5 +181,5 @@ Set-ItemProperty $klucz -Name NoModify -Value 1 -Type DWord
 Set-ItemProperty $klucz -Name NoRepair -Value 1 -Type DWord
 
 Krok "Gotowe"
-Write-Host "Uruchom LokalneAI z menu Start albo skrótu na pulpicie."
-Write-Host "Odinstalowanie: Ustawienia → Aplikacje → LokalneAI."
+Write-Host "Uruchom Amadeusza z menu Start albo skrótu na pulpicie."
+Write-Host "Odinstalowanie: Ustawienia → Aplikacje → Amadeusz (LokalneAI)."

@@ -1,14 +1,14 @@
-﻿# Buduje paczkę instalacyjną LokalneAI: dist\LokalneAI-<wersja>.zip
-#   powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 [-Wersja 0.3.0] [-ZDokumentacjaZRepozytoriow]
+﻿# Buduje paczkę instalacyjną Amadeusza: dist\Amadeusz-<wersja>.zip
+#   powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 [-Wersja 0.4.0] [-ZDokumentacjaZRepozytoriow]
 # Program jest publikowany jako self-contained (win-x64): na komputerach biura nie trzeba instalować .NET.
 # Pliki pobrane z repozytoriów (profile\*\wiedza\zrodla) domyślnie NIE trafiają do paczki — bywają z prywatnych
 # repozytoriów; na każdym komputerze program pobierze je sam, jeśli jego użytkownik ma dostęp.
-param([string]$Wersja = "0.3.0", [switch]$ZDokumentacjaZRepozytoriow)
+param([string]$Wersja = "0.4.0", [switch]$ZDokumentacjaZRepozytoriow)
 
 $ErrorActionPreference = "Stop"
 $repo = Split-Path $PSScriptRoot -Parent
 Set-Location $repo
-$nazwa = "LokalneAI-$Wersja"
+$nazwa = "Amadeusz-$Wersja"
 $folder = Join-Path $repo "dist\$nazwa"
 $zip = Join-Path $repo "dist\$nazwa.zip"
 $utf8Bom = New-Object System.Text.UTF8Encoding($true)

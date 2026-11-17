@@ -169,12 +169,14 @@ Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 ## Instalator
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 -Wersja 0.3.0
+powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 -Wersja 0.4.0
 ```
 
-Skrypt najpierw uruchamia testy, potem buduje `dist\LokalneAI-<wersja>.zip` (ok. 60 MB, program self-contained, więc
-.NET nie jest potrzebny). Na komputerze użytkownika: rozpakować i uruchomić `instaluj.bat`. Nie są potrzebne prawa
-administratora. Szczegóły w `instalator\CZYTAJ.txt`:
+Skrypt najpierw uruchamia testy, potem buduje `dist\Amadeusz-<wersja>.zip` (ok. 60 MB, program self-contained, więc
+.NET nie jest potrzebny). Na komputerze użytkownika: rozpakować i uruchomić `instaluj.bat`. Z klonu repozytorium
+wystarczy `instalator\instaluj.bat` (sam zbuduje program, potrzebny .NET SDK 10). Nie są potrzebne prawa
+administratora. Skróty nazywają się „Amadeusz” (te ze starszych wersji, „LokalneAI”, instalator zamienia), a folder
+programu i ustawień zostaje `LokalneAI`. Szczegóły w `instalator\CZYTAJ.txt`:
 
 - `instaluj.bat`: Ollama i model na tym komputerze;
 - `instaluj.bat -SerwerModelu http://serwer-ai:11434`: model na serwerze w biurze;
