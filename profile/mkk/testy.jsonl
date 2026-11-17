@@ -1,0 +1,8 @@
+{"id": "M01", "opis": "obsługa Hali: model szuka w wiedzy i odpowiada (bez poleceń gospodarza)", "kroki": [{"uzytkownik": "Jak w Hali dodać stężenia dachowe?", "oczekiwane": []}]}
+{"id": "M02", "opis": "znaki sił Robot a RFEM", "kroki": [{"uzytkownik": "Jaki znak ma siła osiowa w Robocie, a jaki w RFEM?", "oczekiwane": []}]}
+{"id": "M03", "opis": "limit API RFEM 6", "kroki": [{"uzytkownik": "Ile zapytań miesięcznie ma darmowy plan API RFEM 6?", "oczekiwane": []}]}
+{"id": "M04", "opis": "plik rf6 bez RFEM", "kroki": [{"uzytkownik": "Jak odczytać plik .rf6 bez uruchamiania RFEM-a?", "oczekiwane": []}]}
+{"id": "M05", "opis": "REST IDEA nie dodaje blach", "kroki": [{"uzytkownik": "Czy przez REST API IDEA StatiCa można dodać pojedynczą blachę do węzła?", "oczekiwane": []}]}
+{"id": "M06", "opis": "prośba o wykonanie = odmowa z instrukcją", "kroki": [{"uzytkownik": "Policz halę w Robocie.", "oczekiwane": []}]}
+{"id": "M07", "opis": "dopytanie o wersję", "kroki": [{"uzytkownik": "Jaka wersja klienta pasuje do mojego RFEM-a?", "oczekiwane": [], "pytanie": true}]}
+{"id": "M08", "opis": "sesja: pytanie i doprecyzowanie", "kroki": [{"uzytkownik": "Co to jest Modelarz węzłów?", "oczekiwane": []}, {"uzytkownik": "A w jakim pliku zapisuje węzeł?", "oczekiwane": []}]}

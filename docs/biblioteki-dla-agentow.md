@@ -426,7 +426,7 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `ContextUsage` | licznik kontekstu |
 | | `PromptBuilder` | podgląd polecenia systemowego |
 | | `StepSchema` | schemat JSON kroku modelu (do testów i diagnostyki) |
-| `LokalneAI.Harness.Profiles` | `HarnessProfile` | profil z folderu: `HarnessProfile.Load(folder)` |
+| `LokalneAI.Harness.Profiles` | `HarnessProfile` | profil z folderu: `HarnessProfile.Load(folder)`; `HasHostTools(folder)` = czy profil ma własne polecenia (profil samej wiedzy, np. `mkk`, ma pustą tablicę `narzedzia` i nie potrzebuje wykonawcy) |
 | | `ProfileSettings`, `FinishMode`, `SqlRule`, `FewShotExample` | zawartość `profil.json` i `przyklady.jsonl`; `HarnessProfile.LoadSettings(folder)` czyta sam `profil.json`; `AllowsCloud(id)` |
 | | `ToolDefinition` | narzędzie: nazwa, opis, schemat parametrów, `Mutates`, `FinishesTurn` |
 | `LokalneAI.Harness.Tools` | `IToolExecutor` | wykonawca gospodarza |

@@ -15,6 +15,7 @@ public class ProfileFilesTests
     [Theory]
     [InlineData("tekla", 23)]
     [InlineData("cde", 1)]
+    [InlineData("mkk", 0)]
     public void Profil_WczytujeSieZFolderu(string name, int hostTools)
     {
         var profile = HarnessProfile.Load(Paths.Profile(name));

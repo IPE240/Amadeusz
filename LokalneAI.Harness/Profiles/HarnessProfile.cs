@@ -207,6 +207,23 @@ namespace LokalneAI.Harness.Profiles
         /// <summary>Narzędzie o tej nazwie albo null.</summary>
         public ToolDefinition FindTool(string name) => Tools.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.Ordinal));
 
+        /// <summary>
+        /// Czy profil w folderze ma własne polecenia gospodarza w <c>narzedzia.json</c>. <c>false</c> dla profilu samej wiedzy
+        /// (pusta tablica <c>narzedzia</c>, np. <c>mkk</c>): model tylko szuka w dokumentacji i odpowiada, wykonawca nie jest potrzebny.
+        /// Brak pliku albo błąd w nim = <c>false</c>; czyta sam plik narzędzi, bez indeksu wiedzy.
+        /// </summary>
+        public static bool HasHostTools(string folder)
+        {
+            try
+            {
+                return ReadTools(Path.Combine(folder ?? "", "narzedzia.json")).Count > 0;
+            }
+            catch (Exception e) when (e is IOException || e is InvalidDataException || e is JsonException || e is KeyNotFoundException)
+            {
+                return false;
+            }
+        }
+
         /// <summary>Wczytuje profil z folderu. Brak <c>system.md</c> albo <c>narzedzia.json</c> to błąd.</summary>
         public static HarnessProfile Load(string folder)
         {

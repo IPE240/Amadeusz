@@ -240,6 +240,12 @@ public partial class HarnessView : UserControl
             options.ContextNote = "Komputer z Windows, użytkownik " + Environment.UserName + ". Folder bieżący na start: " + executorFiles.WorkingFolder
                 + ". Dozwolone foldery: " + string.Join("; ", roots.Select(Environment.ExpandEnvironmentVariables)) + ". Dziś jest " + DateTime.Today.ToString("yyyy-MM-dd") + ".";
         }
+        else if (profile.Tools.All(t => t.IsBuiltIn))
+        {
+            // Profil samej wiedzy (np. mkk): model szuka w dokumentacji i odpowiada; poleceń gospodarza nie ma, więc i wykonawcy nie trzeba.
+            executor = new DelegateExecutor((call, _) => Task.FromResult(ToolResult.Error("Profil " + profile.Name + " nie ma polecenia " + call.Name + ".")));
+            options.ContextNote = "Dziś jest " + DateTime.Today.ToString("yyyy-MM-dd") + ".";
+        }
         else if (BridgeRadio.IsChecked == true)
         {
             executor = new TeklaBridgeExecutor(new TeklaBridgeOptions { ExchangeFolder = ExchangeBox.Text.Trim(), ProfileFolder = folder });
@@ -287,8 +293,10 @@ public partial class HarnessView : UserControl
         var isCde = ProfileName == "cde";
         var isFiles = IsFilesProfile(ProfileName);
         var isComputer = ProfileName == "komputer";
-        Panel.ResultPreviewLength = isComputer ? 3000 : 600;
-        TeklaOptions.Visibility = isCde || isFiles ? Visibility.Collapsed : Visibility.Visible;
+        // Profil samej wiedzy (bez poleceń gospodarza, np. mkk): nie ma czego wykonywać, więc opcje Tekli nie mają sensu.
+        var isKnowledge = !isCde && !isFiles && ProfileName != null && !HarnessProfile.HasHostTools(ProfileFolderPath);
+        Panel.ResultPreviewLength = isComputer || isKnowledge ? 3000 : 600;
+        TeklaOptions.Visibility = isCde || isFiles || isKnowledge ? Visibility.Collapsed : Visibility.Visible;
         CdeOptions.Visibility = isCde ? Visibility.Visible : Visibility.Collapsed;
         RefreshCdeText();
         FilesOptions.Visibility = isFiles ? Visibility.Visible : Visibility.Collapsed;
@@ -300,6 +308,11 @@ public partial class HarnessView : UserControl
                   + "Polecenia, które tylko czytają, idą od razu; zmiany zależą od uprawnień."
             : isFiles
                 ? "Przykład: „cd C:\\ODS\\Projekty, a potem utwórz folder Raporty”, „co jest w tym folderze?”, „otwórz go”. Kasowania nie ma."
+            : isKnowledge
+                ? "Profil wiedzy: model szuka w dokumentacji (szukaj_wiedzy) i odpowiada, nie wykonuje poleceń. "
+                  + (ProfileName == "mkk"
+                      ? "Przykład: „jak w Hali dodać stężenia dachowe?”, „jaki znak ma siła osiowa w Robocie, a jaki w RFEM?”, „ile zapytań ma plan Free API RFEM 6?”."
+                      : "Dokumentację pobiera przycisk „Aktualizuj wiedzę”.")
                 : "Przykład: „wstaw słup HEB300 w punkcie 6000, 0 od zera do 3,53”, potem „zmień go na HEB320”, „dodaj mu podstawę z 4 kotwami M24”.";
         Panel.NewSession();
         RefreshCloudText();

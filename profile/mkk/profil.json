@@ -1,0 +1,10 @@
+{
+  "nazwa": "mkk",
+  "opis": "Pytania o programy Marka Kowolika (Hala, Modelarz węzłów) i o programy obliczeniowe biura: Robot, RFEM 5/6, IDEA StatiCa, IFC, SAP2000. Model szuka w dokumentacji z repozytorium MKK i odpowiada; nie wykonuje poleceń.",
+  "internet": true,
+  "zakonczenie": "model",
+  "narzedzia_wbudowane": ["szukaj_wiedzy", "kalkulator"],
+  "max_krokow": 4,
+  "max_wywolan_w_kroku": 2,
+  "temperatura": 0.1
+}

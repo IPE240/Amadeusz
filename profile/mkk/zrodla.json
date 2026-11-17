@@ -1,0 +1,19 @@
+{
+  "zrodla": [
+    {
+      "typ": "git",
+      "repo": "https://github.com/Optimal-Design-of-Structures/MKK.git",
+      "galaz": "main",
+      "pliki": [
+        "README.md",
+        "programy/*.md",
+        "kod/hala/README.md",
+        "kod/modelarz_wezlow/README.md",
+        "kod/hala/tools/ec3_wezly/*.md",
+        "kod/hala/tools/wezly_typowe/INTERFEJS.md",
+        "kod/hala/tools/rfem_client/README.md",
+        "lokalne-ai/wiedza/**/*.md"
+      ]
+    }
+  ]
+}

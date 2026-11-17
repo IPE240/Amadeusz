@@ -20,6 +20,10 @@ Są dwie części:
      plików: „ile jest PDF-ów z podfolderami?”, „w folderze R01 zmień R01 na R02 w nazwach”, „spakuj R02 do zipa”,
      „otwórz Notatnik”. Działa tylko w dozwolonych folderach. To, co tylko czyta, idzie od razu; każdą zmianę
      i uruchomienie programu użytkownik zatwierdza w okienku.
+   - **mkk**: „jak w Hali dodać stężenia dachowe?”, „jaki znak ma siła osiowa w Robocie, a jaki w RFEM?”, „ile zapytań
+     ma plan Free API RFEM 6?”. Profil samej wiedzy o programach Marka Kowolika (Hala, Modelarz węzłów) i o Robocie,
+     RFEM 5/6, IDEA StatiCa, IFC, SAP2000: model szuka w dokumentacji pobranej z repozytorium MKK (przycisk
+     „Aktualizuj wiedzę”) i odpowiada z podaniem pliku; niczego nie wykonuje.
 
    Dokumentację dla modelu wkleja się do `profile\<nazwa>\wiedza\`. Repozytoria z dokumentacją dodaje się przyciskiem
    **Źródła wiedzy…** w oknie asystenta; pliki aktualizują się same ([docs/profile.md](docs/profile.md)).
@@ -36,7 +40,8 @@ Są dwie części:
 2. **Okno** (`LokalneAI.App`) wygląda jak TransmittalMaster (kolory i style w `LokalneAI.App\Theme.xaml`).
    Karty są w granatowym pasku tytułu:
    - **Czat**: rozmowa z modelem i statystyki „gdzie liczył”.
-   - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`). Ma trzy poziomy uprawnień:
+   - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`) albo odpowiadający z dokumentacji
+     (`mkk`). Ma trzy poziomy uprawnień:
      *Tylko czyta*, *Pyta o każdą zmianę* i *Bez pytania (poza kasowaniem)*.
    - **Ustawienia**: gdzie liczyć (ten komputer albo mocniejszy komputer w biurze), modele w chmurze (test),
      udostępnianie tego komputera innym z tej samej podsieci, podgląd kolejki i parametry czatu.
@@ -161,7 +166,7 @@ Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie w WinForms (.NET Framework 4.8) | |
 | `LokalneAI.Gateway` | brama: kolejka, liczenie na innym komputerze, udostępnianie w podsieci | .NET 10, ASP.NET Core (Kestrel) |
 | `LokalneAI.Core`, `LokalneAI.App`, `LokalneAI.Core.Tests` | okno, jego klient Ollamy i testy (także bramy) | .NET 10 |
-| `profile\tekla`, `cde`, `pliki`, `komputer` | wiedza, polecenia, przykłady i testy profili | |
+| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk` | wiedza, polecenia, przykłady i testy profili | |
 | `szablony\` | szablon profilu i plików `AGENTS`, `CLAUDE`, `lokalne-ai\` dla repozytoriów programów | |
 | `narzedzia\sprawdz_przyklady` | kompiluje i uruchamia przykłady z `docs\biblioteki-dla-agentow.md` | .NET 10 i .NET Framework 4.8, C# 7.3 |
 | `docs\` | osadzanie, opisy dla AI, wiedza dla modeli, serwer modelu, format profilu, wybór modelu, raporty z badań | |

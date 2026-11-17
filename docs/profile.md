@@ -5,7 +5,10 @@ Gotowe profile:
 - [profile/tekla](../profile/tekla): polecenia w Tekli;
 - [profile/cde](../profile/cde): pytania do bazy CDE;
 - [profile/pliki](../profile/pliki): foldery, kopiowanie i przenoszenie, bez kasowania i bez PowerShella;
-- [profile/komputer](../profile/komputer): PowerShell, programy, czytanie i wyszukiwanie plików, z pytaniem o każdą zmianę.
+- [profile/komputer](../profile/komputer): PowerShell, programy, czytanie i wyszukiwanie plików, z pytaniem o każdą zmianę;
+- [profile/mkk](../profile/mkk): pytania o programy Marka Kowolika (Hala, Modelarz węzłów) i o Robota, RFEM, IDEA StatiCa,
+  IFC, SAP2000. Profil samej wiedzy: `narzedzia.json` ma pustą tablicę, model szuka w dokumentacji pobranej z repozytorium
+  MKK (`zrodla.json`) i odpowiada; okno nie pokazuje wtedy opcji Tekli (`HarnessProfile.HasHostTools`).
 
 | Plik | Obowiązkowy | Co zawiera |
 |---|---|---|
@@ -75,6 +78,7 @@ nie widzi. Nowy profil zaczyna się od kopii [szablony/profil](../szablony/profi
 |---|---|---|
 | `cde` | `["anthropic"]` | dane osobowe (godziny pracy): tylko modele lokalne i Claude |
 | `tekla`, `pliki`, `komputer` | `["anthropic", "openai", "google"]` | testy obsługi programów przez AI |
+| `mkk` | bez pola | dokumentacja MKK jest wewnętrzna i poufna (LICENCE w repozytorium); dopisanie `["anthropic"]` to decyzja użytkownika |
 | nowy profil bez pola | — | tylko modele lokalne, dopóki ktoś świadomie nie dopisze dostawców |
 
 Dozwolone wartości: `anthropic`, `openai`, `google`. Innych (np. `deepseek`) biblioteka nie przyjmie. Model w chmurze
@@ -86,7 +90,7 @@ dostaje to samo co lokalny: `system.md`, `karta.md`, przykłady, narzędzia i wy
 | Profil | `internet` | Dlaczego |
 |---|---|---|
 | `cde` | `false` | model widzi dane z bazy i mógłby je wysłać w zapytaniu do wyszukiwarki |
-| `tekla`, `pliki`, `komputer` | `true` | dokumentacja, normy, producenci |
+| `tekla`, `pliki`, `komputer`, `mkk` | `true` | dokumentacja, normy, producenci (`mkk`: publiczna dokumentacja Dlubal, Autodesk, IDEA StatiCa; `system.md` zakazuje wysyłania fragmentów wiedzy) |
 | nowy profil bez pola | — | bez internetu |
 
 Adresy w sieci biura i na tym komputerze (prywatne IP, nazwy bez kropki, `.local`, nazwy wskazujące adres prywatny,

@@ -25,7 +25,7 @@ wykonuje. Nic nie wychodzi do internetu. Nazwa repozytorium to Amadeusz, a proje
 | `LokalneAI.Core`, `LokalneAI.Core.Tests` | klient Ollamy okna i testy (także bramy: `GatewayTests`) |
 | `LokalneAI.Eval` | testy profili z prawdziwym modelem, rozmiar promptu, aktualizacja i przeszukiwanie wiedzy |
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie (WinForms, .NET Framework 4.8) |
-| `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer` ([docs/profile.md](docs/profile.md)) |
+| `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer`, `mkk` (sama wiedza: programy Marka Kowolika i Robot, RFEM, IDEA, IFC z repozytorium MKK) ([docs/profile.md](docs/profile.md)) |
 | `szablony\` | szablon profilu i plików dla repozytoriów programów biura |
 | `narzedzia\` | budowanie instalatora, porównanie modeli, `sprawdz_przyklady` (kompilacja przykładów z dokumentacji) |
 | `instalator\` | skrypty instalacji u użytkownika |

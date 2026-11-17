@@ -1,0 +1,16 @@
+{"uzytkownik": "Jak w Hali dodać stężenia dachowe?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "Hala stężenia dachowe krzyżulce okna"}}]}
+{"uzytkownik": "W jakim pliku Hala zapisuje projekt?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "Hala projekt zapis plik mkonH"}}]}
+{"uzytkownik": "Jaki znak ma siła osiowa w Robocie, a jaki w RFEM?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "znaki sił siła osiowa Robot RFEM ściskanie rozciąganie"}}]}
+{"uzytkownik": "Dlaczego skrypt do Robota zawiesza się przy obliczeniach?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "Robot Interactive obliczenia okno dialogowe blokuje"}}]}
+{"uzytkownik": "Ile zapytań miesięcznie ma darmowy plan API RFEM 6?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "RFEM 6 API plan Free limit zapytań"}}]}
+{"uzytkownik": "Jak otworzyć plik .rf6 bez RFEM-a?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "rf6 kontener ZIP model.db SQLite odczyt bez RFEM"}}]}
+{"uzytkownik": "Czy da się przez REST API IDEA dodać blachę do węzła?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "IDEA REST API dodaj blachę śrubę spoinę operacje IOM"}}]}
+{"uzytkownik": "Co to jest Modelarz węzłów?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "Modelarz węzłów program połączenia IDEA"}}]}
+{"uzytkownik": "Jak przeliczyć kąt obrotu pręta z Robota na RFEM 6?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "osie lokalne pręta kąt obrotu Robot RFEM gamma angle"}}]}
+{"uzytkownik": "Skąd Hala bierze bazę przekrojów?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "baza przekrojów przekroje.json import Robot RFEM"}}]}
+{"uzytkownik": "Czy można otworzyć plik z Robota 2027 w Robocie 2017?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "rtd wersja formatu Robot 2027 2017 2014"}}]}
+{"uzytkownik": "Jak policzyć węzeł głosem w Modelarzu?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "Modelarz głos mikrofon rysik polecenia"}}]}
+{"uzytkownik": "Dlaczego po imporcie z SAP2000 obciążenia są za małe?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "SAP2000 CIS/2 obciążenia liniowe 1000 razy jednostki"}}]}
+{"uzytkownik": "Jaka wersja klienta pasuje do mojego RFEM-a?", "wywolania": [], "pytanie": "Którą wersję RFEM 6 masz uruchomioną (np. 6.15, 6.16)? Klient dlubal.api musi pasować do buildu RFEM."}
+{"uzytkownik": "Policz halę i wyeksportuj do Robota.", "wywolania": [], "pytanie": "Nie wykonuję poleceń w programach. W Hali zrobisz to w dziale OBLICZENIA → zakładka Robot 2017 → „▶ Eksportuj do Robota, policz i pobierz wyniki”. Chcesz, żebym opisał kroki dokładniej?"}
+{"stan": "wynik szukaj_wiedzy: RFEM 78,5 kN/m³, Robot 2017 77,01 kN/m³", "uzytkownik": "O ile procent różni się ciężar stali w RFEM i w Robocie?", "wywolania": [{"narzedzie": "kalkulator", "argumenty": {"wyrazenie": "zaokraglij((78,5-77,01)/77,01*100; 2)"}}]}
