@@ -57,6 +57,9 @@ public partial class HarnessView : UserControl
         // Rozmowa jest już zapisana po ostatnim poleceniu, a panel właśnie się wyczyścił — nie zapisujemy pustej.
         Panel.NewSessionClicked += (_, _) => StartNewConversation(_currentGroup, save: false);
         ConversationTree.ItemsSource = _groups;
+        // Lista umiejętności: kliknięcie w przycisk przy otwartej liście ma ją zamknąć, a nie otworzyć od nowa.
+        SkillsPopup.Opened += (_, _) => SkillsButton.IsHitTestVisible = false;
+        SkillsPopup.Closed += (_, _) => SkillsButton.IsHitTestVisible = true;
     }
 
     /// <summary>Zaznaczone profile, np. „tekla+cde” (do opisu i kontroli bez klikania).</summary>
@@ -108,7 +111,7 @@ public partial class HarnessView : UserControl
             {
                 Content = name,
                 Tag = name,
-                Margin = new Thickness(0, 0, 12, 0),
+                Margin = new Thickness(0, 4, 0, 4),
                 VerticalAlignment = VerticalAlignment.Center,
                 IsChecked = chosen.Contains(name),
                 ToolTip = CloudViewModel.SafeDescription(Path.Combine(_context.ProfilesRoot, name)),
@@ -129,7 +132,7 @@ public partial class HarnessView : UserControl
         _loading = false;
         if (ProfilesPanel.Children.Count == 0)
         {
-            HintText.Text = "Nie znalazłem folderu z profilami (profile\\<nazwa>\\profil.json) obok programu ani wyżej.";
+            HintText.Text = "Nie znalazłem folderu z umiejętnościami (profile\\<nazwa>\\profil.json) obok programu ani wyżej.";
         }
 
         LoadGroups();
@@ -766,7 +769,7 @@ public partial class HarnessView : UserControl
         var blocked = names.Where(n => CloudViewModel.SafeSettings(Path.Combine(_context.ProfilesRoot, n))?.Internet != true).ToList();
         return names.Count == 0 ? "internet: —"
             : blocked.Count == 0 ? "internet: tak"
-            : names.Count == 1 ? "internet: nie w tym profilu"
+            : names.Count == 1 ? "internet: nie w tej umiejętności"
             : "internet: nie (" + string.Join(", ", blocked) + ")";
     }
 
@@ -789,7 +792,7 @@ public partial class HarnessView : UserControl
         {
             CloudBar.BorderBrush = _context.ModelBrush ?? (Brush)FindResource("LineBrush");
             CloudText.Foreground = (Brush)FindResource("TextBrush");
-            CloudText.Text = "Model w chmurze " + cloud.Name + ": polecenia, wyniki narzędzi i dokumentacja profili " + string.Join(", ", names)
+            CloudText.Text = "Model w chmurze " + cloud.Name + ": polecenia, wyniki narzędzi i dokumentacja umiejętności " + string.Join(", ", names)
                 + " idą przez internet do " + cloud.Name + ". Uprawnienia działają tak samo jak przy modelu lokalnym.";
         }
         else
@@ -797,9 +800,9 @@ public partial class HarnessView : UserControl
             var settings = CloudViewModel.SafeSettings(Path.Combine(_context.ProfilesRoot, refusing[0])) ?? new ProfileSettings();
             CloudBar.BorderBrush = (Brush)FindResource("BadBrush");
             CloudText.Foreground = (Brush)FindResource("BadBrush");
-            CloudText.Text = "Profil " + refusing[0] + ": " + CloudProvider.DescribeAllowed(settings.CloudProviders)
+            CloudText.Text = "Umiejętność " + refusing[0] + ": " + CloudProvider.DescribeAllowed(settings.CloudProviders)
                 + ". Model " + _context.ModelLabel + " (" + cloud.Name + ") tu nie zadziała — wybierz inny model na górze okna"
-                + (names.Count > 1 ? " albo odznacz profil " + string.Join(", ", refusing) + "." : ".");
+                + (names.Count > 1 ? " albo odznacz umiejętność " + string.Join(", ", refusing) + "." : ".");
         }
     }
 
@@ -841,6 +844,15 @@ public partial class HarnessView : UserControl
         }
 
         RefreshWorkFolderText();
+    }
+
+    /// <summary>Kontrola bez klikania: zrzut rozwiniętej listy umiejętności (osobne okienko — zrzut okna go nie obejmuje).</summary>
+    internal async Task SaveSkillsListAsync(string path)
+    {
+        SkillsButton.IsChecked = true;
+        await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        Snapshot.Save((FrameworkElement)SkillsPopup.Child, path);
+        SkillsButton.IsChecked = false;
     }
 
     /// <summary>Do kontroli bez klikania: wysyła polecenia po kolei.</summary>
@@ -894,7 +906,7 @@ public partial class HarnessView : UserControl
         var names = EffectiveProfiles;
         if (names.Count == 0)
         {
-            throw new InvalidOperationException("Zaznacz co najmniej jeden profil nad rozmową.");
+            throw new InvalidOperationException("Wybierz co najmniej jedną umiejętność nad rozmową.");
         }
 
         var parts = names.Select(n => HarnessProfile.Load(Path.Combine(_context.ProfilesRoot, n))).ToList();
@@ -1072,8 +1084,8 @@ public partial class HarnessView : UserControl
         {
             RebuildSession();
             Panel.AddInfo(EffectiveProfiles.Count == 0
-                ? "Nie ma zaznaczonego profilu — zaznacz co najmniej jeden."
-                : "Od teraz profile: " + string.Join(", ", EffectiveProfiles) + " (rozmowa trwa dalej).");
+                ? "Nie ma wybranej umiejętności — wybierz co najmniej jedną."
+                : "Od teraz umiejętności: " + string.Join(", ", EffectiveProfiles) + " (rozmowa trwa dalej).");
         }
         else
         {
@@ -1094,6 +1106,9 @@ public partial class HarnessView : UserControl
     private void ApplyProfiles(bool syncKnowledge)
     {
         var names = EffectiveProfiles;
+        var chosen = SelectedProfiles;
+        SkillsSummary.Text = chosen.Count == 0 ? "wybierz…" : string.Join(", ", chosen);
+        SkillsSummary.Foreground = (Brush)FindResource(chosen.Count == 0 ? "MutedBrush" : "TextBrush");
         bool IsKnowledge(string n) => n != "cde" && !IsFilesProfile(n) && !IsOfficeProfile(n) && !HarnessProfile.HasHostTools(Path.Combine(_context.ProfilesRoot, n));
         var isCde = names.Contains("cde");
         var isOffice = names.Any(IsOfficeProfile);
@@ -1110,7 +1125,7 @@ public partial class HarnessView : UserControl
 
         if (names.Count == 0)
         {
-            HintText.Text = "Zaznacz co najmniej jeden profil.";
+            HintText.Text = "Wybierz co najmniej jedną umiejętność.";
         }
         else if (names.Count == 1)
         {
@@ -1126,8 +1141,11 @@ public partial class HarnessView : UserControl
                     ? "Przykład: „co jest w notatka.docx?”, „dopisz na końcu raportu akapit…”, „wpisz do B10 sumę B2:B9”, „zapisz raport jako PDF”, "
                       + "„przygotuj maila do … z załącznikiem”. Czytanie idzie od razu; zmiany zależą od uprawnień, a mail zostaje szkicem (nie wysyła). "
                       + "Programy Office na tym komputerze: " + OfficeExecutor.InstalledSummary() + "."
+                : name == "tlumaczenie"
+                    ? "Wklej tekst po polsku — model odda tłumaczenie na angielski brytyjski (terminy konstrukcyjne bierze ze słownika umiejętności przez szukaj_wiedzy). "
+                      + "Razem z umiejętnością office tłumaczy dokumenty: „przeczytaj opis.docx i zapisz tłumaczenie jako opis_EN.docx”. Najlepiej z qwen3.5:9b albo Bielikiem 11B."
                 : IsKnowledge(name)
-                    ? "Profil wiedzy: model szuka w dokumentacji (szukaj_wiedzy) i odpowiada, nie wykonuje poleceń. "
+                    ? "Umiejętność oparta na wiedzy: model szuka w dokumentacji (szukaj_wiedzy) i odpowiada, nie wykonuje poleceń. "
                       + (name == "mkk"
                           ? "Przykład: „jak w Hali dodać stężenia dachowe?”, „jaki znak ma siła osiowa w Robocie, a jaki w RFEM?”, „ile zapytań ma plan Free API RFEM 6?”."
                           : "Dokumentację pobiera przycisk „Aktualizuj wiedzę”.")
@@ -1144,9 +1162,9 @@ public partial class HarnessView : UserControl
 
             var cloud = settings.Skip(1).Aggregate((IEnumerable<string>)settings[0].CloudProviders, (a, s) => a.Intersect(s.CloudProviders, StringComparer.OrdinalIgnoreCase)).ToList();
             rules.Add(cloud.Count == 0 ? "tylko modele lokalne" : "chmura: " + string.Join(", ", cloud.Select(c => CloudProvider.Find(c)?.Family ?? c)));
-            HintText.Text = "Kilka profili naraz: " + string.Join(" + ", names) + ". Obowiązują najostrzejsze zasady: " + string.Join(", ", rules)
-                + ". Polecenie systemowe to suma profili — przy małym modelu ustaw większy kontekst (Ustawienia → Czat)."
-                + (SelectedProfiles.Contains("pliki") && isComputer ? " Profil pliki pominięty: komputer ma wszystkie jego polecenia." : "");
+            HintText.Text = "Kilka umiejętności naraz: " + string.Join(" + ", names) + ". Obowiązują najostrzejsze zasady: " + string.Join(", ", rules)
+                + ". Polecenie systemowe to suma umiejętności — przy trzech i więcej ustaw kontekst 32768 (Ustawienia → Czat); mały model gorzej wybiera spośród wielu narzędzi."
+                + (SelectedProfiles.Contains("pliki") && isComputer ? " Umiejętność pliki pominięta: komputer ma wszystkie jej polecenia." : "");
         }
 
         if (syncKnowledge)
@@ -1211,7 +1229,7 @@ public partial class HarnessView : UserControl
         var names = EffectiveProfiles.Where(n => KnowledgeSync.ReadSources(FolderOf(n)).Count > 0).ToList();
         if (names.Count == 0)
         {
-            HintText.Text = "Zaznaczone profile nie mają źródeł dokumentacji. Kliknij „Źródła wiedzy…” i wklej adres repozytorium.";
+            HintText.Text = "Wybrane umiejętności nie mają źródeł dokumentacji. Kliknij „Źródła wiedzy…” i wklej adres repozytorium.";
             return;
         }
 
@@ -1235,7 +1253,7 @@ public partial class HarnessView : UserControl
         foreach (var name in names)
         {
             var profile = name;
-            menu.Items.Add(Item("Profil " + profile + "…", () => OpenSources(profile)));
+            menu.Items.Add(Item("Umiejętność " + profile + "…", () => OpenSources(profile)));
         }
 
         menu.IsOpen = menu.Items.Count > 0;
@@ -1252,16 +1270,16 @@ public partial class HarnessView : UserControl
         var folder = FolderOf(profile);
         if (KnowledgeSync.ReadSources(folder).Count == 0)
         {
-            HintText.Text = "Profil " + profile + " nie ma źródeł dokumentacji. Kliknij „Źródła wiedzy…” i wklej adres repozytorium.";
+            HintText.Text = "Umiejętność " + profile + " nie ma źródeł dokumentacji. Kliknij „Źródła wiedzy…” i wklej adres repozytorium.";
             return;
         }
 
         SyncButton.IsEnabled = false;
-        HintText.Text = "Aktualizuję wiedzę profilu " + profile + "…";
+        HintText.Text = "Aktualizuję wiedzę umiejętności " + profile + "…";
         try
         {
             var result = await Task.Run(() => KnowledgeSync.SyncAsync(folder, RepoCache));
-            HintText.Text = "Wiedza profilu " + profile + ": " + result + ". Następne polecenie użyje nowych plików.";
+            HintText.Text = "Wiedza umiejętności " + profile + ": " + result + ". Następne polecenie użyje nowych plików.";
             RebuildSession();
         }
         catch (Exception ex)

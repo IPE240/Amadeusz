@@ -34,7 +34,10 @@ maila nigdy nie jest wysyłany. Ścieżki tylko w dozwolonych folderach (pole na
   z każdą wersją Office’a, która ma COM (sprawdzone na Microsoft 365, wersja 16.0, polski interfejs).
 - Każde polecenie to osobny wątek STA z limitem czasu (`OfficeOptions.Timeout`, 120 s) na wypadek okna dialogowego Office’a.
 - `OfficeHost`: podłącza się do działającego programu (`GetActiveObject`) albo uruchamia nowy; dokument już otwarty
-  (po `FullName`) bierze zamiast otwierać drugi raz; po czytaniu zamyka to, co sam otworzył, i program, jeśli sam go uruchomił.
+  (po `FullName`) bierze zamiast otwierać drugi raz; po czytaniu zamyka to, co sam otworzył, a program tylko wtedy, gdy sam
+  go uruchomił, jest niewidoczny i pusty. Instancji, do której się tylko podłączył, nie zamyka nigdy (może należeć do innego
+  programu automatyzującego Office w tle). Dwa procesy automatyzujące Office naraz (np. dwa przebiegi testów) mogą przez to
+  zostawić ukrytą instancję — sprzątanie przez COM opisane w AGENTS.md.
 - `ShowAfterEdit = false` (testy, praca w tle) zapisuje i zamyka bez pokazywania.
 - `szukaj_plikow` i `pokaz_zawartosc` wykonuje `FileSystemExecutor` w środku, z tymi samymi dozwolonymi folderami.
 - Okno (zakładka Code) tworzy wykonawcę dla profilu `office` z folderami z pola nad rozmową (`HarnessView.IsOfficeProfile`);

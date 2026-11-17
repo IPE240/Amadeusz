@@ -261,6 +261,22 @@ public class CloudTests
     }
 
     [Fact]
+    public void Ollama_ZapytanieBezMyslenia_ChybaZeDozwolone()
+    {
+        // qwen3.5 potrafił myśleć kilka minut przed krokiem w JSON; Ollama przyjmuje "think": false także dla modeli bez myślenia.
+        using var client = new OllamaLlmClient(new OllamaOptions { Model = "qwen" });
+        using var thinking = new OllamaLlmClient(new OllamaOptions { Model = "qwen", AllowThinking = true });
+        var request = new LlmRequest { Messages = new[] { new LlmMessage("user", "x") }, JsonSchema = Schema };
+
+        var body = Paths.Json(client.BuildBody(request));
+        var bodyThinking = Paths.Json(thinking.BuildBody(request));
+
+        Assert.False(body.GetProperty("think").GetBoolean());
+        Assert.True(body.GetProperty("format").TryGetProperty("anyOf", out _));   // schemat kroku idzie dalej jako gramatyka
+        Assert.False(bodyThinking.TryGetProperty("think", out _));
+    }
+
+    [Fact]
     public void ListaModeli_BezModeliDoObrazowMowyIWektorow()
     {
         var openAi = CloudModels.Parse(CloudProvider.OpenAI,

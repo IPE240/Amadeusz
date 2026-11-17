@@ -9,6 +9,9 @@ Gotowe profile:
 - [profile/office](../profile/office): dokumenty Microsoft 365 — Word (czytanie, dopisywanie, zamiana), Excel (czytanie,
   wpisywanie wartości i formuł), Outlook (szkic maila, lista odebranych), PowerPoint (czytanie, nowy slajd), zapis kopii jako
   PDF; wykonawca `OfficeExecutor` z projektu `LokalneAI.Harness.Office` (COM zainstalowanego Office’a);
+- [profile/tlumaczenie](../profile/tlumaczenie): tłumaczenie tekstów biura na angielski (opisy techniczne, maile, pisma, notatki,
+  tytuły rysunków). Profil samej wiedzy: `narzedzia.json` z pustą tablicą, `zakonczenie: model`, słownik konstrukcyjny
+  i zwroty w `wiedza\` przez `szukaj_wiedzy`; odpowiedź modelu to samo tłumaczenie;
 - [profile/mkk](../profile/mkk): pytania o programy Marka Kowolika (Hala, Modelarz węzłów) i o Robota, RFEM, IDEA StatiCa,
   IFC, SAP2000. Profil samej wiedzy: `narzedzia.json` ma pustą tablicę, model szuka w dokumentacji pobranej z repozytorium
   MKK (`zrodla.json`) i odpowiada; okno nie pokazuje wtedy opcji Tekli (`HarnessProfile.HasHostTools`).

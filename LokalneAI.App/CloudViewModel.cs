@@ -75,7 +75,7 @@ public sealed class CloudViewModel : ObservableObject
             .Where(name => SafeSettings(Path.Combine(root, name))?.AllowsCloud(provider.Id) == true)
             .ToList();
         var denied = ProfilesFolder.List(root).Except(allowed).ToList();
-        return "Zakładka Code: " + (allowed.Count == 0 ? "żaden profil" : "profile " + string.Join(", ", allowed))
+        return "Zakładka Code: " + (allowed.Count == 0 ? "żadna umiejętność" : "umiejętności " + string.Join(", ", allowed))
             + (denied.Count == 0 ? "" : " (nie: " + string.Join(", ", denied) + ")") + ". Czat: tak.";
     }
 }

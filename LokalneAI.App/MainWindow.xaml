@@ -113,7 +113,7 @@
                             ToolTip="Sprawdź jeszcze raz Ollamę (albo inny komputer) i listę modeli" />
                     <CheckBox Style="{StaticResource SwitchToggle}" Content="Odblokuj dostęp do internetu" Margin="16,0,0,0"
                               IsChecked="{Binding InternetAccess}" IsEnabled="{Binding IsIdle}" VerticalAlignment="Center"
-                              ToolTip="Czat i zakładka Code mogą szukać w internecie (DuckDuckGo) i czytać strony. Profil cde — nigdy (dane z bazy nie mogą wyjść do wyszukiwarki). Adresy w sieci biura są zablokowane." />
+                              ToolTip="Czat i zakładka Code mogą szukać w internecie (DuckDuckGo) i czytać strony. Umiejętność cde — nigdy (dane z bazy nie mogą wyjść do wyszukiwarki). Adresy w sieci biura są zablokowane." />
                 </StackPanel>
                 <StackPanel Grid.Column="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0">
                     <TextBlock Text="{Binding OllamaStatus}" Foreground="{Binding OllamaStatusBrush}"
@@ -320,7 +320,7 @@
                             <Expander x:Name="SectionCloud" Style="{StaticResource PanelExpander}" Header="Modele w chmurze (test)" Tag="{Binding Cloud.Summary}">
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource Note}" Margin="0,0,0,6"
-                                               Text="Do testów obsługi programów przez AI. Pytanie, rozmowa, wyniki poleceń i dokumentacja profilu idą przez internet do dostawcy, a rachunek przychodzi za zużycie. Zasada biura: z chmury tylko Claude (Anthropic), GPT (OpenAI) i Gemini (Google); profil CDE — tylko modele lokalne i Claude; DeepSeek wyłącznie lokalnie. Modele w chmurze liczą się prosto z tego komputera, bez kolejki i bez innych komputerów." />
+                                               Text="Do testów obsługi programów przez AI. Pytanie, rozmowa, wyniki poleceń i dokumentacja umiejętności idą przez internet do dostawcy, a rachunek przychodzi za zużycie. Zasada biura: z chmury tylko Claude (Anthropic), GPT (OpenAI) i Gemini (Google); umiejętność cde — tylko modele lokalne i Claude; DeepSeek wyłącznie lokalnie. Modele w chmurze liczą się prosto z tego komputera, bez kolejki i bez innych komputerów." />
                                     <TextBlock Style="{StaticResource Note}" Margin="0,0,0,8"
                                                Text="Logowanie: programy łączą się kluczem API, nie kontem claude.ai, ChatGPT ani Gemini — abonament ich nie obejmuje. Klucz zakłada się w konsoli dostawcy (przycisk „Załóż klucz…”), wkleja tutaj i zapisuje; program szyfruje go Twoim kontem Windows i nigdzie nie wysyła poza dostawcę." />
                                     <ItemsControl ItemsSource="{Binding Cloud.Providers}">
@@ -398,7 +398,7 @@
                             <Expander x:Name="SectionCredentials" Style="{StaticResource PanelExpander}" Header="Menedżer poświadczeń" Tag="{Binding Credentials.Summary}">
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource Note}" Margin="0,0,0,8"
-                                               Text="Adresy, loginy i hasła są w Menedżerze poświadczeń Windows (Panel sterowania → Menedżer poświadczeń → Poświadczenia ogólne, wpisy „Amadeusz:…”), zaszyfrowane Twoim kontem Windows — nie w ustawieniach programu i nie w repozytorium. Wiersz zapisuje się, gdy z niego wyjdziesz; bazę PostgreSQL program od razu sprawdza (tylko odczyt). Profil asystenta, który potrzebuje bazy, pojawia się w zakładce Code, gdy jest tu jego baza." />
+                                               Text="Adresy, loginy i hasła są w Menedżerze poświadczeń Windows (Panel sterowania → Menedżer poświadczeń → Poświadczenia ogólne, wpisy „Amadeusz:…”), zaszyfrowane Twoim kontem Windows — nie w ustawieniach programu i nie w repozytorium. Wiersz zapisuje się, gdy z niego wyjdziesz; bazę PostgreSQL program od razu sprawdza (tylko odczyt). Umiejętność, która potrzebuje bazy, pojawia się w zakładce Code, gdy jest tu jej baza." />
                                     <ItemsControl ItemsSource="{Binding Credentials.Rows}" Focusable="False">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -419,7 +419,7 @@
                                                                  ToolTip="{Binding AddressHint}" />
                                                         <TextBlock Text="nazwa bazy" Style="{StaticResource RowLabel}" Visibility="{Binding PostgresOnly}" />
                                                         <TextBox Width="80" Text="{Binding Database, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding PostgresOnly}"
-                                                                 ToolTip="Nazwa bazy — po niej profil asystenta znajduje poświadczenie (np. profil cde → baza „cde”)" />
+                                                                 ToolTip="Nazwa bazy — po niej umiejętność znajduje poświadczenie (np. umiejętność cde → baza „cde”)" />
                                                         <TextBlock Text="user" Style="{StaticResource RowLabel}" />
                                                         <TextBox Width="90" Text="{Binding User, UpdateSourceTrigger=PropertyChanged}" />
                                                         <TextBlock Text="hasło" Style="{StaticResource RowLabel}" />

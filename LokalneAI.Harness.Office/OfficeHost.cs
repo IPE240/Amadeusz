@@ -283,13 +283,15 @@ namespace LokalneAI.Harness.Office
             }
 
             CloseDocument(false);
-            if (Created)
-            {
-                Quit();
-            }
+            Quit();
         }
 
-        /// <summary>Zamyka program, jeśli to my go uruchomiliśmy i nie ma w nim innych otwartych dokumentów.</summary>
+        /// <summary>
+        /// Zamyka program, jeśli to my go uruchomiliśmy i nie ma w nim innych otwartych dokumentów. Instancji, do której tylko
+        /// się podłączyliśmy, nie zamykamy nigdy — nawet niewidocznej i pustej: może należeć do innego programu, który automatyzuje
+        /// Office w tle (między jego operacjami licznik dokumentów bywa zerowy). Cena: dwa procesy automatyzujące Office naraz
+        /// (np. dwa przebiegi testów) mogą zostawić ukrytą instancję — sprzątanie opisane w AGENTS.md.
+        /// </summary>
         public void Quit()
         {
             if (!Created)
@@ -299,6 +301,11 @@ namespace LokalneAI.Harness.Office
 
             try
             {
+                if (IsVisible())
+                {
+                    return; // użytkownik już pracuje w oknie, które pokazaliśmy
+                }
+
                 var collection = Collection();
                 if (Com.Int(collection, "Count") > 0)
                 {
@@ -310,6 +317,25 @@ namespace LokalneAI.Harness.Office
             catch (OfficeException)
             {
                 // Program już zamknięty albo nie odpowiada — zwolnienie obiektów wystarczy.
+            }
+        }
+
+        /// <summary>Czy program ma widoczne okno (Word, Excel: <c>Visible</c>; PowerPoint: msoTrue = -1). Outlook: tak (nie zamykamy poczty).</summary>
+        private bool IsVisible()
+        {
+            if (Kind == OfficeKind.Outlook)
+            {
+                return true;
+            }
+
+            try
+            {
+                var visible = Com.Get(App, "Visible");
+                return visible is bool b ? b : Convert.ToInt32(visible ?? 0, System.Globalization.CultureInfo.InvariantCulture) != 0;
+            }
+            catch (OfficeException)
+            {
+                return true; // nie wiadomo — bezpieczniej nie zamykać
             }
         }
 

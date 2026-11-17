@@ -26,7 +26,7 @@ wykonuje. Nic nie wychodzi do internetu. Nazwa repozytorium to Amadeusz, a proje
 | `LokalneAI.Core`, `LokalneAI.Core.Tests` | klient Ollamy okna i testy (także bramy: `GatewayTests`) |
 | `LokalneAI.Eval` | testy profili z prawdziwym modelem, rozmiar promptu, aktualizacja i przeszukiwanie wiedzy |
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie (WinForms, .NET Framework 4.8) |
-| `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer`, `mkk` (sama wiedza: programy Marka Kowolika i Robot, RFEM, IDEA, IFC z repozytorium MKK), `office` (dokumenty Word, Excel, Outlook, PowerPoint) ([docs/profile.md](docs/profile.md)) |
+| `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer`, `mkk` (sama wiedza: programy Marka Kowolika i Robot, RFEM, IDEA, IFC z repozytorium MKK), `office` (dokumenty Word, Excel, Outlook, PowerPoint), `tlumaczenie` (sama wiedza: tłumaczenie tekstów biura na angielski ze słownikiem konstrukcyjnym) ([docs/profile.md](docs/profile.md)) |
 | `szablony\` | szablon profilu i plików dla repozytoriów programów biura |
 | `narzedzia\` | budowanie instalatora, porównanie modeli, `sprawdz_przyklady` (kompilacja przykładów z dokumentacji) |
 | `instalator\` | skrypty instalacji u użytkownika |
@@ -105,6 +105,8 @@ Zasady: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md). W tym repo
 
 - **Ollama i kontekst:** obcina po cichu prompt dłuższy niż `ContextLength`. Profil `tekla` potrzebuje 16384.
 - **Licznik tokenów:** `prompt_eval_count` w Ollamie liczy cały prompt, także część z pamięci podręcznej.
+- **Myślenie modeli:** qwen3.5 potrafił „myśleć” kilka minut przed krokiem w JSON (limit 300 s w Eval). `OllamaLlmClient`
+  wysyła `"think": false` (`OllamaOptions.AllowThinking = false`); Ollama przyjmuje to pole także dla modeli bez myślenia.
 - **Słabe rachunki modelu:** Bielik źle liczy w pamięci. Sumy liczy baza (SQL) albo narzędzie `kalkulator`,
   a `NumberGuard` sprawdza liczby w odpowiedzi.
 - **Ukośniki od modelu:** małe modele psują ukośniki w ścieżkach (`\t` zamiast `\` i podwójne `\\`).

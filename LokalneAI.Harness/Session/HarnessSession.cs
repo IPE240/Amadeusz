@@ -85,7 +85,7 @@ namespace LokalneAI.Harness.Session
                 : cloud == Llm.CloudProvider.OllamaCloudId ? "chmura Ollamy (ollama.com) — w biurze wyłączona"
                 : "serwer w internecie spoza listy dozwolonych (Anthropic, OpenAI, Google)";
             throw new InvalidOperationException(
-                "Profil " + profile.Name + ": " + Llm.CloudProvider.DescribeAllowed(profile.Settings.CloudProviders)
+                "Umiejętność " + profile.Name + ": " + Llm.CloudProvider.DescribeAllowed(profile.Settings.CloudProviders)
                 + ". Model " + llm.ModelName + " to " + who + ". Wybierz inny model.");
         }
 

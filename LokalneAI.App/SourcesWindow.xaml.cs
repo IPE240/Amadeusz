@@ -20,7 +20,7 @@ public partial class SourcesWindow : Window
         InitializeComponent();
         _profileFolder = profileFolder;
         _cacheFolder = cacheFolder;
-        Title = "Źródła wiedzy — profil " + profileName;
+        Title = "Źródła wiedzy — umiejętność " + profileName;
         IntroText.Text = "Wklej adres repozytorium (ten sam co do „git clone”, np. https://github.com/Firma/Repo.git) i wzorce plików "
             + "z dokumentacją: README.md; docs/**/*.md (** = z podfolderami; puste pole = wszystkie pliki .md). Gałąź może zostać pusta. Pliki trafią do " + System.IO.Path.Combine(profileFolder, "wiedza", "zrodla")
             + ", a asystent przeszuka je, gdy czegoś nie wie. Repozytoria prywatne działają, jeśli git na tym komputerze ma do nich dostęp. "
@@ -65,7 +65,7 @@ public partial class SourcesWindow : Window
         KnowledgeSync.WriteSources(_profileFolder, sources);
         if (sources.Count == 0)
         {
-            StatusText.Text = "Zapisano: profil nie ma źródeł.";
+            StatusText.Text = "Zapisano: umiejętność nie ma źródeł.";
             return;
         }
 

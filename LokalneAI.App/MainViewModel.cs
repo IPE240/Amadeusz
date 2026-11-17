@@ -238,7 +238,7 @@ public sealed class MainViewModel : ObservableObject
             _settings.InternetAccess = value;
             OnPropertyChanged();
             StatusText = value
-                ? "Internet odblokowany: czat i zakładka Code (poza profilem cde) mogą szukać w sieci i czytać strony. Zapytania wyszukiwania idą do DuckDuckGo."
+                ? "Internet odblokowany: czat i zakładka Code (poza umiejętnością cde) mogą szukać w sieci i czytać strony. Zapytania wyszukiwania idą do DuckDuckGo."
                 : "Internet zablokowany.";
             InternetChanged?.Invoke(this, EventArgs.Empty);
             SaveSettings();
@@ -1147,7 +1147,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (model.Cloud is { } provider)
         {
-            StatusText = $"Model w chmurze {provider.Name}: pytania i rozmowa idą przez internet do {provider.Name}. W zakładce Code tylko w profilach, które na to pozwalają.";
+            StatusText = $"Model w chmurze {provider.Name}: pytania i rozmowa idą przez internet do {provider.Name}. W zakładce Code tylko w umiejętnościach, które na to pozwalają.";
         }
     }
 

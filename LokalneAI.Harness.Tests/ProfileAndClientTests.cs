@@ -17,6 +17,7 @@ public class ProfileFilesTests
     [InlineData("cde", 1)]
     [InlineData("mkk", 0)]
     [InlineData("office", 15)]
+    [InlineData("tlumaczenie", 0)]
     public void Profil_WczytujeSieZFolderu(string name, int hostTools)
     {
         var profile = HarnessProfile.Load(Paths.Profile(name));

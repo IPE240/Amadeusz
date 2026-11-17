@@ -445,7 +445,7 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `KnowledgeSync`, `KnowledgeSource`, `KnowledgeSyncResult` | aktualizacja wiedzy z `zrodla.json` |
 | | `BuiltInTools`, `Calculator` | narzędzia wbudowane: `kalkulator`, `szukaj_wiedzy` |
 | `LokalneAI.Harness.Llm` | `ILlmClient` | dostęp do modelu (własna implementacja: testy, inny serwer) |
-| | `OllamaLlmClient`, `OllamaOptions` | Ollama `/api/chat`; `ClientName` = nazwa w kolejce okna |
+| | `OllamaLlmClient`, `OllamaOptions` | Ollama `/api/chat`; `ClientName` = nazwa w kolejce okna; `AllowThinking` (domyślnie false = zapytanie niesie `"think": false`, bo qwen3.5 myślał minutami przed krokiem) |
 | | `LocalGateway` | brama okna LokalneAI na tym PC: `ChooseUrl()`, `IsRunningAsync()` |
 | | `OpenAiCompatibleLlmClient`, `OpenAiCompatibleOptions` | serwery z API OpenAI `/v1/chat/completions`; w chmurze GPT i Gemini (`SchemaInPrompt`, `ChatPath`) |
 | | `CloudProvider` | dozwoleni dostawcy w chmurze (`All`, `Find`), `ClassifyUrl` (kto liczy pod adresem), `IsOllamaCloudModel` |

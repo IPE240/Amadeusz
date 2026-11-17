@@ -30,6 +30,10 @@ Są dwie części:
      (`LokalneAI.Harness.Office`): dokument otwarty u użytkownika jest edytowany na miejscu, po edycji zostaje otwarty na wierzchu.
      Czytanie idzie od razu, każdą zmianę użytkownik zatwierdza, mail zostaje szkicem (nic nie wysyła), nic nie jest kasowane.
      Tylko modele lokalne i bez internetu, bo model widzi treść dokumentów ([profile/office/README.md](profile/office/README.md)).
+   - **tlumaczenie**: „przetłumacz: Podstawy słupów utwierdzone, blacha podstawy PL40…”, „przetłumacz mail: Dzień dobry, w załączeniu…”.
+     Profil samej wiedzy: model oddaje tłumaczenie na angielski brytyjski (rejestr formalny, Eurokody), a terminy biura bierze
+     ze słownika profilu (ostroga = shear key, płatew = purlin, zestawienie stali = steel schedule…). Najlepszy lokalny model:
+     qwen3.5:9b ([profile/tlumaczenie/README.md](profile/tlumaczenie/README.md)).
 
    Dokumentację dla modelu wkleja się do `profile\<nazwa>\wiedza\`. Repozytoria z dokumentacją dodaje się przyciskiem
    **Źródła wiedzy…** w oknie asystenta; pliki aktualizują się same ([docs/profile.md](docs/profile.md)).
@@ -197,7 +201,7 @@ Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie w WinForms (.NET Framework 4.8) | |
 | `LokalneAI.Gateway` | brama: kolejka, liczenie na innym komputerze, udostępnianie w podsieci | .NET 10, ASP.NET Core (Kestrel) |
 | `LokalneAI.Core`, `LokalneAI.App`, `LokalneAI.Core.Tests` | okno, jego klient Ollamy i testy (także bramy) | .NET 10 |
-| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk`, `office` | wiedza, polecenia, przykłady i testy profili | |
+| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk`, `office`, `tlumaczenie` | wiedza, polecenia, przykłady i testy profili | |
 | `szablony\` | szablon profilu i plików `AGENTS`, `CLAUDE`, `lokalne-ai\` dla repozytoriów programów | |
 | `narzedzia\sprawdz_przyklady` | kompiluje i uruchamia przykłady z `docs\biblioteki-dla-agentow.md` | .NET 10 i .NET Framework 4.8, C# 7.3 |
 | `docs\` | osadzanie, opisy dla AI, wiedza dla modeli, serwer modelu, format profilu, wybór modelu, raporty z badań | |

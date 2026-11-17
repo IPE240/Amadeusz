@@ -36,6 +36,13 @@ namespace LokalneAI.Harness.Llm
         /// Ollama go pomija. Null = bez nazwy.
         /// </summary>
         public string ClientName { get; set; }
+
+        /// <summary>
+        /// Pozwól modelowi „myśleć” przed odpowiedzią (pole <c>think</c> w <c>/api/chat</c>). Domyślnie false: zapytanie niesie
+        /// <c>"think": false</c>, bo modele z trybem myślenia (qwen3.5) potrafiły myśleć kilka minut przed krokiem w JSON,
+        /// a Ollama przyjmuje to pole także dla modeli bez myślenia (Bielik, Gemma — sprawdzone 2026-11-17). True = pole nie jest wysyłane.
+        /// </summary>
+        public bool AllowThinking { get; set; }
     }
 
     /// <summary>Klient Ollamy: <c>POST /api/chat</c> bez strumienia, z <c>format</c> = JSON Schema.</summary>
@@ -146,6 +153,11 @@ namespace LokalneAI.Harness.Llm
 
                     writer.WriteEndArray();
                     writer.WriteBoolean("stream", false);
+                    if (!_options.AllowThinking)
+                    {
+                        writer.WriteBoolean("think", false);
+                    }
+
                     if (!string.IsNullOrEmpty(request.JsonSchema))
                     {
                         writer.WritePropertyName("format");

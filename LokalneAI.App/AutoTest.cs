@@ -104,6 +104,7 @@ internal static class AutoTest
         view.AutoConfirm = true;
         var commands = (options.AutoTestQuestion ?? "").Split(new[] { "||" }, StringSplitOptions.RemoveEmptyEntries).Select(c => c.Trim()).ToList();
         var resume = commands.Remove("#wznow");
+        var skillsList = commands.Remove("#lista");
         view.ConfigureForTest(options.Harness!, roots, options.HarnessConnection, options.HarnessPerson, options.HarnessConversations, resume);
         if (commands.Remove("#zrodla"))
         {
@@ -120,6 +121,11 @@ internal static class AutoTest
             await sources.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             Snapshot.Save((FrameworkElement)sources.Content, Path.Combine(outputDir, "zrodla.png"));
             sources.Close();
+        }
+
+        if (skillsList)
+        {
+            await view.SaveSkillsListAsync(Path.Combine(outputDir, "umiejetnosci.png"));
         }
 
         await view.RunAsync(commands); // przy --rozmowy każde polecenie zapisuje rozmowę, jak w zwykłym oknie
