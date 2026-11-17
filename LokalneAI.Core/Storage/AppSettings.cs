@@ -40,6 +40,12 @@ public sealed class AppSettings
     /// <summary>Zakładka Code: zaznaczone profile (kilka naraz). Null = jeszcze nie zapisano (wtedy <see cref="HarnessProfile"/>).</summary>
     public List<string>? HarnessProfiles { get; set; }
 
+    /// <summary>
+    /// Zakładka Code: profile — nazwane zestawy umiejętności. Wybór profilu (jednokrotny) zaznacza jego umiejętności,
+    /// które potem można zmienić ręcznie. Null = jeszcze nie zapisano (wtedy <see cref="WorkProfileSetting.Defaults"/>).
+    /// </summary>
+    public List<WorkProfileSetting>? WorkProfiles { get; set; }
+
     /// <summary>Zakładka Code: grupy rozmów (foldery). Same wskazania — rozmowy leżą w <c>&lt;folder&gt;\.amadeusz\</c>.</summary>
     public List<CodeGroupSetting> CodeGroups { get; set; } = [];
 
@@ -170,11 +176,40 @@ public sealed class AppSettings
                 Collapsed = g.First().Collapsed,
             })
             .ToList();
+        WorkProfiles = WorkProfiles?
+            .Where(p => p is not null && !string.IsNullOrWhiteSpace(p.Name))
+            .GroupBy(p => p.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => new WorkProfileSetting
+            {
+                Name = g.Key,
+                Skills = (g.First().Skills ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).Distinct(StringComparer.Ordinal).ToList(),
+            })
+            .ToList();
         CodeUngroupedFolder = string.IsNullOrWhiteSpace(CodeUngroupedFolder) ? null : CodeUngroupedFolder.Trim();
         CodeLastGroup = string.IsNullOrWhiteSpace(CodeLastGroup) ? null : CodeLastGroup.Trim();
 
         return this;
     }
+}
+
+/// <summary>Profil zakładki Code: nazwa i umiejętności (nazwy folderów z <c>profile\</c>), które zaznacza jego wybór.</summary>
+public sealed class WorkProfileSetting
+{
+    public string Name { get; set; } = "";
+
+    public List<string> Skills { get; set; } = [];
+
+    /// <summary>
+    /// Profile na pierwsze uruchomienie (potem lista żyje w ustawieniach: „Zapisz jako profil…”, „Usuń profil”).
+    /// Umiejętności, których na danym komputerze nie ma (np. cde bez poświadczenia), są pomijane; profil bez żadnej jest ukryty.
+    /// </summary>
+    public static List<WorkProfileSetting> Defaults() =>
+    [
+        new() { Name = "Konstruktor", Skills = ["tekla", "mkk", "pliki"] },
+        new() { Name = "Biuro", Skills = ["office", "tlumaczenie", "pliki"] },
+        new() { Name = "Baza CDE", Skills = ["cde"] },
+        new() { Name = "Komputer", Skills = ["komputer"] },
+    ];
 }
 
 /// <summary>Model w chmurze dodany w Ustawieniach.</summary>

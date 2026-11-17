@@ -38,6 +38,8 @@ public partial class MainWindow : Window
             CodeView.RebuildSession();
         };
         CodeView.CredentialsRequested += (_, _) => OpenSettingsSection(SectionCredentials);
+        _viewModel.WorkProfiles.Changed += (_, _) => CodeView.ReloadWorkProfiles();
+        CodeView.WorkProfilesChanged += (_, _) => _viewModel.WorkProfiles.Reload();
         _viewModel.InternetChanged += (_, _) =>
         {
             CodeView.RefreshModelText();

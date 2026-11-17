@@ -123,6 +123,16 @@ internal static class AutoTest
             sources.Close();
         }
 
+        // „#profil:Nazwa” — wybór profilu z listy (zaznacza jego umiejętności).
+        foreach (var pick in commands.Where(c => c.StartsWith("#profil:", StringComparison.Ordinal)).ToList())
+        {
+            commands.Remove(pick);
+            if (!view.SelectWorkProfileForTest(pick["#profil:".Length..].Trim()))
+            {
+                Console.Error.WriteLine("Nie ma profilu: " + pick);
+            }
+        }
+
         if (skillsList)
         {
             await view.SaveSkillsListAsync(Path.Combine(outputDir, "umiejetnosci.png"));

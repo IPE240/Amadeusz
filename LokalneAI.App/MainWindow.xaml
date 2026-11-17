@@ -474,6 +474,48 @@
                                 </StackPanel>
                             </Expander>
 
+                            <!-- Profile: nazwane zestawy umiejętności (zakładka Code → lista „Profil”). Jeden wiersz = jeden profil. -->
+                            <Expander x:Name="SectionWorkProfiles" Style="{StaticResource PanelExpander}" Header="Profile" Tag="{Binding WorkProfiles.Summary}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Note}" Margin="0,0,0,8"
+                                               Text="Profil to gotowy zestaw umiejętności do trybu pracy. W zakładce Code wybór profilu zaznacza jego umiejętności — potem można je jeszcze zmienić. Zmiany tutaj zapisują się od razu (nazwa — po wyjściu z pola)." />
+                                    <ItemsControl ItemsSource="{Binding WorkProfiles.Rows}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,0,0,6">
+                                                    <TextBox DockPanel.Dock="Left" Width="150" VerticalAlignment="Top"
+                                                             Text="{Binding Name, UpdateSourceTrigger=LostFocus}" ToolTip="Nazwa profilu na liście w zakładce Code" />
+                                                    <Button DockPanel.Dock="Right" Content="×" Width="28" Padding="0" FontSize="15" VerticalAlignment="Top"
+                                                            Margin="6,0,0,0" Command="{Binding RemoveCommand}" ToolTip="Usuń profil (umiejętności i rozmowy zostają)" />
+                                                    <WrapPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                                                        <ItemsControl ItemsSource="{Binding Skills}" Focusable="False">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <WrapPanel />
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" ToolTip="{Binding Description}"
+                                                                              Margin="0,4,14,4" VerticalAlignment="Center" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <TextBlock Text="{Binding UnknownText}" Margin="0,4,0,4" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"
+                                                                   ToolTip="Tych umiejętności nie ma na tym komputerze — profil je zachowuje (mogą być na innym)" />
+                                                    </WrapPanel>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <WrapPanel Margin="0,2,0,0">
+                                        <Button Content="+" Width="36" FontSize="15" Padding="0,1" Command="{Binding WorkProfiles.AddCommand}" ToolTip="Dodaj profil" />
+                                        <Button Content="Przywróć domyślne" Margin="8,0,0,0" Command="{Binding WorkProfiles.RestoreDefaultsCommand}"
+                                                ToolTip="Dopisuje domyślne profile (Konstruktor, Biuro, Baza CDE, Komputer), których nie ma na liście; istniejących nie zmienia" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Expander>
+
                             <!-- Udostępnianie -->
                             <Expander x:Name="SectionShare" Style="{StaticResource PanelExpander}" Header="Udostępnianie tego komputera" Tag="{Binding Network.ShareSummary}">
                                 <StackPanel>

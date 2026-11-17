@@ -64,6 +64,10 @@
             <Border DockPanel.Dock="Top" Style="{StaticResource PanelBox}" Padding="12,10">
                 <StackPanel>
                     <WrapPanel>
+                        <TextBlock Text="Profil" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   ToolTip="Gotowy zestaw umiejętności do danego trybu pracy. Wybór zaznacza umiejętności — potem można je zmienić." />
+                        <ComboBox x:Name="WorkProfileBox" Width="160" Margin="0,0,14,0" SelectionChanged="WorkProfile_Changed"
+                                  ToolTip="Wybierz profil — zaznaczy swoje umiejętności" />
                         <TextBlock Text="Umiejętności" VerticalAlignment="Center" Margin="0,0,8,0"
                                    ToolTip="Co asystent umie. Można wybrać kilka naraz — wtedy obowiązują najostrzejsze zasady z nich (np. cde wyłącza internet)." />
                         <Grid VerticalAlignment="Center">
@@ -96,19 +100,30 @@
                                    IsOpen="{Binding IsChecked, ElementName=SkillsButton, Mode=TwoWay}">
                                 <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
                                         CornerRadius="4" Padding="10,6" MinWidth="{Binding ActualWidth, ElementName=SkillsButton}">
-                                    <StackPanel x:Name="ProfilesPanel" />
+                                    <StackPanel>
+                                        <StackPanel x:Name="ProfilesPanel" />
+                                        <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,4,0,6" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                            <Button Content="Zapisz jako profil…" Padding="8,2" Click="SaveWorkProfile_Click"
+                                                    ToolTip="Zaznaczone umiejętności zapisuje jako profil (nowy albo o tej samej nazwie — zastąpiony)" />
+                                            <Button x:Name="DeleteWorkProfileButton" Content="Usuń profil" Padding="8,2" Margin="6,0,0,0"
+                                                    Click="DeleteWorkProfile_Click" ToolTip="Usuwa wybrany profil z listy (umiejętności zostają zaznaczone)" />
+                                        </StackPanel>
+                                    </StackPanel>
                                 </Border>
                             </Popup>
                         </Grid>
-                        <TextBlock Text="Uprawnienia" VerticalAlignment="Center" Margin="10,0,6,0" />
-                        <ComboBox x:Name="PermissionBox" Width="210" SelectionChanged="Permission_Changed">
-                            <ComboBoxItem Tag="czyta" Content="Tylko czyta"
-                                          ToolTip="Polecenia, które coś zmieniają, są odrzucane bez pytania. Asystent może tylko czytać i odpowiadać." />
-                            <ComboBoxItem Tag="pytaj" Content="Pyta o każdą zmianę"
-                                          ToolTip="Przed każdą zmianą (plik, folder, model Tekli, program) pojawia się okienko Tak/Nie. Zalecane." />
-                            <ComboBoxItem Tag="bez" Content="Bez pytania (poza kasowaniem)"
-                                          ToolTip="Zmiany wykonują się od razu; kasowanie i inne ryzykowne polecenia nadal pytają. Działa do zamknięcia programu." />
-                        </ComboBox>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Uprawnienia" VerticalAlignment="Center" Margin="10,0,6,0" />
+                            <ComboBox x:Name="PermissionBox" Width="210" SelectionChanged="Permission_Changed">
+                                <ComboBoxItem Tag="czyta" Content="Tylko czyta"
+                                              ToolTip="Polecenia, które coś zmieniają, są odrzucane bez pytania. Asystent może tylko czytać i odpowiadać." />
+                                <ComboBoxItem Tag="pytaj" Content="Pyta o każdą zmianę"
+                                              ToolTip="Przed każdą zmianą (plik, folder, model Tekli, program) pojawia się okienko Tak/Nie. Zalecane." />
+                                <ComboBoxItem Tag="bez" Content="Bez pytania (poza kasowaniem)"
+                                              ToolTip="Zmiany wykonują się od razu; kasowanie i inne ryzykowne polecenia nadal pytają. Działa do zamknięcia programu." />
+                            </ComboBox>
+                        </StackPanel>
                         <CheckBox x:Name="StepsBox" Content="Pokaż kroki modelu (JSON)" VerticalAlignment="Center" Margin="14,0,0,0"
                                   Checked="Steps_Changed" Unchecked="Steps_Changed" />
                     </WrapPanel>

@@ -132,7 +132,16 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
   - Prawy klik na rozmowie: zmiana nazwy, przeniesienie do innej grupy (plik przechodzi do jej `.amadeusz\`),
     „Przenieś do kosza” (`.amadeusz\kosz\` — nic nie jest kasowane). Na grupie: otwórz folder, zmień nazwę,
     usuń z listy (pliki zostają i wrócą po ponownym dodaniu folderu).
-- **Kilka profili naraz** (np. `tekla` + `komputer`): model dostaje polecenia systemowe, karty, narzędzia i przykłady
+- **Profil** (lista obok „Umiejętności”, jednokrotny wybór): nazwany zestaw umiejętności do trybu pracy, np.
+  *Konstruktor* = `tekla` + `mkk` + `pliki`, *Biuro* = `office` + `tlumaczenie` + `pliki`. Wybór profilu tylko
+  zaznacza jego umiejętności — potem można je zmieniać, a lista pokazuje wtedy „własny wybór”. Na dole listy
+  umiejętności: „Zapisz jako profil…” (nowy albo zastąpienie o tej samej nazwie) i „Usuń profil”. Pełna edycja:
+  **Ustawienia → Profile** — wiersz = profil (nazwa, pola umiejętności, ×), „+” i „Przywróć domyślne”; zmiany od razu
+  widać w zakładce Code. Profile żyją w ustawieniach programu (`WorkProfiles`); na start są domyślne
+  z `WorkProfileSetting.Defaults()`. Umiejętność, której folderu na danym komputerze nie ma, profil zachowuje („brak tutaj”). Umiejętności
+  niedostępne na danym komputerze (np. `cde` bez poświadczenia) są pomijane, a profil bez żadnej — ukryty.
+  W napisach okna „umiejętność” = folder z `profile\` (nazwa folderu i klas w kodzie jeszcze stara).
+- **Kilka umiejętności naraz** (np. `tekla` + `komputer`): model dostaje polecenia systemowe, karty, narzędzia i przykłady
   wszystkich, a `szukaj_wiedzy` szuka w wiedzy każdego z nich. Obowiązują **najostrzejsze** zasady: chmura tylko
   u dostawcy dozwolonego we wszystkich (z `cde` — tylko Claude, z `mkk` — tylko modele lokalne), internet tylko gdy
   pozwalają wszystkie (`cde` wyłącza go całej rozmowie). `pliki` przy `komputer` wypadają (`komputer` ma wszystkie

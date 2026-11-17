@@ -113,6 +113,7 @@ public sealed class MainViewModel : ObservableObject
         };
         Cloud = new CloudViewModel(_settings, _keys, RebuildModels, SaveSettings);
         Credentials = new CredentialsViewModel(new CredentialVault(), _settings, _keys, SaveSettings);
+        WorkProfiles = new WorkProfilesViewModel(_settings, SaveSettings, ProfilesFolder.Find());
         if (_settingsStore.LoadError is { } loadError)
         {
             _statusText = $"Nie odczytałem ustawień ({loadError}), używam domyślnych.";
@@ -140,6 +141,9 @@ public sealed class MainViewModel : ObservableObject
 
     /// <summary>Ustawienia → Poświadczenia: wpisy PostgreSQL, FTP, SMB w Menedżerze poświadczeń Windows.</summary>
     public CredentialsViewModel Credentials { get; }
+
+    /// <summary>Ustawienia → „Profile”: nazwane zestawy umiejętności do zakładki Code.</summary>
+    public WorkProfilesViewModel WorkProfiles { get; }
 
     private readonly LokalneAI.Core.Hardware.TemperatureHistory _temperature = new();
     private System.Windows.Threading.DispatcherTimer? _temperatureTimer;

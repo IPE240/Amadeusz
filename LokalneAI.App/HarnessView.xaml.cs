@@ -48,6 +48,12 @@ public partial class HarnessView : UserControl
 
     private string? _testPerson;
 
+    /// <summary>Profile (nazwane zestawy umiejętności) — lista z ustawień albo domyślna.</summary>
+    private List<WorkProfileSetting> _workProfiles = [];
+
+    /// <summary>Ostatnio wybrany profil — gdy kilka ma te same umiejętności, lista pokazuje ten.</summary>
+    private string? _lastWorkProfile;
+
     public HarnessView()
     {
         InitializeComponent();
@@ -121,8 +127,9 @@ public partial class HarnessView : UserControl
             ProfilesPanel.Children.Add(box);
         }
 
+        _workProfiles = CopyWorkProfiles(settings.WorkProfiles);
         _loading = false;
-        RefreshCdeText(); // profile z bazą bez poświadczenia są ukryte
+        RefreshCdeText(); // profile z bazą bez poświadczenia są ukryte (odświeża też listę profili)
         _loading = true;
         if (SelectedProfiles.Count == 0 && ProfilesPanel.Children.OfType<CheckBox>().FirstOrDefault(c => c.Visibility == Visibility.Visible) is { } first)
         {
@@ -1078,6 +1085,12 @@ public partial class HarnessView : UserControl
             return;
         }
 
+        SkillsChanged();
+    }
+
+    /// <summary>Po zmianie zaznaczonych umiejętności (ręcznie albo wyborem profilu): sesja, opis, zapis wyboru.</summary>
+    private void SkillsChanged()
+    {
         var hadConversation = Panel.Entries.Count > 0;
         ApplyProfiles(syncKnowledge: true);
         if (hadConversation)
@@ -1109,6 +1122,7 @@ public partial class HarnessView : UserControl
         var chosen = SelectedProfiles;
         SkillsSummary.Text = chosen.Count == 0 ? "wybierz…" : string.Join(", ", chosen);
         SkillsSummary.Foreground = (Brush)FindResource(chosen.Count == 0 ? "MutedBrush" : "TextBrush");
+        SyncWorkProfile();
         bool IsKnowledge(string n) => n != "cde" && !IsFilesProfile(n) && !IsOfficeProfile(n) && !HarnessProfile.HasHostTools(Path.Combine(_context.ProfilesRoot, n));
         var isCde = names.Contains("cde");
         var isOffice = names.Any(IsOfficeProfile);
@@ -1346,10 +1360,210 @@ public partial class HarnessView : UserControl
             CdeText.Foreground = (Brush)FindResource(access is null || string.IsNullOrWhiteSpace(access.PersonId) ? "BadBrush" : "MutedBrush");
         }
 
+        RebuildWorkProfiles();
         if (changed)
         {
             ApplyProfiles(syncKnowledge: false);
         }
+    }
+
+    // ───────────────────────────── Profile (zestawy umiejętności) ─────────────────────────────
+
+    /// <summary>Umiejętności widoczne na liście (bez tych, którym brakuje poświadczenia).</summary>
+    private HashSet<string> AvailableSkills => ProfilesPanel.Children.OfType<CheckBox>()
+        .Where(c => c.Visibility == Visibility.Visible).Select(c => (string)c.Tag).ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>Umiejętności profilu dostępne na tym komputerze, w kolejności listy umiejętności.</summary>
+    private List<string> SkillsOf(WorkProfileSetting profile, HashSet<string> available)
+        => ProfilesPanel.Children.OfType<CheckBox>().Select(c => (string)c.Tag).Where(n => available.Contains(n) && profile.Skills.Contains(n)).ToList();
+
+    /// <summary>Wypełnia listę profili (pomija te, z których umiejętności żadnej tu nie ma) i zaznacza pasujący.</summary>
+    private void RebuildWorkProfiles()
+    {
+        var wasLoading = _loading;
+        _loading = true;
+        var available = AvailableSkills;
+        WorkProfileBox.Items.Clear();
+        WorkProfileBox.Items.Add(new ComboBoxItem
+        {
+            Content = "własny wybór",
+            Foreground = (Brush)FindResource("MutedBrush"),
+            ToolTip = "Zaznaczone umiejętności nie pasują do żadnego profilu. „Zapisz jako profil…” na liście umiejętności zrobi z nich profil.",
+        });
+        foreach (var profile in _workProfiles)
+        {
+            var skills = SkillsOf(profile, available);
+            if (skills.Count == 0)
+            {
+                continue;
+            }
+
+            var missing = profile.Skills.Where(n => !available.Contains(n)).ToList();
+            WorkProfileBox.Items.Add(new ComboBoxItem
+            {
+                Content = profile.Name,
+                Tag = profile,
+                ToolTip = "Umiejętności: " + string.Join(", ", skills) + (missing.Count == 0 ? "" : " (niedostępne tutaj: " + string.Join(", ", missing) + ")"),
+            });
+        }
+
+        _loading = wasLoading;
+        SyncWorkProfile();
+    }
+
+    /// <summary>Zaznacza na liście profil o dokładnie tych umiejętnościach, które są zaznaczone; inaczej „własny wybór”.</summary>
+    private void SyncWorkProfile()
+    {
+        if (WorkProfileBox.Items.Count == 0)
+        {
+            return;
+        }
+
+        var available = AvailableSkills;
+        var chosen = SelectedProfiles;
+        var matching = WorkProfileBox.Items.OfType<ComboBoxItem>()
+            .Where(i => i.Tag is WorkProfileSetting p && SkillsOf(p, available).OrderBy(n => n).SequenceEqual(chosen.OrderBy(n => n)))
+            .ToList();
+        var match = matching.FirstOrDefault(i => ((WorkProfileSetting)i.Tag).Name == _lastWorkProfile) ?? matching.FirstOrDefault();
+        var wasLoading = _loading;
+        _loading = true;
+        WorkProfileBox.SelectedItem = match ?? WorkProfileBox.Items[0];
+        _loading = wasLoading;
+        var current = (match?.Tag as WorkProfileSetting)?.Name;
+        DeleteWorkProfileButton.IsEnabled = current is not null;
+        DeleteWorkProfileButton.Content = current is null ? "Usuń profil" : "Usuń profil „" + current + "”";
+    }
+
+    private void WorkProfile_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || WorkProfileBox.SelectedItem is not ComboBoxItem { Tag: WorkProfileSetting profile })
+        {
+            return;
+        }
+
+        SelectWorkProfile(profile);
+    }
+
+    /// <summary>Zaznacza umiejętności profilu (dostępne na tym komputerze) i odznacza resztę.</summary>
+    private void SelectWorkProfile(WorkProfileSetting profile)
+    {
+        _lastWorkProfile = profile.Name;
+        var skills = SkillsOf(profile, AvailableSkills);
+        if (skills.OrderBy(n => n).SequenceEqual(SelectedProfiles.OrderBy(n => n)))
+        {
+            SyncWorkProfile();
+            return;
+        }
+
+        _loading = true;
+        foreach (var box in ProfilesPanel.Children.OfType<CheckBox>())
+        {
+            box.IsChecked = skills.Contains((string)box.Tag);
+        }
+
+        _loading = false;
+        SkillsChanged();
+    }
+
+    private void SaveWorkProfile_Click(object sender, RoutedEventArgs e)
+    {
+        SkillsButton.IsChecked = false;
+        var chosen = SelectedProfiles;
+        if (chosen.Count == 0)
+        {
+            HintText.Text = "Najpierw zaznacz umiejętności, które ma mieć profil.";
+            return;
+        }
+
+        var name = TextPrompt.Ask(Window.GetWindow(this), "Zapisz jako profil",
+            "Nazwa profilu z umiejętnościami: " + string.Join(", ", chosen) + "\nProfil o tej samej nazwie zostanie zastąpiony.",
+            _lastWorkProfile ?? "");
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        name = name.Trim();
+        var index = _workProfiles.FindIndex(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+        var profile = new WorkProfileSetting { Name = name, Skills = chosen };
+        if (index >= 0)
+        {
+            _workProfiles[index] = profile;
+        }
+        else
+        {
+            _workProfiles.Add(profile);
+        }
+
+        _lastWorkProfile = name;
+        SaveWorkProfiles();
+        HintText.Text = "Zapisano profil „" + name + "”: " + string.Join(", ", chosen) + ".";
+    }
+
+    private void DeleteWorkProfile_Click(object sender, RoutedEventArgs e)
+    {
+        SkillsButton.IsChecked = false;
+        if (WorkProfileBox.SelectedItem is not ComboBoxItem { Tag: WorkProfileSetting profile })
+        {
+            return;
+        }
+
+        var answer = MessageBox.Show(Window.GetWindow(this),
+            "Usunąć profil „" + profile.Name + "” z listy?\nUmiejętności zostają zaznaczone, a rozmowy nic nie tracą.",
+            "Usuń profil", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (answer != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        _workProfiles.Remove(profile);
+        if (_lastWorkProfile == profile.Name)
+        {
+            _lastWorkProfile = null;
+        }
+
+        SaveWorkProfiles();
+    }
+
+    private void SaveWorkProfiles()
+    {
+        if (_saveSettings)
+        {
+            _context.Settings.WorkProfiles = CopyWorkProfiles(_workProfiles);
+            _context.Save?.Invoke();
+            WorkProfilesChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        RebuildWorkProfiles();
+    }
+
+    /// <summary>Profile zapisane tu („Zapisz jako profil…”, „Usuń profil”) — Ustawienia → Profile odświeżają listę.</summary>
+    public event EventHandler? WorkProfilesChanged;
+
+    /// <summary>Po zmianie w Ustawieniach → Profile: wczytuje listę profili od nowa (zaznaczone umiejętności zostają).</summary>
+    public void ReloadWorkProfiles()
+    {
+        _context = _contextProvider?.Invoke() ?? _context;
+        _workProfiles = CopyWorkProfiles(_context.Settings.WorkProfiles);
+        RebuildWorkProfiles();
+    }
+
+    /// <summary>Kopia listy (null = domyślne), żeby zmiany tutaj nie ruszały ustawień przed zapisem.</summary>
+    private static List<WorkProfileSetting> CopyWorkProfiles(List<WorkProfileSetting>? profiles)
+        => (profiles ?? WorkProfileSetting.Defaults()).Select(p => new WorkProfileSetting { Name = p.Name, Skills = p.Skills.ToList() }).ToList();
+
+    /// <summary>Kontrola bez klikania: wybiera profil po nazwie (jak z listy).</summary>
+    internal bool SelectWorkProfileForTest(string name)
+    {
+        var item = WorkProfileBox.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(i => i.Tag is WorkProfileSetting p && string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (item is null)
+        {
+            return false;
+        }
+
+        WorkProfileBox.SelectedItem = item; // jak kliknięcie: WorkProfile_Changed
+        return true;
     }
 
     private static string ConnectionFromJson(string path)
