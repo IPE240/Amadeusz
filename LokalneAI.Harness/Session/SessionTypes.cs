@@ -35,6 +35,13 @@ namespace LokalneAI.Harness.Session
         /// Null = wyłączony: model dostaje błąd zamiast wyników.
         /// </summary>
         public Tools.WebAccess Web { get; set; }
+
+        /// <summary>
+        /// Wcześniejsza rozmowa do wznowienia (np. zapisana w pliku przez gospodarza): wiadomości <c>user</c> i <c>assistant</c>
+        /// z <see cref="HarnessSession.History"/>, bez polecenia systemowego. Null = nowa rozmowa. Polecenie systemowe składa się
+        /// od nowa z bieżącego profilu, więc rozmowę można wznowić z innymi profilami niż te, z którymi się zaczęła.
+        /// </summary>
+        public IList<Llm.LlmMessage> History { get; set; }
     }
 
     /// <summary>Zajętość kontekstu modelu — do licznika w oknie gospodarza.</summary>

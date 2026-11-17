@@ -22,6 +22,8 @@ public partial class MainWindow : Window
         {
             // Najpierw zakładka Code (kontrola bez klikania czeka tylko na InitializeAsync), potem Ollama i brama.
             CodeView.Attach(_viewModel.CreateHarnessContext);
+            _viewModel.TemperatureUpdated += (_, _) => TemperatureGraph.Show(_viewModel.Temperature);
+            _viewModel.StartTemperature();
             await _viewModel.InitializeAsync();
             CodeView.RefreshModelText();
             if (IsActive)
@@ -30,16 +32,16 @@ public partial class MainWindow : Window
             }
         };
         _viewModel.ComputeTargetChanged += (_, _) => CodeView.RefreshModelText();
-        _viewModel.Cde.SummaryChanged += (_, _) =>
+        _viewModel.Credentials.Changed += (_, _) =>
         {
             CodeView.RefreshCdeText();
-            CodeView.Panel.NewSession();
+            CodeView.RebuildSession();
         };
-        CodeView.CdeSettingsRequested += (_, _) => OpenSettingsSection(SectionCde);
+        CodeView.CredentialsRequested += (_, _) => OpenSettingsSection(SectionCredentials);
         _viewModel.InternetChanged += (_, _) =>
         {
             CodeView.RefreshModelText();
-            CodeView.Panel.NewSession();
+            CodeView.RebuildSession();
         };
         Tabs.SelectionChanged += (_, e) =>
         {
@@ -54,6 +56,31 @@ public partial class MainWindow : Window
             CodeView.Shutdown();
             _viewModel.OnClosing();
         };
+    }
+
+    /// <summary>Menedżer poświadczeń: wiersz zapisuje się, gdy kursor go opuszcza.</summary>
+    private void CredentialRow_FocusChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is false && sender is FrameworkElement { DataContext: CredentialRow row })
+        {
+            _viewModel.Credentials.Commit(row);
+        }
+    }
+
+    private void CredentialPassword_Changed(object sender, RoutedEventArgs e)
+    {
+        if (sender is PasswordBox { DataContext: CredentialRow row } box)
+        {
+            row.NewPassword = box.Password;
+        }
+    }
+
+    private void CredentialPassword_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is PasswordBox { DataContext: CredentialRow row } box)
+        {
+            row.NewPasswordCleared += (_, _) => box.Clear();
+        }
     }
 
     /// <summary>Sekcje zakładki Ustawienia: rozwinięte tak jak ostatnio; każde zwinięcie i rozwinięcie jest zapamiętywane.</summary>

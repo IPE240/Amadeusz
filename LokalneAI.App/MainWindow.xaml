@@ -40,13 +40,15 @@
             </StackPanel>
             <TextBlock Margin="16,0,18,0" VerticalAlignment="Center" DockPanel.Dock="Left"
                        FontSize="15" FontWeight="SemiBold" Foreground="White" Text="LokalneAI" />
-            <ListBox x:Name="TabStrip" HorizontalAlignment="Left"
+            <ListBox x:Name="TabStrip" HorizontalAlignment="Left" DockPanel.Dock="Left"
                      Style="{StaticResource TitleTabStrip}" ItemContainerStyle="{StaticResource TitleTab}"
                      SelectedIndex="{Binding SelectedIndex, ElementName=Tabs, Mode=TwoWay}">
                 <ListBoxItem Content="Czat" ToolTip="Rozmowa z modelem" />
                 <ListBoxItem Content="Code" ToolTip="Asystent, który wykonuje polecenia: Tekla, baza CDE, pliki, PowerShell" />
                 <ListBoxItem Content="Ustawienia" ToolTip="Gdzie liczyć, udostępnianie w sieci, kolejka, parametry czatu" />
             </ListBox>
+            <!-- Temperatura karty komputera, który liczy: ostatnie 2 minuty i bieżąca wartość (bez kliknięć — pasek dalej przesuwa okno). -->
+            <local:TemperatureGraph x:Name="TemperatureGraph" Margin="28,9,18,9" />
         </DockPanel>
 
         <Grid Grid.Row="1" Margin="14,12,14,6">
@@ -392,60 +394,77 @@
                                 </StackPanel>
                             </Expander>
 
-                            <!-- Baza CDE -->
-                            <Expander x:Name="SectionCde" Style="{StaticResource PanelExpander}" Header="Baza CDE (zakładka Code, profil cde)" Tag="{Binding Cde.Summary}">
+                            <!-- Menedżer poświadczeń: wpisy w Menedżerze poświadczeń Windows, jeden wiersz = jeden wpis. -->
+                            <Expander x:Name="SectionCredentials" Style="{StaticResource PanelExpander}" Header="Menedżer poświadczeń" Tag="{Binding Credentials.Summary}">
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource Note}" Margin="0,0,0,8"
-                                               Text="Dane logowania do bazy CDE (PostgreSQL) wpisujesz raz — program je pamięta. Hasło jest zaszyfrowane Twoim kontem Windows i leży w %APPDATA%\LokalneAI, poza repozytorium, więc nie trafi na GitHub. Asystent czyta bazę tylko w transakcji „tylko do odczytu”, niezależnie od uprawnień konta." />
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
-                                        <TextBlock Text="Serwer" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                        <WrapPanel Grid.Column="1">
-                                            <TextBox Width="160" Text="{Binding Cde.Host, UpdateSourceTrigger=PropertyChanged}" ToolTip="Adres serwera bazy, np. 10.0.0.214" />
-                                            <TextBlock Text="port" VerticalAlignment="Center" Margin="10,0,6,0" />
-                                            <TextBox Width="60" Text="{Binding Cde.PortText, UpdateSourceTrigger=PropertyChanged}" />
-                                            <TextBlock Text="baza" VerticalAlignment="Center" Margin="10,0,6,0" />
-                                            <TextBox Width="90" Text="{Binding Cde.Database, UpdateSourceTrigger=PropertyChanged}" />
-                                        </WrapPanel>
-                                        <TextBlock Grid.Row="1" Text="Użytkownik" VerticalAlignment="Center" Margin="0,8,10,0" />
-                                        <WrapPanel Grid.Row="1" Grid.Column="1" Margin="0,8,0,0">
-                                            <TextBox Width="160" Text="{Binding Cde.User, UpdateSourceTrigger=PropertyChanged}" />
-                                            <TextBlock Text="hasło" VerticalAlignment="Center" Margin="10,0,6,0" />
-                                            <PasswordBox x:Name="CdePasswordBox" Width="200"
-                                                         ToolTip="Puste pole = zostaje zapisane hasło. Po zapisaniu pole się czyści." />
-                                            <TextBlock Text="{Binding Cde.KeyStatus}" Margin="10,0,0,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
-                                        </WrapPanel>
-                                        <TextBlock Grid.Row="2" Text="Twój person_id" VerticalAlignment="Center" Margin="0,8,10,0" />
-                                        <TextBox Grid.Row="2" Grid.Column="1" Width="300" HorizontalAlignment="Left" Margin="0,8,0,0"
-                                                 Text="{Binding Cde.PersonId, UpdateSourceTrigger=PropertyChanged}"
-                                                 ToolTip="Twój identyfikator osoby w CDE (uuid). Model pyta o „moje” godziny tylko z nim." />
-                                        <WrapPanel Grid.Row="3" Grid.Column="1" Margin="0,10,0,0">
-                                            <Button Content="Zapisz i sprawdź" Style="{StaticResource PrimaryButton}"
-                                                    Command="{Binding Cde.SaveCommand}" CommandParameter="{Binding ElementName=CdePasswordBox}" />
-                                            <Button Content="Wczytaj z pliku…" Margin="8,0,0,0" Command="{Binding Cde.ImportCommand}"
-                                                    ToolTip="Plik JSON z polami host, port, dbname, user, password — np. polaczenie.local.json z repozytorium CDE (z niego korzystał Claude)" />
-                                            <Button Content="Sprawdź połączenie" Margin="8,0,0,0" Command="{Binding Cde.TestCommand}" />
-                                            <Button Content="Usuń hasło" Margin="8,0,0,0" Command="{Binding Cde.RemoveCommand}" />
-                                        </WrapPanel>
-                                    </Grid>
-                                    <TextBlock Text="{Binding Cde.Status}" Margin="0,8,0,0" TextWrapping="Wrap">
+                                               Text="Adresy, loginy i hasła są w Menedżerze poświadczeń Windows (Panel sterowania → Menedżer poświadczeń → Poświadczenia ogólne, wpisy „Amadeusz:…”), zaszyfrowane Twoim kontem Windows — nie w ustawieniach programu i nie w repozytorium. Wiersz zapisuje się, gdy z niego wyjdziesz; bazę PostgreSQL program od razu sprawdza (tylko odczyt). Profil asystenta, który potrzebuje bazy, pojawia się w zakładce Code, gdy jest tu jego baza." />
+                                    <ItemsControl ItemsSource="{Binding Credentials.Rows}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Margin="0,0,0,6" Background="Transparent" IsKeyboardFocusWithinChanged="CredentialRow_FocusChanged">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <StackPanel.Resources>
+                                                            <Style TargetType="TextBlock" x:Key="RowLabel">
+                                                                <Setter Property="VerticalAlignment" Value="Center" />
+                                                                <Setter Property="Margin" Value="8,0,5,0" />
+                                                                <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+                                                            </Style>
+                                                        </StackPanel.Resources>
+                                                        <TextBlock Text="typ" Style="{StaticResource RowLabel}" Margin="0,0,5,0" />
+                                                        <ComboBox Width="100" ItemsSource="{x:Static local:CredentialsViewModel.Kinds}" DisplayMemberPath="Value"
+                                                                  SelectedValuePath="Key" SelectedValue="{Binding Kind}" />
+                                                        <TextBlock Text="IP" Style="{StaticResource RowLabel}" />
+                                                        <TextBox Width="150" Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}"
+                                                                 ToolTip="{Binding AddressHint}" />
+                                                        <TextBlock Text="nazwa bazy" Style="{StaticResource RowLabel}" Visibility="{Binding PostgresOnly}" />
+                                                        <TextBox Width="80" Text="{Binding Database, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding PostgresOnly}"
+                                                                 ToolTip="Nazwa bazy — po niej profil asystenta znajduje poświadczenie (np. profil cde → baza „cde”)" />
+                                                        <TextBlock Text="user" Style="{StaticResource RowLabel}" />
+                                                        <TextBox Width="90" Text="{Binding User, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBlock Text="hasło" Style="{StaticResource RowLabel}" />
+                                                        <Grid Width="105">
+                                                            <PasswordBox PasswordChanged="CredentialPassword_Changed" Loaded="CredentialPassword_Loaded"
+                                                                         ToolTip="Puste pole = zostaje zapisane hasło. Hasło nie wraca do okna." />
+                                                            <TextBlock Text="{Binding PasswordHint}" IsHitTestVisible="False" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                                       Foreground="{StaticResource MutedBrush}" />
+                                                        </Grid>
+                                                        <TextBlock Text="person_id" Style="{StaticResource RowLabel}" Visibility="{Binding PostgresOnly}" />
+                                                        <TextBox Width="115" Text="{Binding PersonId, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding PostgresOnly}"
+                                                                 ToolTip="Twój identyfikator w tej bazie (np. person_id) — asystent pyta o „moje” dane. Można zostawić puste." />
+                                                        <Button Content="×" Width="28" Margin="6,0,0,0" Padding="0" FontSize="15" Command="{Binding RemoveCommand}"
+                                                                ToolTip="Usuń wpis (z Menedżera poświadczeń Windows)" />
+                                                        <TextBlock Text="{Binding State}" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="12">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Foreground" Value="{StaticResource GoodBrush}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding StateIsError}" Value="True">
+                                                                            <Setter Property="Foreground" Value="{StaticResource BadBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <WrapPanel Margin="0,2,0,0">
+                                        <Button Content="+" Width="36" FontSize="15" Padding="0,1" Command="{Binding Credentials.AddCommand}" ToolTip="Dodaj wpis" />
+                                        <Button Content="Wczytaj z pliku…" Margin="8,0,0,0" Command="{Binding Credentials.ImportCommand}"
+                                                ToolTip="Plik JSON z polami host, port, dbname, user, password → nowy wpis PostgreSQL (pliku konta administratora program nie wczyta)" />
+                                    </WrapPanel>
+                                    <TextBlock Text="{Binding Credentials.Status}" Margin="0,8,0,0" TextWrapping="Wrap">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Foreground" Value="{StaticResource GoodBrush}" />
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Cde.StatusIsError}" Value="True">
+                                                    <DataTrigger Binding="{Binding Credentials.StatusIsError}" Value="True">
                                                         <Setter Property="Foreground" Value="{StaticResource BadBrush}" />
                                                     </DataTrigger>
-                                                    <DataTrigger Binding="{Binding Cde.Status}" Value="">
+                                                    <DataTrigger Binding="{Binding Credentials.Status}" Value="">
                                                         <Setter Property="Visibility" Value="Collapsed" />
                                                     </DataTrigger>
                                                 </Style.Triggers>

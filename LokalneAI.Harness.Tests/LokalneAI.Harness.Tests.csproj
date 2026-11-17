@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness.Office\LokalneAI.Harness.Office.csproj" />
   </ItemGroup>
 
   <ItemGroup>

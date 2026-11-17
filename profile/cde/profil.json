@@ -3,6 +3,7 @@
   "opis": "Pytania o dane biura w bazie CDE (godziny, projekty, tony stali). Model pisze SQL tylko do odczytu, liczy baza.",
   "chmura": ["anthropic"],
   "internet": false,
+  "poswiadczenie": "cde",
   "zakonczenie": "model",
   "narzedzia_wbudowane": [
     "kalkulator",

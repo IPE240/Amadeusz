@@ -124,6 +124,9 @@ public sealed class NetworkViewModel : ObservableObject
     /// <summary>Liczy inny komputer (i jest ustawiony w bramie).</summary>
     public bool IsRemote => _gateway?.Options.IsRemote == true;
 
+    /// <summary>Adres bramy komputera, który liczy (null = ten komputer).</summary>
+    public string? RemoteUrl => IsRemote ? _gateway?.Options.RemoteUrl : null;
+
     /// <summary>Nazwa komputera, który liczy, do komunikatów.</summary>
     public string ComputerName => IsRemote ? _settings.ComputeOnName ?? RemoteAddress : Environment.MachineName;
 
@@ -322,6 +325,7 @@ public sealed class NetworkViewModel : ObservableObject
             ShareOnLan = _shareOnLan,
             MaxContextForOthers = _maxContextForOthers,
             GpuDescription = _gpuDescription,
+            ReadTemperature = LokalneAI.Core.Hardware.GpuTemperature.Read,
             Version = typeof(NetworkViewModel).Assembly.GetName().Version?.ToString(3) ?? "?",
             LoopbackCountsAsLan = _startup.IsAutoTest && _startup.Share,
         };

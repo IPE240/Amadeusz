@@ -78,6 +78,12 @@ namespace LokalneAI.Harness.Profiles
         /// </summary>
         public bool Internet { get; set; }
 
+        /// <summary>
+        /// Nazwa wpisu w Ustawieniach → Poświadczenia (<c>poswiadczenie</c> w <c>profil.json</c>), z którego profil bierze
+        /// połączenie z bazą. Null = bez poświadczenia. Gospodarz może nie pokazywać profilu, dopóki takiego wpisu nie ma.
+        /// </summary>
+        public string Credential { get; set; }
+
         /// <summary>Czy model liczony przez <paramref name="cloudProviderId"/> wolno użyć (null = model lokalny, zawsze wolno).</summary>
         public bool AllowsCloud(string cloudProviderId)
         {
@@ -171,7 +177,97 @@ namespace LokalneAI.Harness.Profiles
             var tools = Tools.Where(t => !t.IsBuiltIn || BuiltInTools.Get(t.Name) == null).ToList();
             tools.Add(BuiltInTools.Get(BuiltInTools.WebSearchName));
             tools.Add(BuiltInTools.Get(BuiltInTools.WebFetchName));
-            return new HarnessProfile(Name, SystemText, tools, Settings, CardText, Examples, Knowledge, Folder) { Description = Description };
+            return new HarnessProfile(Name, SystemText, tools, Settings, CardText, Examples, Knowledge, Folder) { Description = Description, _parts = _parts };
+        }
+
+        private IReadOnlyList<HarnessProfile> _parts;
+
+        /// <summary>Profile, z których złożono ten (<see cref="Combine"/>); dla zwykłego profilu — on sam.</summary>
+        public IReadOnlyList<HarnessProfile> Parts => _parts ?? new[] { this };
+
+        /// <summary>
+        /// Łączy kilka profili w jeden do jednej sesji (np. <c>tekla</c> + <c>komputer</c>). Jeden profil = on sam.
+        /// <list type="bullet">
+        /// <item>Polecenie systemowe i karta: części kolejnych profili z nagłówkiem roli. Narzędzia: suma (przy tej samej nazwie
+        /// wygrywa pierwszy profil). Przykłady: wszystkie. Wiedza: jeden indeks, źródła z przedrostkiem nazwy profilu.</item>
+        /// <item>Zasady bezpieczeństwa — najostrzejsze: chmura tylko u dostawców dozwolonych we <b>wszystkich</b> profilach,
+        /// internet tylko gdy pozwalają <b>wszystkie</b> (np. <c>cde</c> wyłącza go całej sesji), reguły i zakazy SQL — suma.</item>
+        /// <item>Zakończenie tury: wspólne, gdy wszystkie mają takie samo; inaczej <see cref="FinishMode.Mixed"/>
+        /// (koniec po zmianach, po samym czytaniu model decyduje dalej). Kroki i wywołania w kroku: największe.</item>
+        /// </list>
+        /// Polecenie systemowe rośnie o sumę części — więcej profili to dłuższy kontekst i trudniejszy wybór narzędzia dla małego modelu.
+        /// </summary>
+        public static HarnessProfile Combine(IEnumerable<HarnessProfile> profiles)
+        {
+            var list = (profiles ?? Enumerable.Empty<HarnessProfile>()).Where(p => p != null).SelectMany(p => p.Parts).Distinct().ToList();
+            if (list.Count == 0)
+            {
+                throw new ArgumentException("Brak profili do połączenia.", nameof(profiles));
+            }
+
+            if (list.Count == 1)
+            {
+                return list[0];
+            }
+
+            var names = list.Select(p => p.Name).ToList();
+            var system = new StringBuilder();
+            system.AppendLine("Pracujesz naraz w kilku rolach (profile: " + string.Join(", ", names) + "). Każda sekcja „Rola” niżej opisuje jedną rolę;")
+                .AppendLine("jej zasady obowiązują przy jej narzędziach. Do polecenia wybierz rolę, której narzędzia do niego pasują; gdy nie wiesz którą — zapytaj.");
+            var card = new StringBuilder();
+            foreach (var profile in list)
+            {
+                system.AppendLine().AppendLine("# Rola: " + profile.Name).AppendLine(profile.SystemText.Trim());
+                if (!string.IsNullOrWhiteSpace(profile.CardText))
+                {
+                    card.AppendLine("### " + profile.Name).AppendLine(profile.CardText.Trim()).AppendLine();
+                }
+            }
+
+            var tools = new List<ToolDefinition>();
+            foreach (var tool in list.SelectMany(p => p.Tools))
+            {
+                if (tools.All(t => t.Name != tool.Name))
+                {
+                    tools.Add(tool);
+                }
+            }
+
+            var knowledge = new KnowledgeIndex();
+            foreach (var profile in list)
+            {
+                knowledge.AddFrom(profile.Knowledge, profile.Name);
+            }
+
+            var all = list.Select(p => p.Settings).ToList();
+            var finish = all.Select(s => s.Finish).Distinct().Count() == 1 ? all[0].Finish : FinishMode.Mixed;
+            var temperatures = all.Where(s => s.Temperature.HasValue).Select(s => s.Temperature.Value).ToList();
+            var settings = new ProfileSettings
+            {
+                Finish = finish,
+                BuiltInTools = all.SelectMany(s => s.BuiltInTools).Distinct().ToList(),
+                CheckNumbers = all.Any(s => s.CheckNumbers),
+                SqlTools = all.SelectMany(s => s.SqlTools).Distinct().ToList(),
+                MaxSteps = all.Max(s => s.MaxSteps),
+                MaxCallsPerStep = all.Max(s => s.MaxCallsPerStep),
+                Plan = all.Any(s => s.Plan),
+                ReferencePreviousId = all.Any(s => s.ReferencePreviousId),
+                Temperature = temperatures.Count > 0 ? temperatures.Min() : (double?)null,
+                FullToolDescriptions = all.Any(s => s.FullToolDescriptions),
+                SqlRules = all.SelectMany(s => s.SqlRules).ToList(),
+                ForbiddenRelations = all.SelectMany(s => s.ForbiddenRelations).Distinct().ToList(),
+                CloudProviders = all.Skip(1).Aggregate(
+                    (IEnumerable<string>)all[0].CloudProviders.Select(c => c?.Trim().ToLowerInvariant()),
+                    (allowed, s) => allowed.Intersect(s.CloudProviders.Select(c => c?.Trim().ToLowerInvariant()))).Where(c => !string.IsNullOrEmpty(c)).ToList(),
+                Internet = all.All(s => s.Internet),
+            };
+
+            return new HarnessProfile(string.Join("+", names), system.ToString().TrimEnd(), tools, settings, card.ToString().TrimEnd(),
+                list.SelectMany(p => p.Examples), knowledge)
+            {
+                Description = string.Join(" ", list.Select(p => p.Description).Where(d => !string.IsNullOrWhiteSpace(d))),
+                _parts = list,
+            };
         }
 
         /// <summary>Nazwa profilu: <c>nazwa</c> z <c>profil.json</c> albo nazwa folderu.</summary>
@@ -363,6 +459,7 @@ namespace LokalneAI.Harness.Profiles
                 settings.ForbiddenRelations = GetStrings(root, "sql_zabronione");
                 settings.CloudProviders = GetStrings(root, "chmura");
                 settings.Internet = root.TryGetProperty("internet", out var internet) && internet.ValueKind == JsonValueKind.True;
+                settings.Credential = GetString(root, "poswiadczenie");
                 if (root.TryGetProperty("sql_reguly", out var rules) && rules.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var rule in rules.EnumerateArray())

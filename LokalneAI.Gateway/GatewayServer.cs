@@ -267,10 +267,23 @@ public sealed class GatewayServer : IAsyncDisposable
             Port = Port,
             Sharing = IsListeningOnLan,
             Gpu = options.GpuDescription,
+            Temperature = ReadTemperatureSafe(options),
             Running = snapshot.Count(i => i.State == QueueState.Running),
             Waiting = snapshot.Count(i => i.State == QueueState.Waiting),
             MaxContext = options.MaxContextForOthers,
         };
+    }
+
+    private static int? ReadTemperatureSafe(GatewayOptions options)
+    {
+        try
+        {
+            return options.ReadTemperature?.Invoke();
+        }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or DllNotFoundException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Model Ollamy liczony na serwerach ollama.com (tag <c>cloud</c> albo <c>…-cloud</c>), np. <c>deepseek-v3.1:671b-cloud</c>.</summary>

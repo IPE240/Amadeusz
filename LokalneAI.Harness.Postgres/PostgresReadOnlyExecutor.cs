@@ -15,7 +15,7 @@ namespace LokalneAI.Harness.Postgres
     /// <summary>Ustawienia wykonawcy SQL.</summary>
     public sealed class PostgresReadOnlyOptions
     {
-        /// <summary>Np. <c>Host=10.0.0.214;Port=5441;Database=cde;Username=…;Password=…</c>. Najlepiej rola tylko do odczytu.</summary>
+        /// <summary>Np. <c>Host=serwer;Port=5432;Database=baza;Username=…;Password=…</c>. Najlepiej rola tylko do odczytu.</summary>
         public string ConnectionString { get; set; }
 
         /// <summary>Ile wierszy wyniku najwyżej trafia do modelu (resztę zastępuje informacja o ucięciu).</summary>

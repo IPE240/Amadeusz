@@ -18,6 +18,7 @@
     <ProjectReference Include="..\LokalneAI.Core\LokalneAI.Core.csproj" />
     <ProjectReference Include="..\LokalneAI.Gateway\LokalneAI.Gateway.csproj" />
     <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness.Office\LokalneAI.Harness.Office.csproj" />
     <ProjectReference Include="..\LokalneAI.Harness.Postgres\LokalneAI.Harness.Postgres.csproj" />
     <ProjectReference Include="..\LokalneAI.Harness.Wpf\LokalneAI.Harness.Wpf.csproj" />
   </ItemGroup>

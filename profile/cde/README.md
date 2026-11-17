@@ -1,8 +1,8 @@
 # Profil B: pytania o projekty i godziny z bazy CDE
 
-Profil dla lokalnego modelu (np. Bielik 11B), który odpowiada po polsku na pytania z zarządzania projektami biura ODS, pisząc SQL (tylko SELECT) do bazy CDE (10.0.0.214:5441, baza `cde`, PostgreSQL 15). Rachunki robi baza.
+Profil dla lokalnego modelu (np. Bielik 11B), który odpowiada po polsku na pytania z zarządzania projektami biura ODS, pisząc SQL (tylko SELECT) do bazy CDE (PostgreSQL 15). Rachunki robi baza.
 
-Połączenie: okno LokalneAI → Ustawienia → Baza CDE (dane logowania zapamiętane, hasło zaszyfrowane kontem Windows). Serwer bazy opisuje repozytorium `CDE_serwer_bazy` (README pobierane do `wiedza\zrodla\`), strukturę danych — `cdeReposForAI/rozmowa_z_baza_cde/OPIS_KOLUMN.md` w repozytorium CDE.
+Połączenie: Ustawienia → Menedżer poświadczeń, wiersz PostgreSQL z nazwą bazy `cde` (adres, user, hasło, person_id; zapisane w Menedżerze poświadczeń Windows). Profil wskazuje go polem `"poswiadczenie": "cde"` w `profil.json`; bez takiego wpisu profil cde jest w zakładce Code ukryty. Serwer bazy opisuje repozytorium `CDE_serwer_bazy` (README pobierane do `wiedza\zrodla\`), strukturę danych — `cdeReposForAI/rozmowa_z_baza_cde/OPIS_KOLUMN.md` w repozytorium CDE.
 
 Aktualizacja 2026-11-08: treść dokumentów (`library.section`, wyszukiwanie słów), rewizje (`v_document_history`), notatka `wiedza/dokumenty.md`, przykłady i testy B44–B46; zablokowane `fin.` (finanse — dane poufne, w bazie jeszcze ich nie ma) oraz kolumny z nazwiskami (`author_raw`, `checker_raw`) i całe treści (`text_md`). Wszystkie 61 zapytań z przykładów i testów przechodzi na bazie (EXPLAIN, READ ONLY).
 

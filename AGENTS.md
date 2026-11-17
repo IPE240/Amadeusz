@@ -19,13 +19,14 @@ wykonuje. Nic nie wychodzi do internetu. Nazwa repozytorium to Amadeusz, a proje
 | `LokalneAI.Harness` | rdzeń (.NET Standard 2.0): sesja, profile, wykonawcy, strażnicy, klienci modelu |
 | `LokalneAI.Harness.Wpf` | panel rozmowy `HarnessPanel` (net48 i net10.0-windows) |
 | `LokalneAI.Harness.Postgres` | SQL tylko do odczytu dla profilu `cde` (Npgsql 8) |
+| `LokalneAI.Harness.Office` | Word, Excel, Outlook i PowerPoint dla profilu `office` przez COM zainstalowanego Microsoft 365 (późne wiązanie, bez paczek Interop; `OfficeExecutor`, `OfficeOptions`) |
 | `LokalneAI.Harness.Tests` | testy xUnit, uruchamiane na net10.0 i net48 |
 | `LokalneAI.App` | okno `LokalneAI.exe`: zakładki Czat, Code (asystent z uprawnieniami) i Ustawienia (gdzie liczyć, modele w chmurze, udostępnianie, kolejka); lista modeli z ulubionymi; wygląd jak TransmittalMaster (`Theme.xaml`: te same klucze kolorów i stylów, własny pasek tytułu z kartami) |
 | `LokalneAI.Gateway` | brama okna (Kestrel, net10.0): kolejka zapytań, liczenie na innym komputerze, udostępnianie w podsieci ([docs/siec.md](docs/siec.md)) |
 | `LokalneAI.Core`, `LokalneAI.Core.Tests` | klient Ollamy okna i testy (także bramy: `GatewayTests`) |
 | `LokalneAI.Eval` | testy profili z prawdziwym modelem, rozmiar promptu, aktualizacja i przeszukiwanie wiedzy |
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie (WinForms, .NET Framework 4.8) |
-| `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer`, `mkk` (sama wiedza: programy Marka Kowolika i Robot, RFEM, IDEA, IFC z repozytorium MKK) ([docs/profile.md](docs/profile.md)) |
+| `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer`, `mkk` (sama wiedza: programy Marka Kowolika i Robot, RFEM, IDEA, IFC z repozytorium MKK), `office` (dokumenty Word, Excel, Outlook, PowerPoint) ([docs/profile.md](docs/profile.md)) |
 | `szablony\` | szablon profilu i plików dla repozytoriów programów biura |
 | `narzedzia\` | budowanie instalatora, porównanie modeli, `sprawdz_przyklady` (kompilacja przykładów z dokumentacji) |
 | `instalator\` | skrypty instalacji u użytkownika |
@@ -45,7 +46,7 @@ dotnet run --project narzedzia\sprawdz_przyklady -f net10.0-windows   # przykła
 
 ## Zasady, których nie wolno łamać
 
-1. **Nie testuj i nie skanuj dysku `A:`** (`\\10.0.0.30\budowa`, dane budowy). Pracuj na kopiach lokalnych.
+1. **Nie testuj i nie skanuj dysku `A:`** (udział sieciowy z danymi budowy). Pracuj na kopiach lokalnych.
 2. **Nie kasuj ani nie zastępuj istniejących plików** bez pytania użytkownika. Nowe rzeczy dodawaj obok.
 3. **Commit i push tylko na wyraźne polecenie użytkownika.** Przed commitem przeszukaj zmiany pod kątem:
    - haseł,
@@ -73,8 +74,8 @@ dotnet run --project narzedzia\sprawdz_przyklady -f net10.0-windows   # przykła
     i `HarnessSession` (pole `chmura` w `profil.json`). Nie dopisuj dostawców do profili bez prośby użytkownika.
     **Nie wysyłaj płatnych zapytań do chmury bez zgody użytkownika** — testy na podstawionym `HttpMessageHandler`.
     Kluczy API nie czytaj, nie wypisuj i nie zapisuj poza `CloudKeyStore` (`%APPDATA%\LokalneAI\klucze.json`, DPAPI).
-12. **Hasła i klucze nigdy w repozytorium.** Hasło bazy CDE też trzyma `CloudKeyStore` (klucz `cde`, okno: Ustawienia →
-    Baza CDE). `narzedzia\sprawdz_sekrety.ps1` sprawdza commit (hak `.git\hooks\pre-commit`) i całe repozytorium
+12. **Hasła, loginy i adresy serwerów nigdy w repozytorium.** Dane baz, FTP i SMB trzyma `CredentialVault` w Menedżerze
+    poświadczeń Windows (okno: Ustawienia → Menedżer poświadczeń); w kodzie i dokumentacji tylko przykłady (`serwer`, `baza`). `narzedzia\sprawdz_sekrety.ps1` sprawdza commit (hak `.git\hooks\pre-commit`) i całe repozytorium
     (test `SekretyTests`). Nie omijaj go (`--no-verify`); fałszywy alarm popraw we wzorcu, nie w danych.
 
 ## Konwencje
@@ -108,6 +109,11 @@ Zasady: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md). W tym repo
   a `NumberGuard` sprawdza liczby w odpowiedzi.
 - **Ukośniki od modelu:** małe modele psują ukośniki w ścieżkach (`\t` zamiast `\` i podwójne `\\`).
   `HarnessSession.RepairEscapes` to naprawia; nie usuwaj tego.
+- **COM Office’a (profil `office`):** wywołania idą przez `Type.InvokeMember` z `GetProperty | InvokeMethod` (w bibliotekach
+  typów Office’a `Item` bywa metodą), zawsze w wątku STA (`Com.RunSta`). Instancja uruchomiona przez nas startuje niewidoczna
+  i jest zamykana po czytaniu; po edycji dokument zostaje otwarty na wierzchu. Próba, która się wysypie, zostawia
+  niewidoczny `WINWORD.EXE`/`EXCEL.EXE` — zamknij go przez COM (`Documents`/`Workbooks` → `Close` bez zapisu → `Quit`),
+  nie `taskkill`, bo widoczna instancja może być użytkownika. Testy nie ruszają Outlooka (szkic otworzyłby okno w poczcie).
 - **Sprzęt:** RTX 4060 8 GB mieści Bielika 11B tylko w 60–73% przy kontekście 16k. Odpowiedź trwa kilka do
   kilkudziesięciu sekund.
 

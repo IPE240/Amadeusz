@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Wykonawca dla profilu „office”: Word, Excel, Outlook i PowerPoint przez automatyzację COM (Microsoft 365 na tym komputerze).
+    Osobno od rdzenia, żeby gospodarze bez Office’a nic o nim nie wiedzieli. Bez paczek: COM idzie przez Type.InvokeMember
+    (późne wiązanie), więc działa na .NET Framework 4.8 i .NET 10 bez bibliotek Interop.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>LokalneAI.Harness.Office</RootNamespace>
+    <Product>LokalneAI</Product>
+    <Version>0.1.0</Version>
+    <Company>Optimal Design of Structures Sp. z o.o.</Company>
+    <Copyright>Copyright (c) 2026 Optimal Design of Structures Sp. z o.o.</Copyright>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LokalneAI.Harness.Tests" />
+  </ItemGroup>
+
+</Project>

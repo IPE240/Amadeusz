@@ -22,7 +22,7 @@ Claude Code czyta ją przez `CLAUDE.md`. Wypełnij miejsca w `<…>` i usuń sek
 
 ## Zasady, których nie wolno łamać
 
-1. Nie testuj i nie skanuj dysku `A:` (`\\10.0.0.30\budowa`). Pracuj na kopiach lokalnych.
+1. Nie testuj i nie skanuj dysku `A:` (udział sieciowy z danymi budowy). Pracuj na kopiach lokalnych.
 2. Nie kasuj ani nie zastępuj istniejących plików bez pytania użytkownika.
 3. Commit i push tylko na wyraźne polecenie użytkownika. W repozytorium nie może być haseł, nazwisk z bazy,
    godzin osób ani `person_id`.

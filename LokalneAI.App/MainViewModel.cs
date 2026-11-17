@@ -112,7 +112,7 @@ public sealed class MainViewModel : ObservableObject
             }
         };
         Cloud = new CloudViewModel(_settings, _keys, RebuildModels, SaveSettings);
-        Cde = new CdeViewModel(_settings, _keys, SaveSettings);
+        Credentials = new CredentialsViewModel(new CredentialVault(), _settings, _keys, SaveSettings);
         if (_settingsStore.LoadError is { } loadError)
         {
             _statusText = $"Nie odczytałem ustawień ({loadError}), używam domyślnych.";
@@ -138,8 +138,88 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Ustawienia → „Modele w chmurze (test)”: klucze API i modele Claude, GPT, Gemini.</summary>
     public CloudViewModel Cloud { get; }
 
-    /// <summary>Ustawienia → Baza CDE: zapamiętane dane logowania dla profilu cde.</summary>
-    public CdeViewModel Cde { get; }
+    /// <summary>Ustawienia → Poświadczenia: wpisy PostgreSQL, FTP, SMB w Menedżerze poświadczeń Windows.</summary>
+    public CredentialsViewModel Credentials { get; }
+
+    private readonly LokalneAI.Core.Hardware.TemperatureHistory _temperature = new();
+    private System.Windows.Threading.DispatcherTimer? _temperatureTimer;
+    private string _temperatureSource = "";
+    private bool _temperatureBusy;
+
+    /// <summary>Temperatura karty komputera, który liczy (ostatnie 2 minuty) — wykres na pasku tytułu.</summary>
+    public LokalneAI.Core.Hardware.TemperatureHistory Temperature => _temperature;
+
+    /// <summary>Po każdej próbce temperatury (co 5 s).</summary>
+    public event EventHandler? TemperatureUpdated;
+
+    /// <summary>Włącza próbkowanie temperatury co 5 s (wołane raz, po otwarciu okna).</summary>
+    public void StartTemperature()
+    {
+        if (_temperatureTimer is not null)
+        {
+            return;
+        }
+
+        _temperatureTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _temperatureTimer.Tick += async (_, _) => await SampleTemperatureAsync();
+        _temperatureTimer.Start();
+        _ = SampleTemperatureAsync();
+    }
+
+    /// <summary>
+    /// Jedna próbka: ten komputer — NVML; inny komputer w sieci — pole „temperatura” z jego bramy (<c>/lokalneai/info</c>);
+    /// model w chmurze — brak wykresu. Po zmianie komputera historia zaczyna się od nowa.
+    /// </summary>
+    private async Task SampleTemperatureAsync()
+    {
+        if (_temperatureBusy)
+        {
+            return;
+        }
+
+        _temperatureBusy = true;
+        try
+        {
+            string source;
+            int? celsius = null;
+            if (SelectedModel?.Cloud is not null)
+            {
+                source = "chmura";
+            }
+            else if (Network.RemoteUrl is { } url)
+            {
+                source = url;
+                var probe = await LokalneAI.Gateway.GatewayServer.ProbeAsync(url, TimeSpan.FromSeconds(3));
+                celsius = probe.Info?.Temperature;
+            }
+            else
+            {
+                source = "ten komputer";
+                celsius = await Task.Run(LokalneAI.Core.Hardware.GpuTemperature.Read);
+            }
+
+            if (source != _temperatureSource)
+            {
+                _temperature.Clear();
+                _temperatureSource = source;
+            }
+
+            if (celsius is { } value)
+            {
+                _temperature.Add(DateTime.Now, value);
+            }
+
+            TemperatureUpdated?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            // brak odczytu — wykres po prostu nie dostaje próbki
+        }
+        finally
+        {
+            _temperatureBusy = false;
+        }
+    }
 
     /// <summary>Jeden klient internetu dla czatu i zakładki Code (DuckDuckGo, strony; sieć biura zablokowana).</summary>
     private readonly WebAccess _web = new();
@@ -716,9 +796,8 @@ public sealed class MainViewModel : ObservableObject
             Cloud = selected?.Cloud,
             ModelBrush = selected?.NameBrush,
             GetApiKey = provider => CloudViewModel.ResolveKey(_keys, provider),
-            GetCdeConnection = () => Cde.ConnectionString,
+            GetPostgres = Credentials.GetPostgres,
             Web = InternetAccess ? _web : null,
-            CdeDescription = Cde.Summary,
             // Prompt profilu (karta, narzędzia, przykłady) zajmuje 4–8 tys. tokenów — mniej niż 16 384 nie ma sensu.
             ContextLength = Math.Max(16384, ContextLength),
             Temperature = temperature,

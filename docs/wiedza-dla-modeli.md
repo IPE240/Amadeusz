@@ -15,7 +15,7 @@ Repozytorium programu biura (TransmittalMaster, CDE, most Tekli, …)
    └─ profil\             tylko gdy program ma wbudowanego asystenta: system.md, karta.md, narzedzia.json…
 
 Amadeusz (to repozytorium)
-└─ profile\<profil>\      tekla, cde, pliki, komputer, mkk
+└─ profile\<profil>\      tekla, cde, pliki, komputer, mkk, office
    ├─ system.md           zasady zachowania asystenta
    ├─ karta.md            pojęcia, jednostki, pułapki; trafia do KAŻDEGO pytania
    ├─ przyklady.jsonl     przykłady „polecenie → wywołanie”

@@ -102,8 +102,9 @@ internal static class AutoTest
         var view = window.CodeView;
         window.SelectTab("code");
         view.AutoConfirm = true;
-        view.ConfigureForTest(options.Harness!, roots, options.HarnessConnection, options.HarnessPerson);
         var commands = (options.AutoTestQuestion ?? "").Split(new[] { "||" }, StringSplitOptions.RemoveEmptyEntries).Select(c => c.Trim()).ToList();
+        var resume = commands.Remove("#wznow");
+        view.ConfigureForTest(options.Harness!, roots, options.HarnessConnection, options.HarnessPerson, options.HarnessConversations, resume);
         if (commands.Remove("#zrodla"))
         {
             // Zrzut okna „Źródła wiedzy” wybranego profilu (bez zapisu).
@@ -121,7 +122,7 @@ internal static class AutoTest
             sources.Close();
         }
 
-        await view.RunAsync(commands);
+        await view.RunAsync(commands); // przy --rozmowy każde polecenie zapisuje rozmowę, jak w zwykłym oknie
         await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
         await Task.Delay(300);
         window.SavePng(Path.Combine(outputDir, "harness.png"));
@@ -131,6 +132,7 @@ internal static class AutoTest
             profil = view.ProfileName,
             liczy = context.ComputeWhere,
             kontekst = view.Panel.Session?.Context?.ToString(),
+            rozmowa = view.CurrentConversationPath,
             wpisy = entries,
         }, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
         return entries.Any(e => e.rodzaj == "Error") ? 1 : 0;

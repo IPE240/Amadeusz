@@ -47,10 +47,16 @@ public sealed record StartupOptions(string? AutoTestQuestion, string? OutputDir,
     /// <summary><c>--klucze plik.json</c>: klucze API z innego pliku (kontrola). Bez tego — klucze użytkownika.</summary>
     public string? KeysPath { get; init; }
 
+    /// <summary>
+    /// <c>--rozmowy C:older</c>: kontrola zapisuje rozmowy zakładki Code jak w zwykłym oknie, ale jako grupę „Niezgrupowane”
+    /// w tym folderze (<c>folder\.amadeusz\</c>). Polecenie <c>#wznow</c> w <c>--autotest</c> otwiera najnowszą z nich.
+    /// </summary>
+    public string? HarnessConversations { get; init; }
+
     public static StartupOptions Parse(IReadOnlyList<string> args)
     {
         string? question = null, output = null, url = null, model = null, harness = null, connection = null, person = null, roots = null;
-        string? tab = null, computeOn = null, settingsPath = null, keysPath = null;
+        string? tab = null, computeOn = null, settingsPath = null, keysPath = null, conversations = null;
         int? port = null;
         var expand = false;
         var share = false;
@@ -94,6 +100,10 @@ public sealed record StartupOptions(string? AutoTestQuestion, string? OutputDir,
                     roots = value;
                     i++;
                     break;
+                case "--rozmowy":
+                    conversations = value;
+                    i++;
+                    break;
                 case "--zakladka":
                     tab = value;
                     i++;
@@ -126,6 +136,7 @@ public sealed record StartupOptions(string? AutoTestQuestion, string? OutputDir,
             HarnessConnection = connection,
             HarnessPerson = person,
             HarnessRoots = roots,
+            HarnessConversations = conversations,
             Tab = tab ?? (expand ? "ustawienia" : null),
             ComputeOn = computeOn,
             Port = port,

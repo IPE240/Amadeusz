@@ -61,8 +61,8 @@ public sealed class WebTests
     }
 
     [Theory]
-    [InlineData("http://10.0.0.214:5441/")]
-    [InlineData("http://10.0.0.30/budowa")]
+    [InlineData("http://10.20.30.40:5432/")]
+    [InlineData("http://192.168.50.10/dane")]
     [InlineData("http://localhost:11435/api/tags")]
     [InlineData("http://127.0.0.1/")]
     [InlineData("http://serwer-ods/")]
@@ -82,13 +82,13 @@ public sealed class WebTests
     [Fact]
     public async Task NazwaWskazujacaAdresPrywatny_IPrzekierowanieDoBiura_Zablokowane()
     {
-        using var rebind = Web(_ => Html("x"), resolvedIp: "10.0.0.214");
+        using var rebind = Web(_ => Html("x"), resolvedIp: "10.20.30.40");
         var redirected = new List<string>();
         using var redirect = Web(request =>
         {
             redirected.Add(request.RequestUri!.ToString());
             var response = new HttpResponseMessage(HttpStatusCode.Found);
-            response.Headers.Location = new Uri("http://10.0.0.30/budowa");
+            response.Headers.Location = new Uri("http://192.168.50.10/dane");
             return response;
         });
 
@@ -97,7 +97,7 @@ public sealed class WebTests
 
         Assert.Contains("sieci lokalnej", viaDns.Text);
         Assert.False(viaRedirect.Success);
-        Assert.Single(redirected); // do 10.0.0.30 nie poszło żadne zapytanie
+        Assert.Single(redirected); // do 192.168.50.10 nie poszło żadne zapytanie
     }
 
     [Fact]

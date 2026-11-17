@@ -24,6 +24,12 @@ Są dwie części:
      ma plan Free API RFEM 6?”. Profil samej wiedzy o programach Marka Kowolika (Hala, Modelarz węzłów) i o Robocie,
      RFEM 5/6, IDEA StatiCa, IFC, SAP2000: model szuka w dokumentacji pobranej z repozytorium MKK (przycisk
      „Aktualizuj wiedzę”) i odpowiada z podaniem pliku; niczego nie wykonuje.
+   - **office**: „co jest w notatka.docx?”, „dopisz na końcu raportu akapit…”, „zamień wszędzie R01 na R02”, „wpisz do B10
+     sumę B2:B9”, „zrób w Excelu zestawienie profili…”, „zapisz raport jako PDF”, „przygotuj maila do … z załącznikiem”,
+     „dodaj slajd Harmonogram”. Word, Excel, Outlook i PowerPoint przez COM zainstalowanego Microsoft 365
+     (`LokalneAI.Harness.Office`): dokument otwarty u użytkownika jest edytowany na miejscu, po edycji zostaje otwarty na wierzchu.
+     Czytanie idzie od razu, każdą zmianę użytkownik zatwierdza, mail zostaje szkicem (nic nie wysyła), nic nie jest kasowane.
+     Tylko modele lokalne i bez internetu, bo model widzi treść dokumentów ([profile/office/README.md](profile/office/README.md)).
 
    Dokumentację dla modelu wkleja się do `profile\<nazwa>\wiedza\`. Repozytoria z dokumentacją dodaje się przyciskiem
    **Źródła wiedzy…** w oknie asystenta; pliki aktualizują się same ([docs/profile.md](docs/profile.md)).
@@ -40,9 +46,9 @@ Są dwie części:
 2. **Okno** (`LokalneAI.App`) wygląda jak TransmittalMaster (kolory i style w `LokalneAI.App\Theme.xaml`).
    Karty są w granatowym pasku tytułu:
    - **Czat**: rozmowa z modelem i statystyki „gdzie liczył”.
-   - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`) albo odpowiadający z dokumentacji
-     (`mkk`). Ma trzy poziomy uprawnień:
-     *Tylko czyta*, *Pyta o każdą zmianę* i *Bez pytania (poza kasowaniem)*.
+   - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`, `office`) albo odpowiadający z dokumentacji
+     (`mkk`). Profile zaznacza się jak listę wyboru — kilka naraz (niżej). Ma trzy poziomy uprawnień:
+     *Tylko czyta*, *Pyta o każdą zmianę* i *Bez pytania (poza kasowaniem)*. Z lewej **panel rozmów** (niżej).
    - **Ustawienia**: gdzie liczyć (ten komputer albo mocniejszy komputer w biurze), modele w chmurze (test),
      udostępnianie tego komputera innym z tej samej podsieci, podgląd kolejki i parametry czatu.
 
@@ -100,12 +106,35 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
   - modele w chmurze (test): klucz API każdego dostawcy (zaszyfrowany kontem Windows, „Załóż klucz…” otwiera
     konsolę dostawcy), lista jego modeli z polami „na liście” i dodawanie modelu po id. Konto claude.ai, ChatGPT
     albo Gemini nie wystarczy — programy łączą się kluczem API rozliczanym za zużycie;
-  - baza CDE: serwer, użytkownik, hasło i Twój person_id dla profilu `cde` zakładki Code — wpisane raz albo wczytane
-    z pliku `polaczenie.local.json`; hasło zaszyfrowane kontem Windows w `%APPDATA%\LokalneAI`, poza repozytorium.
-    „Zapisz i sprawdź” łączy się tylko do odczytu. Commit z hasłem blokuje `narzedzia\sprawdz_sekrety.ps1`;
+  - menedżer poświadczeń: prosta lista, jeden wiersz = jeden wpis (typ PostgreSQL / FTP / SMB, IP z portem, nazwa
+    bazy, user, hasło, person_id, × usuwa), „+” dodaje wiersz, „Wczytaj z pliku…” bierze plik JSON połączenia. Wszystko
+    jest w **Menedżerze poświadczeń Windows** (Poświadczenia ogólne `Amadeusz:postgres:<baza>` itd.), zaszyfrowane
+    kontem Windows; nic w ustawieniach programu ani w repozytorium. Wiersz zapisuje się po wyjściu z niego, bazę
+    PostgreSQL program od razu sprawdza (tylko odczyt). Profil z polem `poswiadczenie` (np. `cde`) widać w zakładce
+    Code dopiero, gdy jest jego wpis — kto nie ma bazy, nie widzi profilu. Dane z wersji do 0.4 (ustawienia i
+    `klucze.json`) program przenosi tu sam przy pierwszym uruchomieniu;
   - udostępnianie: przełącznik, port, limit kontekstu dla innych, otwarcie portu w zaporze;
   - kolejkę z przyciskiem „Odrzuć” dla zapytań innych komputerów;
   - polecenie systemowe czatu, temperaturę (Bielik: 0,1), długość kontekstu, zapis historii i adres Ollamy.
+- **Rozmowy w zakładce Code** (panel z lewej, jak w Claude czy ChatGPT): każde polecenie zapisuje rozmowę, a kliknięcie
+  w panelu ją wznawia — z wpisami w oknie, zaznaczonymi profilami i historią dla modelu. Model, profile i ustawienia
+  można zmienić w trakcie: następne polecenie idzie z nowymi, a rozmowa trwa dalej.
+  - **Grupa = folder roboczy** („+ Nowa grupa (folder)…”). Rozmowy grupy leżą **wyłącznie** w jej podfolderze
+    `.amadeusz\` (`<folder>\.amadeusz\<data>_<id>.json`, tworzonym przy pierwszym poleceniu, z `.gitignore`, żeby
+    rozmowy — także z danymi z bazy CDE — nie trafiły do repozytorium). Ustawienia programu pamiętają tylko listę folderów.
+  - Folder grupy jest dla profili `pliki` i `komputer` zawsze **dozwolony i bieżący na start** — „utwórz folder
+    Raporty” tworzy go w folderze rozmowy.
+  - Domyślna grupa to **Niezgrupowane**: `Dokumenty\Amadeusz\.amadeusz\` (prawy klik → „Zmień folder…”).
+  - Prawy klik na rozmowie: zmiana nazwy, przeniesienie do innej grupy (plik przechodzi do jej `.amadeusz\`),
+    „Przenieś do kosza” (`.amadeusz\kosz\` — nic nie jest kasowane). Na grupie: otwórz folder, zmień nazwę,
+    usuń z listy (pliki zostają i wrócą po ponownym dodaniu folderu).
+- **Kilka profili naraz** (np. `tekla` + `komputer`): model dostaje polecenia systemowe, karty, narzędzia i przykłady
+  wszystkich, a `szukaj_wiedzy` szuka w wiedzy każdego z nich. Obowiązują **najostrzejsze** zasady: chmura tylko
+  u dostawcy dozwolonego we wszystkich (z `cde` — tylko Claude, z `mkk` — tylko modele lokalne), internet tylko gdy
+  pozwalają wszystkie (`cde` wyłącza go całej rozmowie). `pliki` przy `komputer` wypadają (`komputer` ma wszystkie
+  ich polecenia). Polecenie systemowe to suma profili (np. `tekla` ~8 tys. tokenów, `cde` ~4 tys.), a zakładka Code
+  i tak liczy z kontekstem co najmniej 16384; przy trzech i więcej profilach ustaw 32768 (Ustawienia → Czat), a mały
+  model gorzej wybiera narzędzie spośród wielu.
 - Pasek na dole pokazuje, który komputer liczy (albo chmurę dostawcy, w jego kolorze), i stan kolejki.
 - Model w chmurze w czacie odpowiada od razu całym tekstem (bez pisania na bieżąco). W zakładce Code pasek pod
   nagłówkiem mówi, dokąd idą dane, a gdy profil nie pozwala na wybrany model — ostrzega na czerwono.
@@ -119,6 +148,7 @@ Odpowiedź jest pokazywana dokładnie tak, jak zwrócił ją model, łącznie ze
 | Plik | Zawartość |
 |---|---|
 | `%APPDATA%\LokalneAI\ustawienia.json` | ustawienia okna |
+| `<folder grupy>\.amadeusz\*.json` | rozmowy zakładki Code (grupa „Niezgrupowane”: `Dokumenty\Amadeusz`); kosz w `.amadeusz\kosz\` |
 | `%LOCALAPPDATA%\LokalneAI\historia.jsonl` | pytania i odpowiedzi ze statystykami, jeden JSON w linii; tylko na tym PC, zapis można wyłączyć |
 | `%LOCALAPPDATA%\LokalneAI\bledy.log` | nieoczekiwane błędy programu |
 
@@ -160,13 +190,14 @@ Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 |---|---|---|
 | `LokalneAI.Harness` | rdzeń pół-harnessu: sesja, schemat kroku, strażnicy, narzędzia wbudowane, klienci Ollamy i serwerów zgodnych z OpenAI, wykonawcy (symulator, TeklaBridge) | .NET Standard 2.0 |
 | `LokalneAI.Harness.Postgres` | wykonawca SQL tylko do odczytu (profil `cde`) | .NET Standard 2.0, Npgsql 8 |
+| `LokalneAI.Harness.Office` | wykonawca dokumentów Word, Excel, Outlook i PowerPoint przez COM zainstalowanego Microsoft 365 (profil `office`) | .NET Standard 2.0, bez paczek |
 | `LokalneAI.Harness.Wpf` | panel rozmowy z licznikiem kontekstu do osadzenia | .NET Framework 4.8 i .NET 10 |
 | `LokalneAI.Harness.Tests` | testy xUnit, uruchamiane na .NET 10 i .NET Framework 4.8 | |
 | `LokalneAI.Eval` | porównanie modeli na testach profili | .NET 10 |
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie w WinForms (.NET Framework 4.8) | |
 | `LokalneAI.Gateway` | brama: kolejka, liczenie na innym komputerze, udostępnianie w podsieci | .NET 10, ASP.NET Core (Kestrel) |
 | `LokalneAI.Core`, `LokalneAI.App`, `LokalneAI.Core.Tests` | okno, jego klient Ollamy i testy (także bramy) | .NET 10 |
-| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk` | wiedza, polecenia, przykłady i testy profili | |
+| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk`, `office` | wiedza, polecenia, przykłady i testy profili | |
 | `szablony\` | szablon profilu i plików `AGENTS`, `CLAUDE`, `lokalne-ai\` dla repozytoriów programów | |
 | `narzedzia\sprawdz_przyklady` | kompiluje i uruchamia przykłady z `docs\biblioteki-dla-agentow.md` | .NET 10 i .NET Framework 4.8, C# 7.3 |
 | `docs\` | osadzanie, opisy dla AI, wiedza dla modeli, serwer modelu, format profilu, wybór modelu, raporty z badań | |

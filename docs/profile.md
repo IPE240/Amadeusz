@@ -6,6 +6,9 @@ Gotowe profile:
 - [profile/cde](../profile/cde): pytania do bazy CDE;
 - [profile/pliki](../profile/pliki): foldery, kopiowanie i przenoszenie, bez kasowania i bez PowerShella;
 - [profile/komputer](../profile/komputer): PowerShell, programy, czytanie i wyszukiwanie plików, z pytaniem o każdą zmianę;
+- [profile/office](../profile/office): dokumenty Microsoft 365 — Word (czytanie, dopisywanie, zamiana), Excel (czytanie,
+  wpisywanie wartości i formuł), Outlook (szkic maila, lista odebranych), PowerPoint (czytanie, nowy slajd), zapis kopii jako
+  PDF; wykonawca `OfficeExecutor` z projektu `LokalneAI.Harness.Office` (COM zainstalowanego Office’a);
 - [profile/mkk](../profile/mkk): pytania o programy Marka Kowolika (Hala, Modelarz węzłów) i o Robota, RFEM, IDEA StatiCa,
   IFC, SAP2000. Profil samej wiedzy: `narzedzia.json` ma pustą tablicę, model szuka w dokumentacji pobranej z repozytorium
   MKK (`zrodla.json`) i odpowiada; okno nie pokazuje wtedy opcji Tekli (`HarnessProfile.HasHostTools`).
@@ -51,6 +54,27 @@ nie widzi. Nowy profil zaczyna się od kopii [szablony/profil](../szablony/profi
   „Aktualizuj wiedzę”, a z wiersza poleceń (np. w Harmonogramie zadań): `LokalneAI.Eval wiedza --profil profile\cde`.
 - Wzorce: `docs/*.md` (jeden folder), `docs/**/*.md` (z podfolderami), konkretne pliki.
 
+## Kilka profili w jednej rozmowie
+
+Zakładka Code pozwala zaznaczyć kilka profili naraz, a gospodarz w kodzie łączy je przez `HarnessProfile.Combine(...)`.
+
+| Co | Jak się łączy |
+|---|---|
+| `system.md` | wstęp „pracujesz w kilku rolach” i każda część pod nagłówkiem `# Rola: <profil>` |
+| `karta.md`, przykłady | wszystkie, po kolei |
+| narzędzia | suma; przy tej samej nazwie wygrywa pierwszy profil (`pliki` przy `komputer` okno pomija) |
+| `wiedza\` | jeden indeks `szukaj_wiedzy`, źródło z przedrostkiem profilu (`cde/stan_danych.md`) |
+| `chmura` | część wspólna — dostawca musi być dozwolony we **wszystkich** |
+| `internet` | tylko gdy pozwalają **wszystkie** |
+| `sql_reguly`, `sql_zabronione`, `sprawdzaj_liczby` | suma (obowiązują przy narzędziach SQL) |
+| `zakonczenie` | wspólne, gdy wszystkie mają takie samo; inaczej `mieszane` |
+| `max_krokow`, `max_wywolan_w_kroku` | największe |
+
+Każde wywołanie modelu wysyła całe polecenie systemowe i całą rozmowę, ale **nie** całą dokumentację: z `wiedza\` model
+dostaje tylko fragmenty, o które poprosi przez `szukaj_wiedzy` (3 fragmenty po ok. 900 znaków). Ollama trzyma w pamięci
+przeliczony początek rozmowy, więc ten sam początek liczy się szybko. Koszt łączenia to suma poleceń systemowych —
+`LokalneAI.Eval rozmiar --profil profile\<nazwa>` pokazuje rozmiar każdego profilu.
+
 ## profil.json
 
 ```json
@@ -79,10 +103,15 @@ nie widzi. Nowy profil zaczyna się od kopii [szablony/profil](../szablony/profi
 | `cde` | `["anthropic"]` | dane osobowe (godziny pracy): tylko modele lokalne i Claude |
 | `tekla`, `pliki`, `komputer` | `["anthropic", "openai", "google"]` | testy obsługi programów przez AI |
 | `mkk` | bez pola | dokumentacja MKK jest wewnętrzna i poufna (LICENCE w repozytorium); dopisanie `["anthropic"]` to decyzja użytkownika |
+| `office` | bez pola | model czyta treść dokumentów i maili biura (umowy, raporty, korespondencja); dopisanie dostawcy to decyzja użytkownika |
 | nowy profil bez pola | — | tylko modele lokalne, dopóki ktoś świadomie nie dopisze dostawców |
 
 Dozwolone wartości: `anthropic`, `openai`, `google`. Innych (np. `deepseek`) biblioteka nie przyjmie. Model w chmurze
 dostaje to samo co lokalny: `system.md`, `karta.md`, przykłady, narzędzia i wyniki `szukaj_wiedzy`.
+
+**`poswiadczenie`** — nazwa wpisu w Ustawieniach → Menedżer poświadczeń (PostgreSQL: nazwa bazy), z którego profil
+z narzędziem SQL bierze połączenie i `{{ja}}` (person_id). Profil z tym polem jest w zakładce Code ukryty, dopóki
+takiego wpisu nie ma (np. `cde` widzą tylko osoby z dostępem do bazy). Adresów i haseł nie wpisuj do profilu.
 
 **`internet`** — czy po włączeniu przełącznika „Odblokuj dostęp do internetu” model dostaje narzędzia
 `szukaj_w_internecie` (DuckDuckGo) i `czytaj_strone` (`HarnessProfile.WithInternet()` + `SessionOptions.Web`).
@@ -91,6 +120,7 @@ dostaje to samo co lokalny: `system.md`, `karta.md`, przykłady, narzędzia i wy
 |---|---|---|
 | `cde` | `false` | model widzi dane z bazy i mógłby je wysłać w zapytaniu do wyszukiwarki |
 | `tekla`, `pliki`, `komputer`, `mkk` | `true` | dokumentacja, normy, producenci (`mkk`: publiczna dokumentacja Dlubal, Autodesk, IDEA StatiCa; `system.md` zakazuje wysyłania fragmentów wiedzy) |
+| `office` | `false` | jak `cde`: model widzi treść dokumentów i maili i mógłby ją wysłać w zapytaniu do wyszukiwarki |
 | nowy profil bez pola | — | bez internetu |
 
 Adresy w sieci biura i na tym komputerze (prywatne IP, nazwy bez kropki, `.local`, nazwy wskazujące adres prywatny,

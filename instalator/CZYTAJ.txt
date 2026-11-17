@@ -24,13 +24,17 @@ Menu Start albo skrot na pulpicie: Amadeusz. Okno ma trzy zakladki:
   Code       - asystent, ktory wykonuje polecenia; profile:
     tekla    - polecenia w modelu Tekli (na probe: symulator),
     cde      - pytania o godziny, projekty i dokumenty w bazie CDE
-               (dane logowania: Ustawienia -> Baza CDE),
+               (widoczny, gdy w Menedzerze poswiadczen jest baza "cde"),
     pliki    - tworzenie folderow, kopiowanie, przenoszenie (bez kasowania),
     komputer - polecenia PowerShella, zapisywanie skryptow, uruchamianie
                programow, czytanie i szukanie plikow. Dziala tylko
                w "Dozwolonych folderach"; to, co tylko czyta, idzie od razu,
                a kazda zmiane zatwierdzasz w okienku.
-  Ustawienia - model, modele w chmurze, Baza CDE, udostepnianie mocy
+  Z lewej panel rozmow: kazda rozmowa zapisuje sie sama i wraca po kliknieciu.
+  Grupa = folder roboczy ("+ Nowa grupa (folder)..."): asystent pracuje w nim,
+  a rozmowy zapisuje tylko w jego podfolderze .amadeusz. Bez grupy:
+  Dokumenty\Amadeusz\.amadeusz. Profile mozna zaznaczyc kilka naraz.
+  Ustawienia - model, modele w chmurze, Menedzer poswiadczen, udostepnianie mocy
                obliczeniowej w sieci biura, czat.
 
 Przelacznik "Odblokuj dostep do internetu" (u gory okna): czat i profile
@@ -41,8 +45,10 @@ Modele w chmurze (Claude, GPT, Gemini): Ustawienia -> Modele w chmurze (test), w
 klucz API. Zapytania do chmury sa platne. Profil cde: tylko modele lokalne i Claude.
 
 HASLA I KLUCZE
-Haslo do bazy CDE i klucze API sa zapisane zaszyfrowane (Windows DPAPI) tylko
-dla Twojego konta Windows na tym komputerze. Nie wpisuj ich do plikow w repozytorium.
+Adresy, loginy i hasla baz, FTP i SMB sa w Menedzerze poswiadczen Windows
+(Ustawienia -> Menedzer poswiadczen w programie; wpisy "Amadeusz:..."), klucze API
+w %APPDATA%\LokalneAI\klucze.json - zaszyfrowane tylko dla Twojego konta Windows
+na tym komputerze. Nie wpisuj ich do plikow w repozytorium.
 
 DOKUMENTACJA DLA ASYSTENTA
 Przycisk "Zrodla wiedzy..." w zakladce Code: wklej adres repozytorium (jak do

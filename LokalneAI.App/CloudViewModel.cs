@@ -54,6 +54,20 @@ public sealed class CloudViewModel : ObservableObject
         }
     }
 
+    /// <summary>Opis profilu (pole „opis” w profil.json) do podpowiedzi; null, gdy go nie ma albo plik jest uszkodzony.</summary>
+    internal static string? SafeDescription(string folder)
+    {
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(folder, "profil.json")));
+            return document.RootElement.TryGetProperty("opis", out var opis) && opis.ValueKind == System.Text.Json.JsonValueKind.String ? opis.GetString() : null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Profile zakładki Code, które dopuszczają dostawcę (pole „chmura” w profil.json).</summary>
     private static string AllowedIn(string root, CloudProvider provider)
     {

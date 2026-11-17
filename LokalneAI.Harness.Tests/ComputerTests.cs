@@ -86,7 +86,7 @@ public sealed class PowerShellPolicyTests : IDisposable
     [InlineData("Get-ChildItem $env:WINDIR")]
     [InlineData("Get-ChildItem ~")]
     [InlineData("cd ..\\..")]
-    [InlineData("Get-Content \\\\10.0.0.30\\budowa\\a.txt")]
+    [InlineData("Get-Content \\\\192.168.50.10\\dane\\a.txt")]
     [InlineData("Copy-Item a.txt D:\\")]
     [InlineData("Format-Volume -DriveLetter D")]
     [InlineData("shutdown /s /t 0")]

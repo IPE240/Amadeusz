@@ -49,7 +49,7 @@ Model niczego nie wykonuje sam. Wybiera tylko narzędzie z listy i podaje argume
    - Hasła tylko w plikach `*.local.json` (są poza gitem).
    - Do repozytorium nie trafiają dane osobowe: nazwiska z bazy, godziny osób, `person_id`.
 7. **Bez prób na żywym środowisku.**
-   - Nie testuj na dysku `A:` (`\\10.0.0.30\budowa`).
+   - Nie testuj na dysku `A:` (udział sieciowy z danymi budowy).
    - Nie zapisuj do folderu `exchange` mostu TeklaBridge, bo skrypt wykona się na otwartym modelu Tekli.
      W testach używaj `SimulatedModelExecutor`.
    - Nie wołaj `POST /api/pull` w Ollamie, żeby coś sprawdzić: to aktualizuje model.
@@ -74,6 +74,7 @@ Model niczego nie wykonuje sam. Wybiera tylko narzędzie z listy i podaje argume
 | kilku wykonawców naraz (np. Tekla i pliki) | `RoutingExecutor` | `LokalneAI.Harness` |
 | pytań do bazy CDE (SQL tylko do odczytu) | `PostgresReadOnlyExecutor` i profil `cde` | `LokalneAI.Harness.Postgres` |
 | folderów, plików, PowerShella i uruchamiania programów | `FileSystemExecutor` i profil `pliki` albo `komputer` | `LokalneAI.Harness` |
+| dokumentów Word, Excel, PowerPoint i Outlooka (COM zainstalowanego Microsoft 365) | `OfficeExecutor` i profil `office` | `LokalneAI.Harness.Office` |
 | poleceń w Tekli przez most TeklaBridge | `TeklaBridgeExecutor` i profil `tekla` | `LokalneAI.Harness` |
 | prób bez Tekli | `SimulatedModelExecutor` | `LokalneAI.Harness` |
 | serwera innego niż Ollama (llama.cpp, LM Studio, vLLM) | `OpenAiCompatibleLlmClient` | `LokalneAI.Harness` |
@@ -419,14 +420,14 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | Przestrzeń nazw | Typ | Do czego |
 |---|---|---|
 | `LokalneAI.Harness.Session` | `HarnessSession` | mini-sesja: `SendAsync`, `Progress`, `Context`, `Dispose` |
-| | `SessionOptions` | `ConfirmMutation`, `ContextNote`, `Variables` (`{{ja}}`), `CompactAt`, `KeepRecentMessages`, `ToolResultRole` |
+| | `SessionOptions` | `ConfirmMutation`, `ContextNote`, `Variables` (`{{ja}}`), `CompactAt`, `KeepRecentMessages`, `ToolResultRole`, `History` (wznowienie zapisanej rozmowy: wiadomości `user`/`assistant`) |
 | | `TurnResult`, `TurnKind` | wynik polecenia: `Answer`, `Question` albo `Failed`; `Calls`, `Warnings`, `NumbersVerified` |
 | | `HarnessEvent`, `HarnessEventKind` | zdarzenia postępu (`Progress`) |
 | | `ExecutedCall` | wykonane wywołanie (w `TurnResult.Calls` i zdarzeniach) |
 | | `ContextUsage` | licznik kontekstu |
 | | `PromptBuilder` | podgląd polecenia systemowego |
 | | `StepSchema` | schemat JSON kroku modelu (do testów i diagnostyki) |
-| `LokalneAI.Harness.Profiles` | `HarnessProfile` | profil z folderu: `HarnessProfile.Load(folder)`; `HasHostTools(folder)` = czy profil ma własne polecenia (profil samej wiedzy, np. `mkk`, ma pustą tablicę `narzedzia` i nie potrzebuje wykonawcy) |
+| `LokalneAI.Harness.Profiles` | `HarnessProfile` | profil z folderu: `HarnessProfile.Load(folder)`; `HasHostTools(folder)` = czy profil ma własne polecenia (profil samej wiedzy, np. `mkk`, ma pustą tablicę `narzedzia` i nie potrzebuje wykonawcy); `Combine(profile)` = kilka profili w jednej sesji (suma narzędzi, przykładów i wiedzy; najostrzejsze zasady chmury i internetu), `Parts` = profile składowe |
 | | `ProfileSettings`, `FinishMode`, `SqlRule`, `FewShotExample` | zawartość `profil.json` i `przyklady.jsonl`; `HarnessProfile.LoadSettings(folder)` czyta sam `profil.json`; `AllowsCloud(id)` |
 | | `ToolDefinition` | narzędzie: nazwa, opis, schemat parametrów, `Mutates`, `FinishesTurn` |
 | `LokalneAI.Harness.Tools` | `IToolExecutor` | wykonawca gospodarza |
@@ -440,7 +441,7 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `PowerShellPolicy`, `CommandAnalysis` | ocena polecenia PowerShella: czyta, pyta albo odrzuca |
 | | `PowerShellRunner`, `CommandRunResult` | uruchomienie polecenia PowerShella z limitem czasu |
 | | `TeklaBridgeExecutor`, `TeklaBridgeOptions` | most TeklaBridge (szablony C# z profilu `tekla`) |
-| | `KnowledgeIndex` | wyszukiwarka `szukaj_wiedzy` w `wiedza\` |
+| | `KnowledgeIndex` | wyszukiwarka `szukaj_wiedzy` w `wiedza\`; `AddFrom(indeks, przedrostek)` łączy indeksy profili |
 | | `KnowledgeSync`, `KnowledgeSource`, `KnowledgeSyncResult` | aktualizacja wiedzy z `zrodla.json` |
 | | `BuiltInTools`, `Calculator` | narzędzia wbudowane: `kalkulator`, `szukaj_wiedzy` |
 | `LokalneAI.Harness.Llm` | `ILlmClient` | dostęp do modelu (własna implementacja: testy, inny serwer) |
@@ -457,10 +458,12 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | `LokalneAI.Harness.Validation` | `SqlGuard` | strażnik SQL: jedno zapytanie, tylko odczyt |
 | | `SchemaValidator` | sprawdzenie argumentów z JSON Schema |
 | | `NumberGuard` | czy liczby w odpowiedzi są w wynikach narzędzi |
-| `LokalneAI.Harness.Wpf` | `HarnessPanel` | panel rozmowy: `SessionFactory`, `ConfirmMutationAsync`, `SendAsync`, `NewSession`, `TurnCompleted` |
+| `LokalneAI.Harness.Wpf` | `HarnessPanel` | panel rozmowy: `SessionFactory`, `ConfirmMutationAsync`, `SendAsync`, `NewSession`, `TurnCompleted`; do zapisywanych rozmów: `ResetSession` (nowa sesja, wpisy zostają), `LoadEntries`, `AddInfo`, `TurnEnded`, `NewSessionClicked`, `NewSessionText`, `IsBusy`, `FocusInput` |
 | | `PanelEntry`, `PanelEntryKind` | wpisy rozmowy w panelu |
 | `LokalneAI.Harness.Postgres` | `PostgresReadOnlyExecutor`, `PostgresReadOnlyOptions` | SQL tylko do odczytu (profil `cde`) |
 | | `QueryResult` | wynik zapytania |
+| `LokalneAI.Harness.Office` | `OfficeExecutor`, `OfficeOptions` | Word, Excel, PowerPoint, Outlook przez COM (profil `office`): `AllowedRoots`, `WorkingFolder`, `ShowAfterEdit`, `Timeout`; `InstalledSummary()`, `IsOfficeInstalled()` |
+| | `OfficeException` | błąd Office’a z komunikatem po polsku dla modelu (wyjątek COM w `InnerException`) |
 
 ## 16. Gdy zmieniasz bibliotekę
 

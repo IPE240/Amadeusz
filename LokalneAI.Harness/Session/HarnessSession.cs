@@ -55,7 +55,17 @@ namespace LokalneAI.Harness.Session
             _options = options ?? new SessionOptions();
             _systemPrompt = PromptBuilder.BuildSystem(_profile, _options);
             _schema = StepSchema.Build(_profile.Tools, _profile.Settings.MaxCallsPerStep, _profile.Settings.Plan);
-            Context = new ContextUsage(Text.EstimateTokens(_systemPrompt), _llm.ContextLength, true);
+            if (_options.History != null)
+            {
+                // Wznowiona rozmowa: liczby z wcześniejszych wyników nadal „mają pokrycie” w odpowiedziach.
+                foreach (var message in _options.History.Where(m => m != null && (m.Role == "user" || m.Role == "assistant") && m.Content != null))
+                {
+                    _history.Add(new LlmMessage(message.Role, message.Content));
+                    _numberSources.Add(message.Content);
+                }
+            }
+
+            Context = new ContextUsage(EstimateAll(), _llm.ContextLength, true);
         }
 
         /// <summary>

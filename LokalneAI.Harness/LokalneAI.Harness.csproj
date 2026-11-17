@@ -24,6 +24,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="LokalneAI.Harness.Tests" />
+    <!-- Wykonawca Office’a korzysta z tych samych pomocników co pliki (naprawa „\n” od modelu, skracanie wyników, dozwolone foldery). -->
+    <InternalsVisibleTo Include="LokalneAI.Harness.Office" />
   </ItemGroup>
 
 </Project>

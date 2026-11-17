@@ -30,6 +30,10 @@ public sealed class PeerInfo
     [JsonPropertyName("karta")]
     public string? Gpu { get; set; }
 
+    /// <summary>Temperatura karty, która liczy (°C); null = nieznana (np. brama starszej wersji albo brak karty NVIDIA).</summary>
+    [JsonPropertyName("temperatura")]
+    public int? Temperature { get; set; }
+
     /// <summary>Ile zapytań teraz liczy.</summary>
     [JsonPropertyName("liczy")]
     public int Running { get; set; }

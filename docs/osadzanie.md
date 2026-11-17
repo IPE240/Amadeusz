@@ -131,6 +131,35 @@ var session = new HarnessSession(llm, HarnessProfile.Load(@"profile\komputer"), 
 - `uruchom`: dokument z dozwolonego folderu otwiera się bez pytania. Program (`notepad`, `excel`, plik `.exe`
   z dozwolonego folderu albo z Program Files) uruchamia się po zgodzie.
 
+## Dokumenty Office (profil `office`)
+
+```csharp
+using LokalneAI.Harness.Office;                      // projekt LokalneAI.Harness.Office (bez paczek; COM zainstalowanego Microsoft 365)
+
+var executor = new OfficeExecutor(new OfficeOptions
+{
+    AllowedRoots = { @"C:\ODS", Environment.ExpandEnvironmentVariables(@"%USERPROFILE%\Documents") },
+    WorkingFolder = @"C:\ODS\Projekty\1095_WSP",     // ścieżki względne („raport.docx”) liczą się od niego
+    ShowAfterEdit = true,                            // po edycji dokument zostaje otwarty na wierzchu; false = zapisz, zamknij (testy, praca w tle)
+});
+var session = new HarnessSession(llm, HarnessProfile.Load(@"profile\office"), executor,
+    new SessionOptions { ConfirmMutation = panel.ConfirmMutationAsync });
+```
+
+- Narzędzia: `word_czytaj`, `word_dopisz`, `word_zamien`, `excel_czytaj`, `excel_zapisz`, `excel_wstaw_wiersze`,
+  `powerpoint_czytaj`, `powerpoint_dodaj_slajd`, `outlook_szkic`, `outlook_odebrane`, `outlook_czytaj`, `office_otworz`,
+  `office_zapisz_jako` (PDF i formaty Office’a) oraz `szukaj_plikow` i `pokaz_zawartosc` (te dwa wykonuje `FileSystemExecutor`
+  w środku, z tymi samymi dozwolonymi folderami).
+- Czytanie idzie bez pytania; każda zmiana (dopisanie, zamiana, wpis do komórki, nowy slajd, zapis kopii) z pytaniem
+  i treścią okna od wykonawcy; nadpisanie istniejącej kopii ma domyślny przycisk „Nie”. Szkic w Outlooku nie pyta,
+  bo niczego nie zmienia i nie wysyła — wysyła użytkownik.
+- Dokument otwarty u użytkownika w Wordzie albo Excelu jest edytowany na miejscu (ta sama instancja, `Documents`/`Workbooks`
+  po `FullName`) i zapisywany. Gdy program nie działa, wykonawca uruchamia go niewidocznie do czytania, a po edycji
+  pokazuje. Każde polecenie to osobny wątek STA (`Com.RunSta`), z limitem `OfficeOptions.Timeout` na okna dialogowe Office’a.
+- Formuły: `excel_zapisz` próbuje `FormulaLocal` (polskie nazwy, średniki), a gdy Excel zwróci `#NAZWA?`, `Formula`
+  (angielskie). Liczby z przecinkiem są liczbami; wartości czytane są formatowane po polsku, daty jako `RRRR-MM-DD`.
+- Bez pola `chmura` i z `internet: false` w `profil.json`: treść dokumentów i maili zostaje na komputerze.
+
 ## Licznik kontekstu
 
 `session.Context` (`ContextUsage`) podaje zajęte tokeny, limit i procent, np. „8 063 / 16 384 tokenów (49%)”.

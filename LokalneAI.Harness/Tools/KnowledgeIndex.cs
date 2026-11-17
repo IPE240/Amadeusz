@@ -78,6 +78,32 @@ namespace LokalneAI.Harness.Tools
             Recalculate();
         }
 
+        /// <summary>
+        /// Dokłada wszystkie fragmenty innego indeksu (np. przy łączeniu profili). Źródła dostają przedrostek, np. nazwę profilu
+        /// (<c>cde/wiedza.md</c>), żeby w wyniku <c>szukaj_wiedzy</c> było widać, skąd fragment.
+        /// </summary>
+        public void AddFrom(KnowledgeIndex other, string prefix = null)
+        {
+            if (other == null || ReferenceEquals(other, this))
+            {
+                return;
+            }
+
+            foreach (var chunk in other._chunks)
+            {
+                _chunks.Add(new Chunk
+                {
+                    Source = string.IsNullOrEmpty(prefix) ? chunk.Source : prefix + "/" + chunk.Source,
+                    Heading = chunk.Heading,
+                    Body = chunk.Body,
+                    Frequencies = chunk.Frequencies,
+                    Length = chunk.Length,
+                });
+            }
+
+            Recalculate();
+        }
+
         /// <summary>Najlepsze fragmenty dla zapytania (najwyżej <paramref name="top"/>).</summary>
         public IList<string> Search(string query, int top = 3, int maxChars = 900)
         {

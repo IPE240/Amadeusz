@@ -1,60 +1,120 @@
 <UserControl x:Class="LokalneAI.App.HarnessView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:LokalneAI.App"
              xmlns:wpf="clr-namespace:LokalneAI.Harness.Wpf;assembly=LokalneAI.Harness.Wpf"
              >
-    <DockPanel>
-        <!-- Profil, uprawnienia i wykonawca. W prawdziwym programie robi to gospodarz w kodzie. -->
-        <Border DockPanel.Dock="Top" Style="{StaticResource PanelBox}" Padding="12,10">
-            <StackPanel>
-                <WrapPanel>
-                    <TextBlock Text="Profil" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <ComboBox x:Name="ProfileBox" Width="130" SelectionChanged="Profile_Changed"
-                              ToolTip="Co asystent umie: tekla (polecenia w modelu), cde (pytania do bazy), pliki, komputer (PowerShell, programy)" />
-                    <TextBlock Text="Uprawnienia" VerticalAlignment="Center" Margin="14,0,6,0" />
-                    <ComboBox x:Name="PermissionBox" Width="210" SelectionChanged="Permission_Changed">
-                        <ComboBoxItem Tag="czyta" Content="Tylko czyta"
-                                      ToolTip="Polecenia, które coś zmieniają, są odrzucane bez pytania. Asystent może tylko czytać i odpowiadać." />
-                        <ComboBoxItem Tag="pytaj" Content="Pyta o każdą zmianę"
-                                      ToolTip="Przed każdą zmianą (plik, folder, model Tekli, program) pojawia się okienko Tak/Nie. Zalecane." />
-                        <ComboBoxItem Tag="bez" Content="Bez pytania (poza kasowaniem)"
-                                      ToolTip="Zmiany wykonują się od razu; kasowanie i inne ryzykowne polecenia nadal pytają. Działa do zamknięcia programu." />
-                    </ComboBox>
-                    <CheckBox x:Name="StepsBox" Content="Pokaż kroki modelu (JSON)" VerticalAlignment="Center" Margin="14,0,0,0"
-                              Checked="Steps_Changed" Unchecked="Steps_Changed" />
-                </WrapPanel>
-                <WrapPanel Margin="0,8,0,0">
-                    <Button Content="Źródła wiedzy…" Padding="8,2" Click="Sources_Click"
-                            ToolTip="Repozytoria i adresy, z których asystent bierze dokumentację (wklej link do repozytorium)" />
-                    <Button x:Name="SyncButton" Content="Aktualizuj wiedzę" Margin="6,0,0,0" Padding="8,2" Click="Sync_Click"
-                            ToolTip="Pobiera nowe wersje dokumentacji z repozytoriów wpisanych w zrodla.json profilu" />
-                    <Button x:Name="WindowButton" Content="W osobnym oknie" Margin="6,0,0,0" Padding="8,2" Click="OpenWindow_Click"
-                            ToolTip="Drugi asystent w osobnym oknie (własna rozmowa), np. obok Tekli" />
-                    <TextBlock x:Name="ModelText" VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource MutedBrush}" />
-                </WrapPanel>
-                <WrapPanel x:Name="TeklaOptions" Margin="0,8,0,0">
-                    <RadioButton x:Name="SimulatorRadio" Content="Symulator (bez Tekli)" IsChecked="True" VerticalAlignment="Center" Checked="Executor_Changed" />
-                    <RadioButton x:Name="BridgeRadio" Content="TeklaBridge — folder wymiany:" Margin="14,0,6,0" VerticalAlignment="Center" Checked="Executor_Changed" />
-                    <TextBox x:Name="ExchangeBox" Width="330" VerticalContentAlignment="Center" LostFocus="Executor_Changed" />
-                </WrapPanel>
-                <WrapPanel x:Name="CdeOptions" Margin="0,8,0,0">
-                    <TextBlock x:Name="CdeText" VerticalAlignment="Center" Margin="0,0,10,0" />
-                    <Button Content="Dane logowania…" Padding="8,2" Click="CdeSettings_Click"
-                            ToolTip="Ustawienia → Baza CDE: adres, użytkownik, hasło (zaszyfrowane kontem Windows) i Twój person_id" />
-                </WrapPanel>
-                <WrapPanel x:Name="FilesOptions" Margin="0,8,0,0">
-                    <TextBlock Text="Dozwolone foldery (rozdziel ;):" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <TextBox x:Name="RootsBox" Width="420" VerticalContentAlignment="Center" LostFocus="Executor_Changed"
-                             ToolTip="Asystent czyta, tworzy, kopiuje, przenosi i wykonuje polecenia tylko w tych folderach (z podfolderami). Programy może uruchamiać też z Program Files. Pierwszy folder jest bieżącym na start." />
-                </WrapPanel>
-                <!-- Model w chmurze: dokąd idą dane (kolor dostawcy) albo ostrzeżenie, że profil na niego nie pozwala. -->
-                <Border x:Name="CloudBar" Margin="0,8,0,0" Padding="10,6" CornerRadius="4" BorderThickness="3,0,0,0"
-                        Background="{StaticResource TileBrush}" Visibility="Collapsed">
-                    <TextBlock x:Name="CloudText" TextWrapping="Wrap" FontSize="12" />
-                </Border>
-                <TextBlock x:Name="HintText" Margin="0,6,0,0" Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap" />
-            </StackPanel>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="SidebarColumn" Width="250" MinWidth="160" MaxWidth="480" />
+            <ColumnDefinition Width="8" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Panel rozmów: grupy = foldery robocze; rozmowy grupy leżą w <folder>\.amadeusz\. -->
+        <Border Grid.Column="0" Style="{StaticResource PanelBox}" Padding="8">
+            <DockPanel>
+                <Button DockPanel.Dock="Top" x:Name="NewConversationButton" Content="+ Nowa rozmowa" Padding="8,5" HorizontalAlignment="Stretch"
+                        Click="NewConversation_Click" ToolTip="Nowa rozmowa w zaznaczonej grupie (folderze)" />
+                <Button DockPanel.Dock="Bottom" Content="+ Nowa grupa (folder)…" Margin="0,8,0,0" Padding="8,3" HorizontalAlignment="Stretch"
+                        Click="AddGroup_Click"
+                        ToolTip="Wskaż folder roboczy: asystent będzie w nim pracował (dozwolony folder), a rozmowy grupy zapisze w jego podfolderze .amadeusz" />
+                <TextBlock DockPanel.Dock="Bottom" x:Name="SidebarHint" Margin="2,6,0,0" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{StaticResource MutedBrush}" />
+                <TreeView x:Name="ConversationTree" Margin="0,8,0,0" BorderThickness="0" Background="Transparent"
+                          SelectedItemChanged="Tree_SelectedItemChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <TreeView.Resources>
+                        <Style TargetType="TreeViewItem">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                            <Setter Property="Padding" Value="2,3" />
+                            <EventSetter Event="PreviewMouseRightButtonDown" Handler="TreeItem_RightClick" />
+                        </Style>
+                        <HierarchicalDataTemplate DataType="{x:Type local:ConversationGroupNode}" ItemsSource="{Binding Conversations}">
+                            <DockPanel ToolTip="{Binding Tooltip}" LastChildFill="True">
+                                <TextBlock DockPanel.Dock="Left" Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" Margin="0,1,6,0"
+                                           VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" Margin="6,0,0,0" FontSize="11"
+                                           VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
+                        </HierarchicalDataTemplate>
+                        <DataTemplate DataType="{x:Type local:ConversationNode}">
+                            <TextBlock Text="{Binding DisplayTitle}" ToolTip="{Binding Tooltip}" TextTrimming="CharacterEllipsis">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </DataTemplate>
+                    </TreeView.Resources>
+                </TreeView>
+            </DockPanel>
         </Border>
-        <wpf:HarnessPanel x:Name="Panel" />
-    </DockPanel>
+        <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent"
+                      ToolTip="Przeciągnij, żeby zmienić szerokość panelu rozmów" />
+
+        <DockPanel Grid.Column="2">
+            <!-- Profile, uprawnienia i wykonawca. W prawdziwym programie robi to gospodarz w kodzie. -->
+            <Border DockPanel.Dock="Top" Style="{StaticResource PanelBox}" Padding="12,10">
+                <StackPanel>
+                    <WrapPanel>
+                        <TextBlock Text="Profile" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   ToolTip="Co asystent umie. Można zaznaczyć kilka naraz — wtedy obowiązują najostrzejsze zasady z nich (np. cde wyłącza internet)." />
+                        <WrapPanel x:Name="ProfilesPanel" VerticalAlignment="Center" />
+                        <TextBlock Text="Uprawnienia" VerticalAlignment="Center" Margin="10,0,6,0" />
+                        <ComboBox x:Name="PermissionBox" Width="210" SelectionChanged="Permission_Changed">
+                            <ComboBoxItem Tag="czyta" Content="Tylko czyta"
+                                          ToolTip="Polecenia, które coś zmieniają, są odrzucane bez pytania. Asystent może tylko czytać i odpowiadać." />
+                            <ComboBoxItem Tag="pytaj" Content="Pyta o każdą zmianę"
+                                          ToolTip="Przed każdą zmianą (plik, folder, model Tekli, program) pojawia się okienko Tak/Nie. Zalecane." />
+                            <ComboBoxItem Tag="bez" Content="Bez pytania (poza kasowaniem)"
+                                          ToolTip="Zmiany wykonują się od razu; kasowanie i inne ryzykowne polecenia nadal pytają. Działa do zamknięcia programu." />
+                        </ComboBox>
+                        <CheckBox x:Name="StepsBox" Content="Pokaż kroki modelu (JSON)" VerticalAlignment="Center" Margin="14,0,0,0"
+                                  Checked="Steps_Changed" Unchecked="Steps_Changed" />
+                    </WrapPanel>
+                    <WrapPanel Margin="0,8,0,0">
+                        <Button Content="Źródła wiedzy…" Padding="8,2" Click="Sources_Click"
+                                ToolTip="Repozytoria i adresy, z których asystent bierze dokumentację (wklej link do repozytorium)" />
+                        <Button x:Name="SyncButton" Content="Aktualizuj wiedzę" Margin="6,0,0,0" Padding="8,2" Click="Sync_Click"
+                                ToolTip="Pobiera nowe wersje dokumentacji z repozytoriów wpisanych w zrodla.json zaznaczonych profili" />
+                        <Button x:Name="WindowButton" Content="W osobnym oknie" Margin="6,0,0,0" Padding="8,2" Click="OpenWindow_Click"
+                                ToolTip="Drugi asystent w osobnym oknie (własna rozmowa), np. obok Tekli" />
+                        <TextBlock x:Name="ModelText" VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource MutedBrush}" />
+                    </WrapPanel>
+                    <WrapPanel x:Name="TeklaOptions" Margin="0,8,0,0">
+                        <RadioButton x:Name="SimulatorRadio" Content="Symulator (bez Tekli)" IsChecked="True" VerticalAlignment="Center" Checked="Executor_Changed" />
+                        <RadioButton x:Name="BridgeRadio" Content="TeklaBridge — folder wymiany:" Margin="14,0,6,0" VerticalAlignment="Center" Checked="Executor_Changed" />
+                        <TextBox x:Name="ExchangeBox" Width="330" VerticalContentAlignment="Center" LostFocus="Executor_Changed" />
+                    </WrapPanel>
+                    <WrapPanel x:Name="CdeOptions" Margin="0,8,0,0">
+                        <TextBlock x:Name="CdeText" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <Button Content="Poświadczenia…" Padding="8,2" Click="CdeSettings_Click"
+                                ToolTip="Ustawienia → Menedżer poświadczeń: adres, nazwa bazy, użytkownik, hasło i Twój person_id (w Menedżerze poświadczeń Windows)" />
+                    </WrapPanel>
+                    <StackPanel x:Name="FilesOptions" Margin="0,8,0,0">
+                        <WrapPanel>
+                            <TextBlock Text="Dozwolone foldery (rozdziel ;):" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBox x:Name="RootsBox" Width="420" VerticalContentAlignment="Center" LostFocus="Executor_Changed"
+                                     ToolTip="Asystent czyta, tworzy, kopiuje, przenosi i wykonuje polecenia tylko w tych folderach (z podfolderami). Programy może uruchamiać też z Program Files. Folder grupy rozmowy jest dozwolony zawsze." />
+                        </WrapPanel>
+                        <TextBlock x:Name="WorkFolderText" Margin="0,4,0,0" FontSize="12" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <!-- Model w chmurze: dokąd idą dane (kolor dostawcy) albo ostrzeżenie, że profil na niego nie pozwala. -->
+                    <Border x:Name="CloudBar" Margin="0,8,0,0" Padding="10,6" CornerRadius="4" BorderThickness="3,0,0,0"
+                            Background="{StaticResource TileBrush}" Visibility="Collapsed">
+                        <TextBlock x:Name="CloudText" TextWrapping="Wrap" FontSize="12" />
+                    </Border>
+                    <TextBlock x:Name="HintText" Margin="0,6,0,0" Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+            <wpf:HarnessPanel x:Name="Panel" />
+        </DockPanel>
+    </Grid>
 </UserControl>

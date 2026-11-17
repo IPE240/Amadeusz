@@ -57,6 +57,9 @@ public sealed record GatewayOptions
     /// <summary>Opis karty graficznej do <c>/lokalneai/info</c>, np. „NVIDIA GeForce RTX 4060, 8 GB”.</summary>
     public string? GpuDescription { get; init; }
 
+    /// <summary>Odczyt temperatury karty (°C) do <c>/lokalneai/info</c> — dla wykresu na pasku innych komputerów; null = brak.</summary>
+    public Func<int?>? ReadTemperature { get; init; }
+
     /// <summary>Wersja programu do <c>/lokalneai/info</c>.</summary>
     public string Version { get; init; } = typeof(GatewayOptions).Assembly.GetName().Version?.ToString(3) ?? "?";
 

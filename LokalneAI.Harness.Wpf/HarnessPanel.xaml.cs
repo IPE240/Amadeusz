@@ -71,6 +71,25 @@ namespace LokalneAI.Harness.Wpf
         public event EventHandler<TurnResult> TurnCompleted;
 
         /// <summary>
+        /// Po każdym poleceniu, także przerwanym albo zakończonym wyjątkiem (wtedy <see cref="TurnCompleted"/> nie przychodzi) —
+        /// np. żeby gospodarz zapisał rozmowę.
+        /// </summary>
+        public event EventHandler TurnEnded;
+
+        /// <summary>Użytkownik kliknął „Nowa sesja” (po wyczyszczeniu panelu) — np. gospodarz zaczyna nową zapisywaną rozmowę.</summary>
+        public event EventHandler NewSessionClicked;
+
+        /// <summary>Napis na przycisku nowej sesji (np. „Nowa rozmowa”).</summary>
+        public string NewSessionText
+        {
+            get => NewSessionButton.Content as string;
+            set => NewSessionButton.Content = value;
+        }
+
+        /// <summary>Czy trwa polecenie.</summary>
+        public bool IsBusy => _cts != null;
+
+        /// <summary>
         /// Gotowe pytanie o zgodę przed poleceniem zmieniającym model — do <see cref="SessionOptions.ConfirmMutation"/>.
         /// Pokazuje okno Tak/Nie z treścią od wykonawcy (np. polecenie PowerShella z ostrzeżeniami) albo z nazwą polecenia
         /// i argumentami. Gdy polecenie może coś zniszczyć (kasuje), domyślnym przyciskiem jest „Nie”.
@@ -146,6 +165,7 @@ namespace LokalneAI.Harness.Wpf
                 TurnCompleted?.Invoke(this, turn);
             }
 
+            TurnEnded?.Invoke(this, EventArgs.Empty);
             return turn;
         }
 
@@ -157,6 +177,37 @@ namespace LokalneAI.Harness.Wpf
             _entries.Clear();
             UpdateContext(null);
         }
+
+        /// <summary>
+        /// Zamyka sesję, ale zostawia wpisy w panelu — następne polecenie utworzy nową sesję przez <see cref="SessionFactory"/>
+        /// (np. po zmianie profili; gospodarz może podać jej wcześniejszą historię w <see cref="SessionOptions.History"/>).
+        /// </summary>
+        public void ResetSession()
+        {
+            _cts?.Cancel();
+            CloseSession();
+            RemoveThinking();
+            UpdateContext(null);
+        }
+
+        /// <summary>Zamyka sesję i pokazuje zapisane wpisy (np. wznowiona rozmowa); następne polecenie utworzy nową sesję.</summary>
+        public void LoadEntries(System.Collections.Generic.IEnumerable<PanelEntry> entries)
+        {
+            NewSession();
+            foreach (var entry in entries ?? Enumerable.Empty<PanelEntry>())
+            {
+                _entries.Add(entry);
+            }
+
+            _follow = true;
+            Scroll.ScrollToEnd();
+        }
+
+        /// <summary>Ustawia kursor w polu polecenia.</summary>
+        public void FocusInput() => InputBox.Focus();
+
+        /// <summary>Dopisuje wpis informacyjny (np. „Profile: tekla, cde”).</summary>
+        public void AddInfo(string text) => _entries.Add(new PanelEntry(PanelEntryKind.Info, text));
 
         private static readonly System.Globalization.CultureInfo Pl = System.Globalization.CultureInfo.GetCultureInfo("pl-PL");
 
@@ -323,7 +374,11 @@ namespace LokalneAI.Harness.Wpf
 
         private void Stop_Click(object sender, RoutedEventArgs e) => _cts?.Cancel();
 
-        private void NewSession_Click(object sender, RoutedEventArgs e) => NewSession();
+        private void NewSession_Click(object sender, RoutedEventArgs e)
+        {
+            NewSession();
+            NewSessionClicked?.Invoke(this, EventArgs.Empty);
+        }
 
         private void Input_PreviewKeyDown(object sender, KeyEventArgs e)
         {

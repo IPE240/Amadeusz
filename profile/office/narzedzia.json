@@ -1,0 +1,403 @@
+{
+  "narzedzia": [
+    {
+      "nazwa": "szukaj_plikow",
+      "opis": "Szuka plików i folderów po nazwie w folderze i wszystkich podfolderach (najwyżej 60 wyników).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "wzorzec": {
+            "type": "string",
+            "description": "fragment nazwy albo wzorzec, np. WSP, *.docx, *raport*.xlsx"
+          },
+          "sciezka": {
+            "type": "string",
+            "description": "gdzie szukać; pusta = folder bieżący"
+          }
+        },
+        "required": [
+          "wzorzec"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pokaz_zawartosc",
+      "opis": "Pokazuje foldery i pliki w folderze (opcjonalnie tylko pasujące do wzorca, np. *.xlsx).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "folder; pusta = folder bieżący"
+          },
+          "wzorzec": {
+            "type": "string",
+            "description": "np. *.docx; pusty = wszystko"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "office_otworz",
+      "opis": "Otwiera dokument w Wordzie, Excelu albo PowerPoincie (okno na wierzchu), żeby użytkownik go zobaczył. Nie czyta treści.",
+      "zmienia_model": false,
+      "konczy_ture": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "np. raport.docx albo C:\\ODS\\Projekty\\1095_WSP\\zestawienie.xlsx"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "word_czytaj",
+      "opis": "Pokazuje tekst dokumentu Worda z numerami akapitów (domyślnie 80 akapitów od początku; dalsze: od_akapitu).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "od_akapitu": {
+            "type": "integer",
+            "description": "od którego akapitu (domyślnie 1)"
+          },
+          "ile_akapitow": {
+            "type": "integer",
+            "description": "ile akapitów (domyślnie 80)"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "word_dopisz",
+      "opis": "Dopisuje akapity do dokumentu Worda (na końcu, na początku albo po wskazanym akapicie) i zapisuje. Każda linia tekstu to osobny akapit. Nieistniejący dokument powstaje.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "np. notatka.docx"
+          },
+          "tekst": {
+            "type": "string",
+            "description": "treść; nowa linia = nowy akapit"
+          },
+          "gdzie": {
+            "type": "string",
+            "enum": ["koniec", "poczatek", "po_akapicie"],
+            "description": "domyślnie koniec"
+          },
+          "akapit": {
+            "type": "integer",
+            "description": "numer akapitu (z word_czytaj), gdy gdzie = po_akapicie"
+          },
+          "styl": {
+            "type": "string",
+            "enum": ["zwykly", "naglowek1", "naglowek2", "naglowek3", "tytul", "lista", "lista_numerowana"],
+            "description": "styl nowych akapitów; domyślnie zwykły"
+          }
+        },
+        "required": [
+          "sciezka",
+          "tekst"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "word_zamien",
+      "opis": "Zamienia tekst w całym dokumencie Worda (także w nagłówkach i stopkach) i zapisuje. Domyślnie wszystkie wystąpienia, bez rozróżniania wielkości liter.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "szukaj": {
+            "type": "string",
+            "description": "tekst do znalezienia, dokładnie jak w dokumencie"
+          },
+          "zamien_na": {
+            "type": "string",
+            "description": "nowy tekst; pusty = usuń"
+          },
+          "wszystkie": {
+            "type": "boolean",
+            "description": "false = tylko pierwsze wystąpienie (domyślnie true)"
+          },
+          "wielkosc_liter": {
+            "type": "boolean",
+            "description": "true = rozróżniaj wielkość liter (domyślnie false)"
+          }
+        },
+        "required": [
+          "sciezka",
+          "szukaj",
+          "zamien_na"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "excel_czytaj",
+      "opis": "Pokazuje komórki arkusza Excela jako tabelę z literami kolumn i numerami wierszy (domyślnie cały używany obszar aktywnego arkusza, najwyżej 200 wierszy).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "arkusz": {
+            "type": "string",
+            "description": "nazwa albo numer arkusza; pusty = aktywny"
+          },
+          "zakres": {
+            "type": "string",
+            "description": "np. A1:D20; pusty = cały używany obszar"
+          },
+          "formuly": {
+            "type": "boolean",
+            "description": "true = pokaż formuły zamiast wartości"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "excel_zapisz",
+      "opis": "Wpisuje jedną wartość do komórki Excela i zapisuje: liczbę (12,5), tekst albo formułę zaczynającą się od = (polskie nazwy funkcji, średniki). Nieistniejący skoroszyt powstaje.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "komorka": {
+            "type": "string",
+            "description": "adres jednej komórki, np. B3"
+          },
+          "wartosc": {
+            "type": "string",
+            "description": "np. 12,5 albo Stal S355 albo =SUMA(B2:B9); pusta = wyczyść komórkę"
+          },
+          "arkusz": {
+            "type": "string",
+            "description": "nazwa albo numer arkusza; pusty = aktywny"
+          }
+        },
+        "required": [
+          "sciezka",
+          "komorka",
+          "wartosc"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "excel_wstaw_wiersze",
+      "opis": "Wpisuje blok wartości (lista wierszy, wiersz = lista komórek) od wskazanej komórki w dół i w prawo, potem zapisuje. Nadpisuje komórki w tym bloku.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "komorka": {
+            "type": "string",
+            "description": "lewa górna komórka bloku, np. A2"
+          },
+          "wiersze": {
+            "type": "array",
+            "description": "np. [[\"Pozycja\",\"Masa kg\"],[\"HEB300\",117],[\"IPE200\",22.4]]",
+            "items": {
+              "type": "array",
+              "items": {}
+            }
+          },
+          "arkusz": {
+            "type": "string",
+            "description": "nazwa albo numer arkusza; pusty = aktywny"
+          }
+        },
+        "required": [
+          "sciezka",
+          "komorka",
+          "wiersze"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "office_zapisz_jako",
+      "opis": "Zapisuje kopię dokumentu Worda, Excela albo PowerPointa w innym formacie, najczęściej PDF (format z rozszerzenia nowej ścieżki). Oryginał zostaje.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "dokument źródłowy"
+          },
+          "nowa_sciezka": {
+            "type": "string",
+            "description": "np. raport.pdf albo C:\\ODS\\Projekty\\1095_WSP\\R02\\raport.pdf"
+          }
+        },
+        "required": [
+          "sciezka",
+          "nowa_sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "outlook_szkic",
+      "opis": "Przygotowuje w Outlooku szkic wiadomości i otwiera go do sprawdzenia. NIE wysyła — wysyła użytkownik.",
+      "zmienia_model": false,
+      "konczy_ture": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "do": {
+            "type": "string",
+            "description": "adresaci, np. jan.kowalski@firma.pl; kilku po średniku"
+          },
+          "temat": {
+            "type": "string"
+          },
+          "tresc": {
+            "type": "string",
+            "description": "treść wiadomości (zwykły tekst)"
+          },
+          "dw": {
+            "type": "string",
+            "description": "kopia (DW); pusta = bez"
+          },
+          "zalaczniki": {
+            "type": "array",
+            "description": "ścieżki plików z dozwolonych folderów",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "do",
+          "temat",
+          "tresc"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "outlook_odebrane",
+      "opis": "Pokazuje ostatnie wiadomości ze skrzynki odbiorczej Outlooka (data, nadawca, temat), najnowsze pierwsze; opcjonalnie tylko z frazą w temacie albo nadawcy.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "ile": {
+            "type": "integer",
+            "description": "ile wiadomości (domyślnie 10, najwyżej 50)"
+          },
+          "fraza": {
+            "type": "string",
+            "description": "np. WSP, Kowalski; pusta = wszystkie"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "outlook_czytaj",
+      "opis": "Pokazuje treść wiadomości o numerze z ostatniej listy outlook_odebrane (nadawca, adresaci, załączniki, tekst).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "numer": {
+            "type": "integer",
+            "description": "numer z listy outlook_odebrane"
+          }
+        },
+        "required": [
+          "numer"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "powerpoint_czytaj",
+      "opis": "Pokazuje tekst wszystkich slajdów prezentacji PowerPointa (tytuły, punkty, notatki).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "powerpoint_dodaj_slajd",
+      "opis": "Dodaje slajd z tytułem i punktami (nowa linia = nowy punkt) na końcu prezentacji albo w podanym miejscu, potem zapisuje. Nieistniejąca prezentacja powstaje.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "tytul": {
+            "type": "string"
+          },
+          "tekst": {
+            "type": "string",
+            "description": "punkty slajdu; nowa linia = nowy punkt"
+          },
+          "pozycja": {
+            "type": "integer",
+            "description": "numer nowego slajdu; brak = na końcu"
+          }
+        },
+        "required": [
+          "sciezka",
+          "tytul"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

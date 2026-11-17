@@ -7,7 +7,9 @@ using Npgsql;
 namespace LokalneAI.App;
 
 /// <summary>
-/// Ustawienia → „Baza CDE”: dane logowania do PostgreSQL dla profilu cde zakładki Code, zapamiętane na stałe.
+/// NIEUŻYWANE od wersji 0.5 — zastąpione przez <see cref="CredentialsViewModel"/> (Menedżer poświadczeń Windows).
+/// Plik zostaje do decyzji użytkownika (zasada: nie kasujemy bez pytania).
+/// Dawniej: Ustawienia → „Baza CDE”: dane logowania do PostgreSQL dla profilu cde zakładki Code, zapamiętane na stałe.
 /// Adres, port, baza, użytkownik i person_id są w ustawieniach; hasło — zaszyfrowane kontem Windows (<see cref="CloudKeyStore"/>,
 /// klucz <c>cde</c>) w <c>%APPDATA%\LokalneAI</c>, poza repozytorium. Asystent i tak czyta bazę tylko w transakcji READ ONLY.
 /// </summary>
@@ -36,9 +38,9 @@ public sealed class CdeViewModel : ObservableObject
         _settings = settings;
         _keys = keys;
         _save = save;
-        _host = settings.CdeHost;
-        _portText = settings.CdePort.ToString();
-        _database = settings.CdeDatabase;
+        _host = settings.CdeHost ?? "";
+        _portText = settings.CdePort?.ToString() ?? "";
+        _database = settings.CdeDatabase ?? "";
         _user = settings.CdeUser ?? "";
         _personId = settings.CdePersonId ?? "";
         SaveCommand = new RelayCommand<PasswordBox>(SaveAsync);
@@ -87,7 +89,7 @@ public sealed class CdeViewModel : ObservableObject
         }
     }
 
-    /// <summary>Do nagłówka sekcji i zakładki Code: „maciej@10.0.0.214:5441/cde”.</summary>
+    /// <summary>Do nagłówka sekcji i zakładki Code: „użytkownik@serwer:port/baza”.</summary>
     public string Summary => _settings.CdeUser is null || !HasPassword
         ? "brak danych logowania"
         : $"{_settings.CdeUser}@{_settings.CdeHost}:{_settings.CdePort}/{_settings.CdeDatabase}"
@@ -99,7 +101,7 @@ public sealed class CdeViewModel : ObservableObject
         get
         {
             var password = _keys.Get(PasswordKey);
-            return _settings.CdeUser is null || string.IsNullOrEmpty(password) ? null : Build(_settings.CdeHost, _settings.CdePort, _settings.CdeDatabase, _settings.CdeUser, password);
+            return _settings.CdeUser is null || string.IsNullOrEmpty(password) ? null : Build(_settings.CdeHost ?? "", _settings.CdePort ?? 5432, _settings.CdeDatabase ?? "", _settings.CdeUser, password);
         }
     }
 
@@ -288,7 +290,7 @@ public sealed class CdeViewModel : ObservableObject
         problem = "";
         if (!int.TryParse(PortText.Trim(), out var port) || port is < 1 or > 65535)
         {
-            problem = "Port to liczba, np. 5441.";
+            problem = "Port to liczba, np. 5432.";
             return false;
         }
 
@@ -298,7 +300,7 @@ public sealed class CdeViewModel : ObservableObject
             return false;
         }
 
-        _settings.CdeHost = string.IsNullOrWhiteSpace(Host) ? "10.0.0.214" : Host.Trim();
+        _settings.CdeHost = string.IsNullOrWhiteSpace(Host) ? null : Host.Trim();
         _settings.CdePort = port;
         _settings.CdeDatabase = string.IsNullOrWhiteSpace(Database) ? "cde" : Database.Trim();
         _settings.CdeUser = User.Trim();

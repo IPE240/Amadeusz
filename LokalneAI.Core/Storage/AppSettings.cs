@@ -34,28 +34,46 @@ public sealed class AppSettings
     /// <summary>Zapisywać pytania i odpowiedzi w pliku historii na tym PC.</summary>
     public bool SaveHistory { get; set; } = true;
 
-    /// <summary>Okno pół-harnessu: ostatnio wybrany profil.</summary>
+    /// <summary>Okno pół-harnessu: ostatnio wybrany profil (do wersji 0.4; teraz <see cref="HarnessProfiles"/>).</summary>
     public string? HarnessProfile { get; set; }
+
+    /// <summary>Zakładka Code: zaznaczone profile (kilka naraz). Null = jeszcze nie zapisano (wtedy <see cref="HarnessProfile"/>).</summary>
+    public List<string>? HarnessProfiles { get; set; }
+
+    /// <summary>Zakładka Code: grupy rozmów (foldery). Same wskazania — rozmowy leżą w <c>&lt;folder&gt;\.amadeusz\</c>.</summary>
+    public List<CodeGroupSetting> CodeGroups { get; set; } = [];
+
+    /// <summary>Folder grupy „Niezgrupowane”; null = <see cref="CodeConversationStore.DefaultUngroupedFolder"/> (Dokumenty\Amadeusz).</summary>
+    public string? CodeUngroupedFolder { get; set; }
+
+    /// <summary>Grupa „Niezgrupowane” zwinięta w panelu rozmów.</summary>
+    public bool CodeUngroupedCollapsed { get; set; }
+
+    /// <summary>Folder grupy, w której ostatnio zaczynano rozmowę; null = „Niezgrupowane”.</summary>
+    public string? CodeLastGroup { get; set; }
 
     /// <summary>Okno pół-harnessu: folder wymiany mostu TeklaBridge.</summary>
     public string? TeklaExchangeFolder { get; set; }
 
-    /// <summary>Okno pół-harnessu: plik JSON z danymi połączenia z bazą CDE (host, port, dbname, user, password).</summary>
+    // Dawne dane bazy (do wersji 0.4). Program przy starcie przenosi je do Menedżera poświadczeń Windows
+    // (CredentialVault, wpis PostgreSQL) i czyści — nowe wersje niczego tu nie zapisują i nie mają wartości domyślnych.
+
+    /// <summary>Dawne: plik JSON z danymi połączenia (przenoszony do Menedżera poświadczeń).</summary>
     public string? CdeConnectionFile { get; set; }
 
-    /// <summary>Baza CDE (Ustawienia → Baza CDE): adres serwera. Hasło jest osobno, zaszyfrowane (<see cref="CloudKeyStore"/>, klucz <c>cde</c>).</summary>
-    public string CdeHost { get; set; } = "10.0.0.214";
+    /// <summary>Dawne: adres serwera bazy (przenoszony do Menedżera poświadczeń).</summary>
+    public string? CdeHost { get; set; }
 
-    /// <summary>Baza CDE: port serwera PostgreSQL.</summary>
-    public int CdePort { get; set; } = 5441;
+    /// <summary>Dawne: port serwera bazy.</summary>
+    public int? CdePort { get; set; }
 
-    /// <summary>Baza CDE: nazwa bazy.</summary>
-    public string CdeDatabase { get; set; } = "cde";
+    /// <summary>Dawne: nazwa bazy.</summary>
+    public string? CdeDatabase { get; set; }
 
-    /// <summary>Baza CDE: użytkownik PostgreSQL; null = jeszcze nie podano.</summary>
+    /// <summary>Dawne: użytkownik bazy.</summary>
     public string? CdeUser { get; set; }
 
-    /// <summary>Okno pół-harnessu: person_id pytającego w CDE (dla „moich” godzin).</summary>
+    /// <summary>Dawne: identyfikator pytającego w bazie.</summary>
     public string? CdePersonId { get; set; }
 
     /// <summary>Okno pół-harnessu, profil „pliki”: dozwolone foldery rozdzielone średnikiem.</summary>
@@ -128,9 +146,9 @@ public sealed class AppSettings
         }
 
         CodePermission = CodePermission == "czyta" ? "czyta" : "pytaj";
-        CdeHost = string.IsNullOrWhiteSpace(CdeHost) ? "10.0.0.214" : CdeHost.Trim();
-        CdePort = CdePort is < 1 or > 65535 ? 5441 : CdePort;
-        CdeDatabase = string.IsNullOrWhiteSpace(CdeDatabase) ? "cde" : CdeDatabase.Trim();
+        CdeHost = string.IsNullOrWhiteSpace(CdeHost) ? null : CdeHost.Trim();
+        CdePort = CdePort is < 1 or > 65535 ? null : CdePort;
+        CdeDatabase = string.IsNullOrWhiteSpace(CdeDatabase) ? null : CdeDatabase.Trim();
         CdeUser = string.IsNullOrWhiteSpace(CdeUser) ? null : CdeUser.Trim();
         ModelProvider = string.IsNullOrWhiteSpace(ModelProvider) ? null : ModelProvider.Trim().ToLowerInvariant();
         CloudModels = (CloudModels ?? [])
@@ -141,6 +159,19 @@ public sealed class AppSettings
         FavoriteModels = (FavoriteModels ?? []).Where(f => !string.IsNullOrWhiteSpace(f)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         OpenSections = OpenSections?.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.Ordinal).ToList();
         ComputeOn = string.IsNullOrWhiteSpace(ComputeOn) ? null : ComputeOn.Trim();
+        HarnessProfiles = HarnessProfiles?.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.Ordinal).ToList();
+        CodeGroups = (CodeGroups ?? [])
+            .Where(g => g is not null && !string.IsNullOrWhiteSpace(g.Folder))
+            .GroupBy(g => g.Folder.Trim().TrimEnd('\\', '/'), StringComparer.OrdinalIgnoreCase)
+            .Select(g => new CodeGroupSetting
+            {
+                Folder = g.Key,
+                Name = string.IsNullOrWhiteSpace(g.First().Name) ? Path.GetFileName(g.Key) : g.First().Name.Trim(),
+                Collapsed = g.First().Collapsed,
+            })
+            .ToList();
+        CodeUngroupedFolder = string.IsNullOrWhiteSpace(CodeUngroupedFolder) ? null : CodeUngroupedFolder.Trim();
+        CodeLastGroup = string.IsNullOrWhiteSpace(CodeLastGroup) ? null : CodeLastGroup.Trim();
 
         return this;
     }
