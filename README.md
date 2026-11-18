@@ -34,6 +34,20 @@ Są dwie części:
      Profil samej wiedzy: model oddaje tłumaczenie na angielski brytyjski (rejestr formalny, Eurokody), a terminy biura bierze
      ze słownika profilu (ostroga = shear key, płatew = purlin, zestawienie stali = steel schedule…). Najlepszy lokalny model:
      qwen3.5:9b ([profile/tlumaczenie/README.md](profile/tlumaczenie/README.md)).
+   - **ocr**: „zrób OCR pliku skan.jpg”, „przeczytaj protokol.pdf (skan)”, „zrób OCR wszystkich skanów w folderze skany”, „czy raport.pdf
+     to skan czy dokument?”. Tekst ze skanów, zdjęć i PDF-ów bez warstwy tekstowej rozpoznaje Tesseract 5 skryptem (bez modelu),
+     z ustawieniami z Ustawienia → OCR (języki, obrót, układ tabel, próg pewności, reguły ignorowania, dpi). Obrazek wklejony do pola
+     rozmowy (Ctrl+V w Code albo w Czacie) jest rozpoznawany od razu, a tekst trafia do pola. Umiejętność `office` ma też polecenia PDF:
+     `pdf_czytaj`, `pdf_info`, `pdf_polacz`, `pdf_wytnij`, `pdf_obroc` ([profile/ocr/README.md](profile/ocr/README.md)).
+   - **rfem**: „co jest w modelu hala.rf5?”, „jaki przekrój i długość ma pręt 28?”, „jaka jest siła w pręcie 28?”, „siły w pręcie 29 od KO5”,
+     „które pręty mają HEA 160?”, „jakie są kombinacje?”. Plik RFEM 5 (.rf5) jest czytany z dysku bez programu Dlubal
+     (`LokalneAI.Harness.Rfem`): węzły, pręty z długością i przekrojem, materiały, przypadki (PO) i kombinacje (KO), a w pliku
+     zapisanym po obliczeniu siły N, Vy, Vz, Mt, My, Mz i przemieszczenia dla każdej kombinacji. Tylko do odczytu, bez chmury
+     ([profile/rfem/README.md](profile/rfem/README.md)).
+   - **tablice**: „jaki Wy ma IPE 200?”, „ile waży 12 m HEB 200?”, „nośność połączenia IH1.1 IPE 240 M16 S235 8.8”, „rozstaw śrub M20”,
+     „nośność śruby M16 10.9”. Umiejętność samej wiedzy: charakterystyki przekrojów z Tablic Boguckiego i Żyburtowicza (OCR skanu,
+     wiersze sprawdzone zależnościami A–Iy–Wy–iy), typowe połączenia doczołowe DAST (IH, S235/S355, 8.8/10.9) i tablice SZS C5
+     do połączeń (śruby, rozstawy, sprężanie, spoiny, materiały). Dane w `wiedza\dane\*.json` ([profile/tablice/README.md](profile/tablice/README.md)).
 
    Dokumentację dla modelu wkleja się do `profile\<nazwa>\wiedza\`. Repozytoria z dokumentacją dodaje się przyciskiem
    **Źródła wiedzy…** w oknie asystenta; pliki aktualizują się same ([docs/profile.md](docs/profile.md)).
@@ -50,7 +64,7 @@ Są dwie części:
 2. **Okno** (`LokalneAI.App`) wygląda jak TransmittalMaster (kolory i style w `LokalneAI.App\Theme.xaml`).
    Karty są w granatowym pasku tytułu:
    - **Czat**: rozmowa z modelem i statystyki „gdzie liczył”.
-   - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`, `office`) albo odpowiadający z dokumentacji
+   - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`, `office`, `ocr`, `rfem`) albo odpowiadający z dokumentacji (`mkk`, `tlumaczenie`, `tablice`) albo odpowiadający z dokumentacji
      (`mkk`). Profile zaznacza się jak listę wyboru — kilka naraz (niżej). Ma trzy poziomy uprawnień:
      *Tylko czyta*, *Pyta o każdą zmianę* i *Bez pytania (poza kasowaniem)*. Z lewej **panel rozmów** (niżej).
    - **Ustawienia**: gdzie liczyć (ten komputer albo mocniejszy komputer w biurze), modele w chmurze (test),
@@ -130,8 +144,29 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
     Raporty” tworzy go w folderze rozmowy.
   - Domyślna grupa to **Niezgrupowane**: `Dokumenty\Amadeusz\.amadeusz\` (prawy klik → „Zmień folder…”).
   - Prawy klik na rozmowie: zmiana nazwy, przeniesienie do innej grupy (plik przechodzi do jej `.amadeusz\`),
-    „Przenieś do kosza” (`.amadeusz\kosz\` — nic nie jest kasowane). Na grupie: otwórz folder, zmień nazwę,
-    usuń z listy (pliki zostają i wrócą po ponownym dodaniu folderu).
+    „Usuń” albo × przy rozmowie (pokazuje się po najechaniu) — rozmowa idzie do `.amadeusz\kosz\` i leży tam
+    7 dni (można ją przywrócić, przenosząc plik z powrotem), potem program ją kasuje. Na grupie: otwórz folder,
+    zmień nazwę, usuń z listy (pliki zostają i wrócą po ponownym dodaniu folderu).
+- **Rozmowy w Czacie** (panel z lewej, jak w Code): `Dokumenty\Amadeusz\Czat\`, grupa = podfolder (`+ Nowa grupa…`),
+  rozmowa zapisuje się po każdej odpowiedzi, kliknięcie ją wczytuje (z „Pamiętaj rozmowę” model zna jej wcześniejsze
+  pytania). „Nowa rozmowa” czyści okno — poprzednia zostaje w panelu. × i „Usuń” → `Czat\kosz\` na 7 dni; usunięcie
+  grupy przenosi jej rozmowy do kosza.
+- **Ikona w zasobniku**: zamknięcie okna (×) chowa Amadeusza do zasobnika — program, brama i kolejka działają dalej;
+  kliknięcie ikony wraca do okna, prawy przycisk → „Zakończ Amadeusza” naprawdę go wyłącza. Ikona: głowa Mozarta, biała
+  w spoczynku, niebieska przy pracy, wokół łuk temperatury karty 30–70°C, w rogu liczba czekających zapytań. Sylwetka
+  z `LokalneAI.App\Assets\mozart.png` (ciemna sylwetka na jasnym tle albo PNG z przezroczystością; bez pliku — zastępcza).
+  Drugie uruchomienie skrótu pokazuje działające okno zamiast drugiej kopii.
+- **Odpowiedzi w Markdownie** (Czat i Code): tabele z ramkami (liczby do prawej), listy, pogrubienia, kod, linki;
+  wykresy z bloku ```` ```wykres ```` z JSON-em: słupkowe (pionowe, poziome, skumulowane, słupki w kolorach grup),
+  liniowe (wypełnienie pod linią i między liniami, przerywane), kołowe i pierścieniowe; sortowanie, odwracanie osi,
+  własne kolory i zakres osi, wartości po najechaniu myszą (pola: [profile/formatowanie/README.md](profile/formatowanie/README.md));
+  prawy przycisk → „Kopiuj tabele i dane wykresów do Excela”. Pytania o zgodę („Utworzyć folder?”) są w rozmowie
+  z przyciskami Tak/Nie, bez wyskakującego okna. Źródła wiedzy, folder umiejętności i aktualizacja dokumentacji:
+  **Ustawienia → Umiejętności**. Umiejętność `formatowanie` (same zasady, bez narzędzi; domyślnie
+  w każdym profilu) uczy model, kiedy dać tabelę — przy łączeniu nie jest „rolą” i nie zmienia zasad innych umiejętności.
+- **Glosariusz**: plik z parami terminów w wierszach (`expansion joint – kompensator`) w `wiedza\` umiejętności albo
+  wspólny dla biura na dysku (Źródła wiedzy… → Pliki i foldery na dysku). Program sam znajduje w tekście terminy
+  z glosariusza (także odmienione) i podaje modelowi ich odpowiedniki.
 - **Profil** (lista obok „Umiejętności”, jednokrotny wybór): nazwany zestaw umiejętności do trybu pracy, np.
   *Konstruktor* = `tekla` + `mkk` + `pliki`, *Biuro* = `office` + `tlumaczenie` + `pliki`. Wybór profilu tylko
   zaznacza jego umiejętności — potem można je zmieniać, a lista pokazuje wtedy „własny wybór”. Na dole listy
@@ -162,6 +197,8 @@ Odpowiedź jest pokazywana dokładnie tak, jak zwrócił ją model, łącznie ze
 |---|---|
 | `%APPDATA%\LokalneAI\ustawienia.json` | ustawienia okna |
 | `<folder grupy>\.amadeusz\*.json` | rozmowy zakładki Code (grupa „Niezgrupowane”: `Dokumenty\Amadeusz`); kosz w `.amadeusz\kosz\` |
+| `Dokumenty\Amadeusz\Czat\[<grupa>\]*.json` | rozmowy zakładki Czat; kosz w `Czat\kosz\` (kasowany po 7 dniach) |
+| `%LOCALAPPDATA%\LokalneAI\wiedza_z_dysku\` | kopie plików wiedzy z dysku (np. wspólnego glosariusza) na czas, gdy dysk jest niedostępny |
 | `%LOCALAPPDATA%\LokalneAI\historia.jsonl` | pytania i odpowiedzi ze statystykami, jeden JSON w linii; tylko na tym PC, zapis można wyłączyć |
 | `%LOCALAPPDATA%\LokalneAI\bledy.log` | nieoczekiwane błędy programu |
 
@@ -204,13 +241,15 @@ Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 | `LokalneAI.Harness` | rdzeń pół-harnessu: sesja, schemat kroku, strażnicy, narzędzia wbudowane, klienci Ollamy i serwerów zgodnych z OpenAI, wykonawcy (symulator, TeklaBridge) | .NET Standard 2.0 |
 | `LokalneAI.Harness.Postgres` | wykonawca SQL tylko do odczytu (profil `cde`) | .NET Standard 2.0, Npgsql 8 |
 | `LokalneAI.Harness.Office` | wykonawca dokumentów Word, Excel, Outlook i PowerPoint przez COM zainstalowanego Microsoft 365 (profil `office`) | .NET Standard 2.0, bez paczek |
+| `LokalneAI.Harness.Ocr` | OCR skryptem (Tesseract 5) i PDF (PDFium, PDFsharp 6.1) dla umiejętności `ocr` i poleceń PDF w `office` | .NET Standard 2.0, natywne dll x64 |
+| `LokalneAI.Harness.Rfem` | czytnik modeli RFEM 5 (.rf5) bez programu Dlubal dla umiejętności `rfem`: model, siatka, siły w prętach | .NET Standard 2.0, bez paczek |
 | `LokalneAI.Harness.Wpf` | panel rozmowy z licznikiem kontekstu do osadzenia | .NET Framework 4.8 i .NET 10 |
 | `LokalneAI.Harness.Tests` | testy xUnit, uruchamiane na .NET 10 i .NET Framework 4.8 | |
 | `LokalneAI.Eval` | porównanie modeli na testach profili | .NET 10 |
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie w WinForms (.NET Framework 4.8) | |
 | `LokalneAI.Gateway` | brama: kolejka, liczenie na innym komputerze, udostępnianie w podsieci | .NET 10, ASP.NET Core (Kestrel) |
 | `LokalneAI.Core`, `LokalneAI.App`, `LokalneAI.Core.Tests` | okno, jego klient Ollamy i testy (także bramy) | .NET 10 |
-| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk`, `office`, `tlumaczenie` | wiedza, polecenia, przykłady i testy profili | |
+| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk`, `office`, `tlumaczenie`, `ocr`, `rfem`, `tablice` | wiedza, polecenia, przykłady i testy profili | |
 | `szablony\` | szablon profilu i plików `AGENTS`, `CLAUDE`, `lokalne-ai\` dla repozytoriów programów | |
 | `narzedzia\sprawdz_przyklady` | kompiluje i uruchamia przykłady z `docs\biblioteki-dla-agentow.md` | .NET 10 i .NET Framework 4.8, C# 7.3 |
 | `docs\` | osadzanie, opisy dla AI, wiedza dla modeli, serwer modelu, format profilu, wybór modelu, raporty z badań | |

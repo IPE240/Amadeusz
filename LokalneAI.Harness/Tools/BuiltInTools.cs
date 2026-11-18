@@ -11,6 +11,10 @@ namespace LokalneAI.Harness.Tools
         public const string CalculatorName = "kalkulator";
         /// <summary>Wyszukiwarka w <c>wiedza\</c> profilu: nazwa do <c>narzedzia_wbudowane</c>.</summary>
         public const string KnowledgeName = "szukaj_wiedzy";
+        /// <summary>Ile fragmentów wiedzy zwraca <c>szukaj_wiedzy</c> bez argumentu <c>ile</c>.</summary>
+        public const int DefaultKnowledgeHits = 3;
+        /// <summary>Najwięcej fragmentów na jedno wywołanie <c>szukaj_wiedzy</c> (argument <c>ile</c>; każdy do 900 znaków — więcej nie mieści się w kontekście Bielika).</summary>
+        public const int MaxKnowledgeHits = 8;
         /// <summary>Wyszukiwanie w internecie (dokładane, gdy włączony jest dostęp do internetu i profil na niego pozwala).</summary>
         public const string WebSearchName = "szukaj_w_internecie";
         /// <summary>Czytanie strony internetowej jako tekstu.</summary>
@@ -35,8 +39,8 @@ namespace LokalneAI.Harness.Tools
                 case KnowledgeName:
                     return new ToolDefinition(
                         KnowledgeName,
-                        "Szuka w notatkach z wiedzą profilu, gdy nie znasz pojęcia, zasady albo nazwy.",
-                        "{\"type\":\"object\",\"properties\":{\"fraza\":{\"type\":\"string\",\"description\":\"kilka słów kluczowych po polsku\"}},\"required\":[\"fraza\"],\"additionalProperties\":false}")
+                        "Szuka w notatkach z wiedzą profilu, gdy nie znasz pojęcia, zasady albo nazwy. Zwraca najlepsze fragmenty (domyślnie 3; „ile” do 8, gdy porównujesz kilka pozycji naraz).",
+                        "{\"type\":\"object\",\"properties\":{\"fraza\":{\"type\":\"string\",\"description\":\"kilka słów kluczowych po polsku\"},\"ile\":{\"type\":\"integer\",\"description\":\"ile fragmentów zwrócić: domyślnie 3, najwyżej 8 (więcej przy porównaniu albo zestawieniu kilku pozycji)\"}},\"required\":[\"fraza\"],\"additionalProperties\":false}")
                     {
                         IsBuiltIn = true,
                     };
@@ -96,7 +100,10 @@ namespace LokalneAI.Harness.Tools
 
                 case KnowledgeName:
                     var phrase = arguments.TryGetProperty("fraza", out var f) ? f.GetString() : "";
-                    var hits = knowledge.Search(phrase);
+                    var top = arguments.TryGetProperty("ile", out var n) && n.ValueKind == JsonValueKind.Number
+                        ? (int)Math.Max(1, Math.Min(MaxKnowledgeHits, n.GetDouble()))
+                        : DefaultKnowledgeHits;
+                    var hits = knowledge.Search(phrase, top);
                     return hits.Count == 0
                         ? ToolResult.Ok("Nic nie znaleziono dla: " + phrase)
                         : ToolResult.Ok(string.Join("\n\n", hits));

@@ -113,7 +113,14 @@ public sealed class MainViewModel : ObservableObject
         };
         Cloud = new CloudViewModel(_settings, _keys, RebuildModels, SaveSettings);
         Credentials = new CredentialsViewModel(new CredentialVault(), _settings, _keys, SaveSettings);
+        if (_settings.AddDefaultSkills(ProfilesFolder.List(ProfilesFolder.Find())))
+        {
+            SaveSettings(); // np. nowa umiejętność „formatowanie” dopisana raz do profili i do wyboru w zakładce Code
+        }
+
         WorkProfiles = new WorkProfilesViewModel(_settings, SaveSettings, ProfilesFolder.Find());
+        Skills = new SkillsViewModel(_settings, SaveSettings, ProfilesFolder.Find());
+        Ocr = new OcrViewModel(_settings, SaveSettings);
         if (_settingsStore.LoadError is { } loadError)
         {
             _statusText = $"Nie odczytałem ustawień ({loadError}), używam domyślnych.";
@@ -144,6 +151,12 @@ public sealed class MainViewModel : ObservableObject
 
     /// <summary>Ustawienia → „Profile”: nazwane zestawy umiejętności do zakładki Code.</summary>
     public WorkProfilesViewModel WorkProfiles { get; }
+
+    /// <summary>Ustawienia → „Umiejętności”: lista, źródła wiedzy, folder, aktualizacja dokumentacji.</summary>
+    public SkillsViewModel Skills { get; }
+
+    /// <summary>Ustawienia → OCR (Tesseract: języki, obrót, układ, reguły; wklejony obrazek → OCR).</summary>
+    public OcrViewModel Ocr { get; }
 
     private readonly LokalneAI.Core.Hardware.TemperatureHistory _temperature = new();
     private System.Windows.Threading.DispatcherTimer? _temperatureTimer;
@@ -520,6 +533,9 @@ public sealed class MainViewModel : ObservableObject
         private set => SetProperty(ref _statusText, value);
     }
 
+    /// <summary>Komunikat na pasku stanu z okna (np. postęp OCR obrazka wklejonego do pytania).</summary>
+    internal void ShowStatus(string text) => StatusText = text;
+
     public async Task InitializeAsync()
     {
         try
@@ -635,8 +651,45 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>Skończyła się odpowiedź w czacie (także z błędem albo przerwana) — panel rozmów zapisuje rozmowę.</summary>
+    public event EventHandler? ChatTurnEnded;
+
+    /// <summary>Okno czatu wyczyszczone („Wyczyść rozmowę”, „+ Nowa rozmowa”) — następne pytanie zaczyna nową rozmowę.</summary>
+    public event EventHandler? ChatCleared;
+
     /// <summary>Wysyła pytanie do modelu i pokazuje odpowiedź na bieżąco, słowo po słowie.</summary>
     public async Task SendAsync()
+    {
+        var before = Exchanges.Count;
+        try
+        {
+            await SendCoreAsync();
+        }
+        finally
+        {
+            if (Exchanges.Count > before)
+            {
+                ChatTurnEnded?.Invoke(this, EventArgs.Empty);
+            }
+        }
+    }
+
+    /// <summary>Nowa, pusta rozmowa w czacie (zapisana zostaje w panelu rozmów).</summary>
+    public void NewChat() => Clear();
+
+    /// <summary>Wczytuje zapisaną rozmowę do okna czatu (z „Pamiętaj rozmowę” model dostanie jej wcześniejsze pytania).</summary>
+    public void LoadChat(IEnumerable<ExchangeViewModel> exchanges, string title)
+    {
+        Exchanges.Clear();
+        foreach (var exchange in exchanges)
+        {
+            Exchanges.Add(exchange);
+        }
+
+        StatusText = "Rozmowa „" + title + "”" + (RememberConversation ? " — model pamięta jej wcześniejsze pytania." : " — włącz „Pamiętaj rozmowę”, żeby model znał wcześniejsze pytania.");
+    }
+
+    private async Task SendCoreAsync()
     {
         var question = Question.Trim();
         if (question.Length == 0 || IsBusy)
@@ -656,10 +709,21 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
+        // „Popraw / jeszcze raz”: wyższa temperatura (przy 0,1 to samo pytanie daje prawie to samo).
+        if (TurnIntent.AsksForCorrection(question) && Exchanges.Any(e => e.Completed && !e.IsError))
+        {
+            temperature = Math.Max(temperature, 0.5);
+        }
+
         if (InternetAccess)
         {
             await SendWithInternetAsync(selected, question, temperature);
             return;
+        }
+
+        if (TurnIntent.AsksForWeb(question))
+        {
+            StatusText = "Prosisz o sprawdzenie w internecie, a dostęp jest zablokowany — włącz „Odblokuj dostęp do internetu” na górze okna.";
         }
 
         if (selected.Cloud is { } provider)
@@ -689,7 +753,9 @@ public sealed class MainViewModel : ObservableObject
         {
             Model = model,
             Messages = messages,
-            Options = new ChatOptions { Temperature = temperature, NumCtx = ContextLength },
+            Options = new ChatOptions { Temperature = temperature, NumCtx = ContextLength, NumPredict = MaxAnswerTokens },
+            // Bez „myślenia”, jak w zakładce Code: qwen3.5 myślał po kilkadziesiąt sekund, a raz wpadł w pętlę bez końca.
+            Think = false,
         };
         var clock = Stopwatch.StartNew();
         TimeSpan? firstToken = null;
@@ -725,6 +791,10 @@ public sealed class MainViewModel : ObservableObject
             if (text.Length == 0)
             {
                 exchange.Answer = "(model nie zwrócił tekstu)";
+            }
+            else if (last?.DoneReason == "length")
+            {
+                exchange.Answer = text + "\n\n*(Odpowiedź ucięta: limit " + MaxAnswerTokens + " tokenów — poproś o dalszą część.)*";
             }
 
             var running = await TryGetRunningAsync(model);
@@ -800,6 +870,9 @@ public sealed class MainViewModel : ObservableObject
             Cloud = selected?.Cloud,
             ModelBrush = selected?.NameBrush,
             GetApiKey = provider => CloudViewModel.ResolveKey(_keys, provider),
+            SelectPreferredModel = SelectPreferredModel,
+            CurrentModelKey = SelectedModel?.Key,
+            ModelChoices = Models.Select(m => new ModelChoice(m.Key, m.IsCloud ? m.Display + " (" + m.Cloud!.Name + ")" : m.Name)).ToList(),
             GetPostgres = Credentials.GetPostgres,
             Web = InternetAccess ? _web : null,
             // Prompt profilu (karta, narzędzia, przykłady) zajmuje 4–8 tys. tokenów — mniej niż 16 384 nie ma sensu.
@@ -936,7 +1009,7 @@ public sealed class MainViewModel : ObservableObject
             using var session = new HarnessSession(llm, BuildInternetChatProfile(), null, new SessionOptions
             {
                 Web = _web,
-                ContextNote = InternetChatNote(),
+                ContextNote = InternetChatNote(question),
             });
             session.Progress += (_, e) =>
             {
@@ -1007,16 +1080,18 @@ public sealed class MainViewModel : ObservableObject
             settings.CloudProviders.Add(provider.Id);
         }
 
-        return new HarnessProfile("czat", system, Array.Empty<ToolDefinition>(), settings).WithInternet();
+        return new HarnessProfile("czat", system + (FormattingRules() is { } rules ? "\n\n" + rules : ""), Array.Empty<ToolDefinition>(), settings).WithInternet();
     }
 
     /// <summary>Data i (przy „Pamiętaj rozmowę”) wcześniejsze pytania i odpowiedzi czatu, krótko.</summary>
-    private string InternetChatNote()
+    private string InternetChatNote(string question)
     {
         var note = new StringBuilder("Dziś jest ").Append(DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)).Append('.');
-        if (RememberConversation)
+        // Bez „Pamiętaj rozmowę” prośba „popraw / jeszcze raz” i tak dotyczy ostatniej odpowiedzi — ją model musi widzieć.
+        var take = RememberConversation ? 6 : TurnIntent.AsksForCorrection(question) ? 1 : 0;
+        if (take > 0)
         {
-            foreach (var earlier in Exchanges.Where(e => e.Completed && !e.IsError).TakeLast(6))
+            foreach (var earlier in Exchanges.Where(e => e.Completed && !e.IsError).TakeLast(take))
             {
                 note.Append("\nWcześniej użytkownik: ").Append(Shorten(earlier.Question, 300))
                     .Append("\nWcześniej Ty: ").Append(Shorten(earlier.Answer, 600));
@@ -1155,24 +1230,53 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Zasady umiejętności „formatowanie” (tabele, listy, wykresy w bloku ```wykres) — także dla czatu, który nie ma umiejętności.
+    /// Null, gdy folderu umiejętności nie ma.
+    /// </summary>
+    private static string? FormattingRules()
+    {
+        try
+        {
+            var path = Path.Combine(ProfilesFolder.Find(), "formatowanie", "system.md");
+            return File.Exists(path) ? File.ReadAllText(path).Trim() : null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
     private List<ChatMessage> BuildMessages(string question)
     {
         var messages = new List<ChatMessage>();
-        if (!string.IsNullOrWhiteSpace(SystemPrompt))
+        var system = string.Join("\n\n", new[] { SystemPrompt?.Trim(), FormattingRules() }.Where(t => !string.IsNullOrWhiteSpace(t)));
+        if (system.Length > 0)
         {
-            messages.Add(new ChatMessage("system", SystemPrompt.Trim()));
+            messages.Add(new ChatMessage("system", system));
         }
 
-        if (RememberConversation)
+        var completed = Exchanges.Where(e => e.Completed && !e.IsError).ToList();
+        var correction = completed.Count > 0 && TurnIntent.AsksForCorrection(question);
+        // Bez „Pamiętaj rozmowę” prośba o poprawkę i tak dotyczy ostatniej odpowiedzi — dołączamy przynajmniej ją.
+        foreach (var earlier in RememberConversation ? completed : correction ? completed.TakeLast(1).ToList() : [])
         {
-            foreach (var earlier in Exchanges.Where(e => e.Completed && !e.IsError))
-            {
-                messages.Add(new ChatMessage("user", earlier.Question));
-                messages.Add(new ChatMessage("assistant", earlier.Answer));
-            }
+            messages.Add(new ChatMessage("user", earlier.Question));
+            messages.Add(new ChatMessage("assistant", earlier.Answer));
         }
 
-        messages.Add(new ChatMessage("user", question));
+        var hints = new List<string>();
+        if (correction)
+        {
+            hints.Add(TurnIntent.CorrectionHint);
+        }
+
+        if (TurnIntent.AsksForWeb(question))
+        {
+            hints.Add(TurnIntent.NoWebHint); // ta droga to czat bez internetu (z internetem idzie przez sesję harnessu)
+        }
+
+        messages.Add(new ChatMessage("user", hints.Count == 0 ? question : question + "\n\n" + string.Join("\n", hints)));
         return messages;
     }
 
@@ -1301,7 +1405,8 @@ public sealed class MainViewModel : ObservableObject
     private void Clear()
     {
         Exchanges.Clear();
-        StatusText = "Wyczyszczono rozmowę.";
+        StatusText = "Nowa rozmowa (poprzednia jest w panelu rozmów).";
+        ChatCleared?.Invoke(this, EventArgs.Empty);
     }
 
     private void CopyInstallCommandToClipboard()
@@ -1513,6 +1618,48 @@ public sealed class MainViewModel : ObservableObject
     }
 
     private static bool SameModel(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Limit długości jednej odpowiedzi czatu (tokeny) — długa odpowiedź z tabelą to ok. 1–2 tys.</summary>
+    private const int MaxAnswerTokens = 4096;
+
+    /// <summary>Ten sam model z Ollamy niezależnie od dopisku „:latest” (gemma4:12b = gemma4:12b:latest).</summary>
+    private static bool SameLocalModel(string a, string b)
+    {
+        static string Strip(string name) => name.EndsWith(":latest", StringComparison.OrdinalIgnoreCase) ? name[..^7] : name;
+        return SameModel(Strip(a), Strip(b));
+    }
+
+    /// <summary>
+    /// Zakładka Code, wybór profilu: przełącza na pierwszy dostępny z preferowanych modeli profilu (od najlepszego) na maszynie,
+    /// która liczy. Model w chmurze tylko, gdy pozwalają na niego wszystkie umiejętności (<paramref name="allowedCloud"/>)
+    /// i jest klucz API. Zwraca wybrany model; null = żadnego z listy tu nie ma (zostaje bieżący).
+    /// </summary>
+    public ModelItem? SelectPreferredModel(IEnumerable<string> keys, IReadOnlyCollection<string> allowedCloud)
+    {
+        foreach (var key in keys)
+        {
+            var item = Models.FirstOrDefault(m => SameModel(m.Key, key) || (!m.IsCloud && !key.Contains('|') && SameLocalModel(m.Name, key)));
+            if (item is null)
+            {
+                continue;
+            }
+
+            if (item.Cloud is { } cloud
+                && (!allowedCloud.Contains(cloud.Id, StringComparer.OrdinalIgnoreCase) || string.IsNullOrEmpty(CloudViewModel.ResolveKey(_keys, cloud))))
+            {
+                continue;
+            }
+
+            if (!ReferenceEquals(SelectedModel, item))
+            {
+                SelectedModel = item;
+            }
+
+            return item;
+        }
+
+        return null;
+    }
 
     private static bool IsLoopback(string url) => Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.IsLoopback;
 

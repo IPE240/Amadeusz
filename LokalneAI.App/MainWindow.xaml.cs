@@ -13,6 +13,56 @@ public partial class MainWindow : Window
     /// <summary>Przewijaj za odpowiedzią, dopóki użytkownik sam nie przewinie wyżej.</summary>
     private bool _followAnswer = true;
 
+    /// <summary>Ikona w zasobniku; null w kontroli bez klikania (wtedy zamknięcie okna kończy program).</summary>
+    private TrayIcon? _tray;
+
+    /// <summary>Program naprawdę się kończy („Zakończ Amadeusza”, wylogowanie) — zamknięcie okna nie chowa go do zasobnika.</summary>
+    private bool _exiting;
+
+    private bool _trayHintShown;
+
+    /// <summary>
+    /// Włącza ikonę w zasobniku: zamknięcie okna chowa Amadeusza (program, brama i kolejka działają dalej), ikona pokazuje
+    /// stan pracy, temperaturę karty i kolejkę. Wołane przy zwykłym starcie (nie w kontroli bez klikania).
+    /// </summary>
+    public void EnableTray()
+    {
+        _tray ??= new TrayIcon(
+            () => new TrayState(
+                _viewModel.IsBusy || CodeView.Panel.IsBusy || _viewModel.Network.QueueRunning > 0,
+                _viewModel.Temperature.Current,
+                _viewModel.Network.QueueWaiting),
+            ShowFromTray,
+            ExitApplication);
+        if (Application.Current is { } app)
+        {
+            app.SessionEnding += (_, _) => _exiting = true;
+        }
+    }
+
+    /// <summary>Pokazuje okno z zasobnika (kliknięcie ikony, drugie uruchomienie skrótu).</summary>
+    public void ShowFromTray()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        Activate();
+        Topmost = true;  // wyciągnięcie na wierzch spod innych okien
+        Topmost = false;
+        Focus();
+    }
+
+    /// <summary>„Zakończ Amadeusza” z menu ikony: zapis, zamknięcie sesji i bramy, koniec programu.</summary>
+    public void ExitApplication()
+    {
+        _exiting = true;
+        Show(); // zamknięcie ukrytego okna też przechodzi przez Closing
+        Close();
+    }
+
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
@@ -32,6 +82,7 @@ public partial class MainWindow : Window
             }
         };
         _viewModel.ComputeTargetChanged += (_, _) => CodeView.RefreshModelText();
+        ChatSidebar.Attach(_viewModel);
         _viewModel.Credentials.Changed += (_, _) =>
         {
             CodeView.RefreshCdeText();
@@ -39,7 +90,19 @@ public partial class MainWindow : Window
         };
         CodeView.CredentialsRequested += (_, _) => OpenSettingsSection(SectionCredentials);
         _viewModel.WorkProfiles.Changed += (_, _) => CodeView.ReloadWorkProfiles();
+        _viewModel.Skills.Changed += (_, _) => CodeView.RebuildSession(); // nowa wiedza albo źródła — następne polecenie z nowym indeksem
         CodeView.WorkProfilesChanged += (_, _) => _viewModel.WorkProfiles.Reload();
+        _viewModel.WorkProfiles.EditModelsRequested += (_, row) =>
+        {
+            var choices = _viewModel.Models
+                .Select(m => new ModelChoice(m.Key, m.IsCloud ? m.Display + " (" + m.Cloud!.Name + ")" : m.Name))
+                .ToList();
+            var window = new PreferredModelsWindow(row.Name, row.Models, choices) { Owner = this };
+            if (window.ShowDialog() == true)
+            {
+                row.SetModels(window.Keys);
+            }
+        };
         _viewModel.InternetChanged += (_, _) =>
         {
             CodeView.RefreshModelText();
@@ -52,11 +115,28 @@ public partial class MainWindow : Window
                 CodeView.RefreshModelText();
             }
         };
-        Closing += (_, _) =>
+        Closing += (_, e) =>
         {
+            if (_tray is not null && !_exiting)
+            {
+                // × chowa okno do zasobnika — Amadeusz działa dalej (brama, kolejka, liczenie dla innych).
+                e.Cancel = true;
+                CodeView.SaveChoices();
+                Hide();
+                if (!_trayHintShown)
+                {
+                    _trayHintShown = true;
+                    _tray.ShowBalloon("Amadeusz działa dalej", "Kliknij ikonę, żeby wrócić. Zamknięcie programu: prawy przycisk na ikonie → Zakończ Amadeusza.");
+                }
+
+                return;
+            }
+
             CodeView.SaveChoices();
             CodeView.Shutdown();
             _viewModel.OnClosing();
+            _tray?.Dispose();
+            _tray = null;
         };
     }
 
@@ -176,6 +256,59 @@ public partial class MainWindow : Window
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var file = File.Create(path);
         encoder.Save(file);
+    }
+
+    /// <summary>
+    /// Obrazek wklejony do pytania (Ctrl+V): zapis do <c>Dokumenty\Amadeusz\Czat\obrazy\</c> i OCR z Ustawień → OCR;
+    /// rozpoznany tekst z nagłówkiem trafia w miejsce kursora. Tekst ze schowka wkleja się jak zwykle.
+    /// </summary>
+    private async void QuestionBox_Pasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (!_viewModel.Ocr.OnPaste || !e.DataObject.GetDataPresent(DataFormats.Bitmap) || e.DataObject.GetDataPresent(DataFormats.UnicodeText))
+        {
+            return;
+        }
+
+        e.CancelCommand();
+        byte[] png;
+        try
+        {
+            var image = Clipboard.GetImage();
+            if (image == null)
+            {
+                return;
+            }
+
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(image));
+            using var stream = new MemoryStream();
+            encoder.Save(stream);
+            png = stream.ToArray();
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException || ex is NotSupportedException || ex is InvalidOperationException)
+        {
+            _viewModel.ShowStatus("Nie udało się odczytać obrazka ze schowka: " + ex.Message);
+            return;
+        }
+
+        var caret = QuestionBox.CaretIndex;
+        QuestionBox.IsEnabled = false;
+        _viewModel.ShowStatus("Rozpoznaję tekst z wklejonego obrazka (OCR)…");
+        try
+        {
+            var text = await _viewModel.Ocr.RecognizePastedAsync(png, Path.Combine(LokalneAI.Core.Storage.ChatConversationStore.DefaultRoot, "obrazy"));
+            var current = _viewModel.Question ?? "";
+            caret = Math.Min(caret, current.Length);
+            _viewModel.Question = current.Substring(0, caret) + text + current.Substring(caret);
+            QuestionBox.CaretIndex = caret + text.Length;
+            var firstLine = text.Split('\n').FirstOrDefault(l => l.Trim().Length > 0) ?? "";
+            _viewModel.ShowStatus(firstLine.Trim('[', ']') + " — tekst jest w polu pytania, dopisz, o co chodzi.");
+        }
+        finally
+        {
+            QuestionBox.IsEnabled = true;
+            QuestionBox.Focus();
+        }
     }
 
     private void QuestionBox_PreviewKeyDown(object sender, KeyEventArgs e)

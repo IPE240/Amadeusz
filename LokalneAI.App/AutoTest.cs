@@ -26,10 +26,21 @@ internal static class AutoTest
                 return;
             }
 
+            if (options.AutoTestQuestion == "#ikona")
+            {
+                TrayIcon.SavePreview(Path.Combine(outputDir, "ikona.png")); // podgląd ikony w zasobniku
+                options = options with { AutoTestQuestion = "-" };
+            }
+
+            // Czat w kontroli: rozmowy zapisują się tylko z --rozmowy <folder> (nigdy w Dokumenty\Amadeusz\Czat).
+            window.ChatSidebar.ConfigureForTest(options.HarnessConversations);
             if (!string.IsNullOrWhiteSpace(options.AutoTestQuestion) && options.AutoTestQuestion != "-")
             {
-                viewModel.Question = options.AutoTestQuestion;
-                await viewModel.SendAsync();
+                foreach (var question in options.AutoTestQuestion.Split(new[] { "||" }, StringSplitOptions.RemoveEmptyEntries).Select(q => q.Trim()))
+                {
+                    viewModel.Question = question;
+                    await viewModel.SendAsync();
+                }
             }
 
             window.SelectTab(options.Tab);
@@ -104,6 +115,7 @@ internal static class AutoTest
         view.AutoConfirm = true;
         var commands = (options.AutoTestQuestion ?? "").Split(new[] { "||" }, StringSplitOptions.RemoveEmptyEntries).Select(c => c.Trim()).ToList();
         var resume = commands.Remove("#wznow");
+        var inlineConsent = commands.Remove("#zgoda"); // pytanie o zgodę w rozmowie: zrzut, potem klik „Tak”
         var skillsList = commands.Remove("#lista");
         view.ConfigureForTest(options.Harness!, roots, options.HarnessConnection, options.HarnessPerson, options.HarnessConversations, resume);
         if (commands.Remove("#zrodla"))
@@ -138,6 +150,12 @@ internal static class AutoTest
             await view.SaveSkillsListAsync(Path.Combine(outputDir, "umiejetnosci.png"));
         }
 
+        if (inlineConsent)
+        {
+            view.AutoConfirm = false;
+            _ = AnswerConsentAsync(window, view, Path.Combine(outputDir, "zgoda.png"));
+        }
+
         await view.RunAsync(commands); // przy --rozmowy każde polecenie zapisuje rozmowę, jak w zwykłym oknie
         await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
         await Task.Delay(300);
@@ -152,5 +170,52 @@ internal static class AutoTest
             wpisy = entries,
         }, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
         return entries.Any(e => e.rodzaj == "Error") ? 1 : 0;
+    }
+
+    /// <summary>
+    /// Kontrola pytania o zgodę w rozmowie (<c>#zgoda</c>): czeka na wpis z przyciskami, zapisuje zrzut okna i klika „Tak”
+    /// (przez automatyzację interfejsu, jak użytkownik).
+    /// </summary>
+    private static async Task AnswerConsentAsync(MainWindow window, HarnessView view, string screenshot)
+    {
+        for (var i = 0; i < 600; i++)
+        {
+            await Task.Delay(200);
+            if (view.Panel.Entries.FirstOrDefault(e => e.Kind == LokalneAI.Harness.Wpf.PanelEntryKind.Confirm && e.IsPending) is null)
+            {
+                continue;
+            }
+
+            await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            await Task.Delay(300);
+            window.SavePng(screenshot);
+            var yes = FindButton(view.Panel, "Tak, wykonaj");
+            if (yes is not null)
+            {
+                ((System.Windows.Automation.Provider.IInvokeProvider)new System.Windows.Automation.Peers.ButtonAutomationPeer(yes)
+                    .GetPattern(System.Windows.Automation.Peers.PatternInterface.Invoke)!).Invoke();
+            }
+
+            return;
+        }
+    }
+
+    private static System.Windows.Controls.Button? FindButton(DependencyObject root, string content)
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is System.Windows.Controls.Button { IsVisible: true } button && Equals(button.Content, content))
+            {
+                return button;
+            }
+
+            if (FindButton(child, content) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 }

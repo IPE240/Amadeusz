@@ -160,6 +160,62 @@ var session = new HarnessSession(llm, HarnessProfile.Load(@"profile\office"), ex
   (angielskie). Liczby z przecinkiem są liczbami; wartości czytane są formatowane po polsku, daty jako `RRRR-MM-DD`.
 - Bez pola `chmura` i z `internet: false` w `profil.json`: treść dokumentów i maili zostaje na komputerze.
 
+## OCR i PDF (umiejętność `ocr`, polecenia `pdf_*` w `office`)
+
+```csharp
+using LokalneAI.Harness.Ocr;                         // projekt LokalneAI.Harness.Ocr: Tesseract 5, PDFium (Docnet.Core), PDFsharp 6.1
+
+var options = new OcrOptions
+{
+    AllowedRoots = { @"C:\ODS" },
+    WorkingFolder = @"C:\ODS\Projekty\1095_WSP\skany",
+    Languages = "pol+eng",                           // dane *.traineddata pobierają się same do %LOCALAPPDATA%\LokalneAI\tessdata
+    Rotation = OcrRotation.Auto,                     // wykrywanie orientacji (osd); albo None / Clockwise90 / Rotate180 / Clockwise270
+    Layout = OcrLayout.Auto,                         // PreserveLayout = tabele (odstępy kolumn zostają)
+    MinConfidence = 0,                               // słowa poniżej progu są pomijane
+    IgnorePatterns = { @"^Strona \d+ z \d+$" },      // linie do wyrzucenia (nagłówki, stopki)
+    Dpi = 300,
+};
+var executor = new OcrExecutor(options);           // ocr_obraz, ocr_pdf, ocr_folder, pdf_info, pdf_czytaj, pdf_polacz, pdf_wytnij, pdf_obroc
+var text = executor.Engine.RecognizeFile(@"C:\ODS\Projekty\1095_WSP\skany\pismo.jpg").Text;   // OCR bez modelu, np. dla obrazka ze schowka
+```
+
+- OCR to skrypt (Tesseract LSTM), nie model językowy: model dostaje gotowy tekst z pewnością. Tabele, wzory i rysunki
+  Tesseract oddaje słabo — do nich model z obsługą obrazów.
+- `pdf_czytaj` bierze warstwę tekstową z PDFium, a strony bez tekstu (skany) renderuje i rozpoznaje (`OcrWhenNoText`).
+  `pdf_polacz`, `pdf_wytnij`, `pdf_obroc` zawsze zapisują nowy plik (istniejących nie nadpisują) i pytają o zgodę.
+- Natywne biblioteki: `x64\tesseract50.dll`, `leptonica-1.82.0.dll`, `runtimes\win-x64\native\pdfium.dll` — paczki kopiują je
+  obok programu gospodarza (x64). PDFium nie jest wielowątkowy, `PdfTools` ma własną blokadę.
+- W oknie: Ustawienia → OCR (`OcrViewModel.ToOptions`), obrazek wklejony do pola rozmowy (`HarnessPanel.ImagePasted`) jest
+  zapisywany w folderze rozmowy i rozpoznawany od razu — tekst z nagłówkiem trafia do pola.
+
+## Modele RFEM 5 bez Dlubala (umiejętność `rfem`)
+
+```csharp
+using LokalneAI.Harness.Rfem;                        // projekt LokalneAI.Harness.Rfem, bez paczek
+
+var executor = new RfemExecutor(new RfemOptions { AllowedRoots = { @"C:\ODS" }, WorkingFolder = @"C:\ODS\Projekty\1095_WSP\RFEM" });
+// rfem_info, rfem_pret, rfem_wezel, rfem_przekroje, rfem_przypadki, rfem_sily, rfem_szukaj_pretow + szukaj_plikow, pokaz_zawartosc
+
+using var document = Rf5Document.Open(@"C:\ODS\Projekty\1095_WSP\RFEM\kanal.rf5");   // cały plik do pamięci, bez uchwytu
+var member = document.Model.Members[28];
+var length = document.MemberLength(28);                                 // m, z węzłów linii
+var section = document.Model.SectionOf(member);                         // Description „HE A 160 | DIN 1025-3:1994”, Area [m²], Iy [m⁴]
+if (document.HasResults)
+{
+    var set = document.Results.Find("KO5");                            // z protokołu solvera (.PRON<nr>: NCOMB=5)
+    foreach (var point in document.Results.MemberForces(set, 28))
+    {
+        Console.WriteLine($"x={point.X:0.000} m  N={point.N / 1e3:0.00} kN  My={point.My / 1e3:0.00} kNm");
+    }
+}
+```
+
+- Tylko odczyt: żadne polecenie nie pyta o zgodę; zła ścieżka albo plik spoza dozwolonych folderów to odrzucenie z komunikatem.
+- Układ pliku jest z inżynierii wstecznej (RFEM 5.27, kontener ZIP i OLE): nieznane rekordy są pomijane i liczone w `Model.Warnings`.
+  Nie czyta powierzchni, podpór, obciążeń, wyników modułów ani plików RFEM 6 (.rf6).
+- Jednostki w obiektach są w SI (m, N, Nm, Pa); wykonawca formatuje dla ludzi (m, kN, kNm, cm², cm⁴, mm, przecinek dziesiętny).
+
 ## Licznik kontekstu
 
 `session.Context` (`ContextUsage`) podaje zajęte tokeny, limit i procent, np. „8 063 / 16 384 tokenów (49%)”.

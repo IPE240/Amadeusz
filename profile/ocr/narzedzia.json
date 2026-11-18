@@ -1,0 +1,176 @@
+{
+  "narzedzia": [
+    {
+      "nazwa": "szukaj_plikow",
+      "opis": "Szuka plików i folderów po nazwie w folderze i wszystkich podfolderach (najwyżej 60 wyników).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "wzorzec": {
+            "type": "string",
+            "description": "fragment nazwy albo wzorzec, np. skan, *.jpg, *R02*.pdf"
+          },
+          "sciezka": {
+            "type": "string",
+            "description": "gdzie szukać; pusta = folder bieżący"
+          }
+        },
+        "required": [
+          "wzorzec"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pokaz_zawartosc",
+      "opis": "Pokazuje foldery i pliki w folderze (opcjonalnie tylko pasujące do wzorca, np. *.png).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "folder; pusta = folder bieżący"
+          },
+          "wzorzec": {
+            "type": "string",
+            "description": "np. *.jpg; pusty = wszystko"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "ocr_obraz",
+      "opis": "Rozpoznaje tekst z obrazu (PNG, JPG, TIFF, BMP, GIF, WebP) i zwraca go z pewnością rozpoznania. Język i obrót z Ustawień → OCR, chyba że podano inaczej.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "np. skan.jpg albo C:\\ODS\\Projekty\\1095_WSP\\skany\\pismo.png"
+          },
+          "jezyk": {
+            "type": "string",
+            "description": "kody Tesseracta, np. pol, eng, pol+eng, deu; pusty = z ustawień"
+          },
+          "uklad": {
+            "type": "string",
+            "enum": ["auto", "tabela", "kolumna", "luzny"],
+            "description": "tabela = zachowane odstępy kolumn; luzny = pieczątki, adnotacje, rysunki; pusty = z ustawień"
+          },
+          "zapisz_txt": {
+            "type": "boolean",
+            "description": "true = zapisz tekst obok pliku jako <nazwa>.ocr.txt"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "ocr_pdf",
+      "opis": "Rozpoznaje tekst ze stron PDF (skany): każda strona jest renderowana i czytana przez OCR. Domyślnie wszystkie strony (najwyżej 20 naraz).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "strony": {
+            "type": "string",
+            "description": "np. 1-3,5,8- (od 8 do końca); pusty = wszystkie"
+          },
+          "jezyk": {
+            "type": "string",
+            "description": "np. pol+eng; pusty = z ustawień"
+          },
+          "uklad": {
+            "type": "string",
+            "enum": ["auto", "tabela", "kolumna", "luzny"]
+          },
+          "zapisz_txt": {
+            "type": "boolean",
+            "description": "true = zapisz tekst obok pliku jako <nazwa>.ocr.txt"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "ocr_folder",
+      "opis": "Robi OCR wszystkich obrazów i PDF-ów w folderze (bez podfolderów, najwyżej 50 plików) i zapisuje tekst każdego obok jako <nazwa>.ocr.txt.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "folder; pusty = folder bieżący"
+          },
+          "wzorzec": {
+            "type": "string",
+            "description": "np. *.jpg albo skan_2026*; pusty = wszystkie obrazy i PDF-y"
+          },
+          "jezyk": {
+            "type": "string",
+            "description": "np. pol+eng; pusty = z ustawień"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pdf_info",
+      "opis": "Opisuje PDF: liczba stron, format, rozmiar, tytuł i czy strony mają warstwę tekstową (dokument) czy są skanami (OCR).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pdf_czytaj",
+      "opis": "Pokazuje tekst stron PDF z numerami stron: z warstwy tekstowej, a dla stron bez tekstu (skany) przez OCR.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "strony": {
+            "type": "string",
+            "description": "np. 1-3,5; pusty = od od_strony do wyczerpania miejsca"
+          },
+          "od_strony": {
+            "type": "integer",
+            "description": "od której strony (domyślnie 1)"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

@@ -3,7 +3,30 @@ using LokalneAI.Core.Storage;
 
 namespace LokalneAI.App;
 
-/// <summary>Grupa w panelu rozmów zakładki Code = folder; rozmowy z jego <c>.amadeusz\</c>.</summary>
+/// <summary>Gdzie leżą rozmowy grupy: zakładka Code — <c>&lt;folder&gt;\.amadeusz\</c>, Czat — sam folder grupy.</summary>
+public sealed class ConversationFolders
+{
+    /// <summary>Code: <see cref="CodeConversationStore"/>.</summary>
+    public static ConversationFolders Code { get; } = new(CodeConversationStore.List, CodeConversationStore.PathFor, CodeConversationStore.StoreFolder);
+
+    /// <summary>Czat: <see cref="ChatConversationStore"/> (pliki wprost w folderze grupy).</summary>
+    public static ConversationFolders Chat { get; } = new(ChatConversationStore.List, ChatConversationStore.PathFor, folder => folder);
+
+    private ConversationFolders(Func<string, IReadOnlyList<CodeConversationInfo>> list, Func<string, string, string> pathFor, Func<string, string> storeFolder)
+    {
+        List = list;
+        PathFor = pathFor;
+        StoreFolder = storeFolder;
+    }
+
+    public Func<string, IReadOnlyList<CodeConversationInfo>> List { get; }
+
+    public Func<string, string, string> PathFor { get; }
+
+    public Func<string, string> StoreFolder { get; }
+}
+
+/// <summary>Grupa w panelu rozmów: w Code = folder roboczy (rozmowy w jego <c>.amadeusz\</c>), w Czacie = podfolder <c>Czat\</c>.</summary>
 public sealed class ConversationGroupNode : ObservableObject
 {
     private string _name;
@@ -11,13 +34,17 @@ public sealed class ConversationGroupNode : ObservableObject
     private bool _isExpanded = true;
     private bool _isSelected;
 
-    public ConversationGroupNode(string name, string folder, bool isUngrouped)
+    public ConversationGroupNode(string name, string folder, bool isUngrouped, ConversationFolders? store = null)
     {
         _name = name;
         _folder = folder;
         IsUngrouped = isUngrouped;
+        Store = store ?? ConversationFolders.Code;
         Conversations.CollectionChanged += (_, _) => OnPropertyChanged(nameof(CountText));
     }
+
+    /// <summary>Magazyn rozmów grupy (Code albo Czat).</summary>
+    public ConversationFolders Store { get; }
 
     /// <summary>Wywoływane po zwinięciu albo rozwinięciu (zapis w ustawieniach).</summary>
     public event EventHandler? ExpandedChanged;
@@ -44,7 +71,7 @@ public sealed class ConversationGroupNode : ObservableObject
         }
     }
 
-    public string Tooltip => Folder + "\nRozmowy: " + System.IO.Path.Combine(Folder, CodeConversationStore.FolderName);
+    public string Tooltip => Folder + "\nRozmowy: " + Store.StoreFolder(Folder);
 
     public string CountText => Conversations.Count == 0 ? "" : Conversations.Count.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
@@ -72,7 +99,7 @@ public sealed class ConversationGroupNode : ObservableObject
     public void Reload()
     {
         Conversations.Clear();
-        foreach (var info in CodeConversationStore.List(Folder))
+        foreach (var info in Store.List(Folder))
         {
             Conversations.Add(new ConversationNode(this, info.Id, info.Title, info.Updated));
         }
@@ -128,7 +155,7 @@ public sealed class ConversationNode : ObservableObject
     }
 
     public string Tooltip => DisplayTitle + "\n" + Updated.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)
-        + "\n" + CodeConversationStore.PathFor(Group.Folder, Id);
+        + "\n" + Group.Store.PathFor(Group.Folder, Id);
 
     public bool IsSelected
     {

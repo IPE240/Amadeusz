@@ -1,0 +1,10 @@
+{
+  "nazwa": "formatowanie",
+  "opis": "Jak układać odpowiedź: tabele Markdown dla danych w wierszach, listy, pogrubienie najważniejszego wyniku. Okno Amadeusza pokazuje Markdown jako tabelę z ramkami (z kopiowaniem do Excela). Sama zasada, bez narzędzi — dokłada się do innych umiejętności i nie zmienia ich zasad (chmura, internet, zakończenie tury).",
+  "zakonczenie": "model",
+  "narzedzia_wbudowane": [],
+  "chmura": ["anthropic", "openai", "google"],
+  "internet": true,
+  "max_krokow": 1,
+  "max_wywolan_w_kroku": 1
+}

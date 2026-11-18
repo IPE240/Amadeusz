@@ -1,0 +1,20 @@
+{"uzytkownik": "jaki wskaźnik Wy ma IPE 200?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "IPE 200 Wy"}}]}
+{"uzytkownik": "podaj charakterystyki HEB 300", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "HEB 300"}}]}
+{"uzytkownik": "ile waży metr HEA160?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "HEA 160 masa"}}]}
+{"uzytkownik": "moment bezwładności kątownika 60x6", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "L 60x60x6"}}]}
+{"uzytkownik": "pole przekroju rury 88,9x3,2", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "RO 88,9x3,2"}}]}
+{"uzytkownik": "jaki jest Wpl profilu zamkniętego 100x100x5?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "RK 100x100x5 Wpl"}}]}
+{"uzytkownik": "ceownik UPE 200 — odległość środka ciężkości i Iz", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "UPE 200"}}]}
+{"uzytkownik": "jaką nośność ma połączenie doczołowe IH1.1 dla IPE 240 na M16 w S235 8.8?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "IH1.1 IPE 240 M16 S235 8.8"}}]}
+{"uzytkownik": "jakie są wymiary blachy czołowej dla IH3.1 HEA 300 M20?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "IH3.1 HEA 300 M20 wymiary blachy"}}]}
+{"uzytkownik": "jaki minimalny rozstaw śrub M20 według C5?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "rozstaw śrub M20 p1 e1"}}]}
+{"uzytkownik": "nośność na ścinanie śruby M16 klasy 10.9", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "nośność śruby M16 10.9 ścinanie Fv,Rd"}}]}
+{"uzytkownik": "jaki moment dokręcenia dla M24 HV?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "moment dokręcenia M24 sprężanie HV"}}]}
+{"uzytkownik": "jaką nośność ma spoina pachwinowa a=5 o długości 200 mm w S355?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "spoina pachwinowa nośność S355"}}]}
+{"uzytkownik": "IPE 300 ma Iy = 8360 cm4 — jakie naprężenie od M = 50 kNm?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "IPE 300 Wy"}}]}
+{"uzytkownik": "ile waży 12 m HEB 200?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "HEB 200 masa"}}]}
+{"uzytkownik": "co to jest kątownik 100x50x8, które ramię jest dłuższe?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "L 100x50x8"}}]}
+{"uzytkownik": "jaki gatunek stali ma fy = 355 i jaka wytrzymałość fu?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "S355 fy fu wytrzymałość"}}]}
+{"uzytkownik": "jakie jest d0 dla M24?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "otwór d0 M24"}}]}
+{"uzytkownik": "zwymiaruj mi belkę stropową 6 m pod 10 kN/m", "wywolania": []}
+{"uzytkownik": "jaki profil?", "wywolania": []}

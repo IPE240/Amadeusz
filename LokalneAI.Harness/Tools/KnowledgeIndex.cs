@@ -9,8 +9,9 @@ namespace LokalneAI.Harness.Tools
 {
     /// <summary>
     /// Wyszukiwarka w notatkach profilu (<c>wiedza\*.md</c>) — narzędzie <c>szukaj_wiedzy</c>.
-    /// Prosty BM25 na słowach bez polskich znaków, z ucięciem końcówek (pierwsze 6 liter),
-    /// bez embeddingów: działa od ręki i na słabym laptopie.
+    /// Prosty BM25 na słowach bez polskich znaków, z ucięciem końcówek (pierwsze 6 liter; oznaczenia z cyframi w całości),
+    /// bez embeddingów: działa od ręki i na słabym laptopie. Fragment ze wszystkimi słowami zapytania dostaje pierwszeństwo
+    /// przed krótszym, w którym brakuje któregoś (wynik × √(trafionych/wszystkich)).
     /// </summary>
     public sealed class KnowledgeIndex
     {
@@ -118,6 +119,7 @@ namespace LokalneAI.Harness.Tools
             foreach (var chunk in _chunks)
             {
                 double score = 0;
+                var matched = 0;
                 foreach (var term in terms)
                 {
                     if (!chunk.Frequencies.TryGetValue(term, out var tf))
@@ -125,6 +127,7 @@ namespace LokalneAI.Harness.Tools
                         continue;
                     }
 
+                    matched++;
                     var df = _documentFrequency[term];
                     var idf = Math.Log(1 + ((_chunks.Count - df + 0.5) / (df + 0.5)));
                     score += idf * tf * (k1 + 1) / (tf + (k1 * (1 - b + (b * chunk.Length / _averageLength))));
@@ -132,6 +135,9 @@ namespace LokalneAI.Harness.Tools
 
                 if (score > 0)
                 {
+                    // Fragment ze wszystkimi słowami zapytania wygrywa z krótszym, w którym brakuje jednego — ważne, gdy słowo
+                    // rozstrzygające (nazwa rodziny „IPE”) jest w tylu fragmentach, że samo prawie nic nie waży.
+                    score *= Math.Sqrt((double)matched / terms.Count);
                     scored.Add(new KeyValuePair<Chunk, double>(chunk, score));
                 }
             }
@@ -153,7 +159,9 @@ namespace LokalneAI.Harness.Tools
                     continue;
                 }
 
-                yield return word.Length > 6 ? word.Substring(0, 6) : word;
+                // Ucięcie końcówki służy odmianie polskich słów; oznaczenia z cyframi („60x60x6”, „88,9x3,2”, „IH1.1”) zostają całe,
+                // bo po ucięciu „60x60x6” i „60x60x4” to ten sam termin.
+                yield return word.Length > 6 && !word.Any(char.IsDigit) ? word.Substring(0, 6) : word;
             }
         }
 

@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    OCR i PDF dla umiejętności „ocr” i „office”: Tesseract 5 (Apache 2.0) rozpoznaje tekst skryptem, bez modelu językowego;
+    PDFium (Docnet.Core, Apache 2.0/BSD) renderuje strony PDF do obrazów i czyta warstwę tekstową;
+    PDFsharp 6.1 (MIT) scala, wycina i obraca strony. Osobno od rdzenia: ciągnie natywne dll (tesseract50, leptonica, pdfium).
+    Dane języków Tesseracta (pol, eng, osd) nie są w repozytorium — OcrLanguages pobiera je do %LOCALAPPDATA%\LokalneAI\tessdata.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>LokalneAI.Harness.Ocr</RootNamespace>
+    <Product>LokalneAI</Product>
+    <Version>0.1.0</Version>
+    <Company>Optimal Design of Structures Sp. z o.o.</Company>
+    <Copyright>Copyright (c) 2026 Optimal Design of Structures Sp. z o.o.</Copyright>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Tesseract 5.2.0: netstandard2.0 + natywne x64/x86 (tesseract50.dll, leptonica); Docnet.Core 2.6.0: pdfium.dll w runtimes\win-x64 -->
+    <PackageReference Include="Tesseract" Version="5.2.0" />
+    <PackageReference Include="Docnet.Core" Version="2.6.0" />
+    <!-- 6.5.0 sprawdza licencję (PdfSharpLicenseException); 6.1.1 to ostatnia czysta MIT bez tej kontroli. -->
+    <PackageReference Include="PDFsharp" Version="6.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
+  </ItemGroup>
+
+  <!-- pdfium.dll: na .NET 10 ładuje się z runtimes\win-x64\native (deps.json), ale na .NET Framework 4.8 gospodarz dostaje go tylko
+       z własnego folderu. Kopia obok dll trafia też do programów, które odwołują się do tego projektu (elementy None z kopiowaniem
+       przechodzą przez ProjectReference). -->
+  <ItemGroup Condition="Exists('$(NuGetPackageRoot)docnet.core\2.6.0\runtimes\win-x64\native\pdfium.dll')">
+    <None Include="$(NuGetPackageRoot)docnet.core\2.6.0\runtimes\win-x64\native\pdfium.dll" Link="pdfium.dll" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LokalneAI.Harness.Tests" />
+  </ItemGroup>
+
+</Project>

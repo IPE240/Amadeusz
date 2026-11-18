@@ -1,0 +1,113 @@
+{
+ "zrodlo": "SZS C5 Konstruktionstabellen, 2. Auflage 2005, aktualisierter Nachdruck 2012 (Stahlbau Zentrum Schweiz); wartości obliczeniowe wg SIA 263 z γM2 = 1,25",
+ "sruby_nominalne": ["M10", "M12", "M16", "M20", "M24", "M27", "M30"],
+ "otwor_d0_mm": {"M5": 6, "M6": 7, "M8": 9, "M10": 12, "M12": 14, "M16": 18, "M20": 22, "M24": 26, "M27": 30, "M30": 33},
+ "pole_trzpienia_A_mm2": {"M5": 19.6, "M6": 28.3, "M8": 50.3, "M10": 78.5, "M12": 113, "M16": 201, "M20": 314, "M24": 452, "M27": 573, "M30": 707},
+ "pole_czynne_As_mm2": {"M5": 14.2, "M6": 20.1, "M8": 36.6, "M10": 58.0, "M12": 84.3, "M16": 157, "M20": 245, "M24": 353, "M27": 459, "M30": 561},
+ "nosnosc_scinanie_FvRd_kN_na_plaszczyzne": {
+  "4.6_SBS": {"M10": 15.2, "M12": 21.7, "M16": 38.6, "M20": 60.3, "M24": 86.8, "M27": 110, "M30": 136},
+  "10.9_SHV": {"M10": 37.9, "M12": 54.2, "M16": 96.5, "M20": 151, "M24": 217, "M27": 275, "M30": 339},
+  "uwaga": "dwie płaszczyzny ścinania = 2× wartość; wzór Fv,Rd = 0,6·fub·A/γM2 (A = pole trzpienia); przy ścinaniu w gwincie wg SIA 263 tab. 16 (strona 97, przypis 3)"
+ },
+ "nosnosc_rozciaganie_FtRd_kN": {
+  "4.6_SBS": {"M10": 16.7, "M12": 24.2, "M16": 45.2, "M20": 70.6, "M24": 102, "M27": 132, "M30": 162},
+  "10.9_SHV": {"M10": 41.8, "M12": 60.5, "M16": 113, "M20": 176, "M24": 254, "M27": 331, "M30": 404},
+  "uwaga": "Ft,Rd = 0,9·fub·As/γM2; śruby rozciągane wykonywać jako sprężone (przypis)"
+ },
+ "nosnosc_poslizg_FsRd_kN_SHV_10.9_pelne_sprezenie": {
+  "mu_0.25": {"M12": 8.4, "M16": 12.2, "M20": 22.8, "M24": 35.6, "M27": 51.3, "M30": 66.8},
+  "mu_0.4": {"M12": 13.5, "M16": 19.5, "M20": 36.5, "M24": 57.0, "M27": 82.1, "M30": 107},
+  "uwaga": "na jedną śrubę i jedną powierzchnię poślizgu, otwory normalne, γM3 = 1,1 (SIA 263 6.2.3.2); μ = 0,25 dla zwykłych powłok, μ = 0,4 tylko gdy wykonawca udokumentuje współczynnik tarcia"
+ },
+ "nosnosc_docisk_FbRd_kN": {
+  "uwaga": "Fb,Rd = 0,85·(e1/d0)·fu·d·t/γM2 dla e1 ≤ 2,8·d0 i p1 ≥ e1 + d0/2 (SIA 263 wzór 71); na jedną śrubę; kolumny M10, M12, M16, M20, M24, M27, M30",
+  "minimum": {"e1_mm": [15, 20, 25, 30, 35, 40, 45], "p1_mm": [30, 35, 40, 45, 55, 65, 70],
+   "S235": {"t6": [18.4, 25.2, 32.6, 40.1, 47.4, 52.9, 60.1], "t8": [24.5, 33.6, 43.5, 53.4, 63.3, 70.5, 80.1], "t10": [30.6, 42.0, 54.4, 66.8, 79.1, 88.1, 100]},
+   "S355": {"t6": [26.0, 35.7, 46.2, 56.7, 67.2, 74.9, 85.1], "t8": [34.7, 47.6, 61.7, 75.7, 89.6, 99.9, 114], "t10": [43.3, 59.5, 77.1, 94.6, 112, 125, 142]}},
+  "regelfall_zalecane": {"e1_mm": [20, 25, 35, 40, 50, 55, 60], "p1_mm": [30, 40, 50, 60, 70, 80, 90],
+   "S235": {"t6": [24.5, 31.5, 45.7, 53.4, 67.8, 72.7, 80.1], "t8": [32.6, 42.0, 60.9, 71.2, 90.4, 96.9, 107], "t10": [40.8, 52.5, 76.2, 89.0, 113, 121, 134]},
+   "S355": {"t6": [34.7, 44.6, 64.7, 75.7, 96.0, 103, 114], "t8": [46.2, 59.5, 86.3, 101, 128, 137, 151], "t10": [57.8, 74.3, 108, 126, 160, 172, 189]}},
+  "maximum_e1_2.8d0_p1_3.3d0": {"e1_mm": [35, 40, 55, 65, 75, 85, 95], "p1_mm": [40, 50, 65, 75, 90, 100, 120],
+   "S235": {"t6": [41.5, 49.8, 66.4, 82.9, 99.5, 112, 124], "t8": [55.3, 66.4, 88.5, 111, 133, 149, 166], "t10": [69.1, 82.9, 111, 138, 166, 187, 207]},
+   "S355": {"t6": [58.8, 70.5, 94.0, 118, 141, 159, 176], "t8": [78.3, 94.0, 125, 157, 188, 212, 235], "t10": [97.9, 118, 157, 196, 235, 264, 294]}}
+ },
+ "naprezenia_graniczne_docisk_N_mm2": {"uwaga": "SIA 263 tab. 17; kolumny S235, S275, S355, S460", "minimum": [343, 409, 485, 543], "regelfall": [490, 585, 694, 775], "maximum_e1_2.8d0_p1_3.3d0": [691, 826, 979, 1094]},
+ "sruby_klasy": {"4.6": {"fyb": 240, "fub": 400, "scinanie_0.6fub_gM2": 192, "rozciaganie_0.9fub_gM2": 288}, "5.6": {"fyb": 300, "fub": 500, "scinanie_0.6fub_gM2": 240, "rozciaganie_0.9fub_gM2": 360}, "8.8": {"fyb": 640, "fub": 800, "scinanie_0.6fub_gM2": 384, "rozciaganie_0.9fub_gM2": 576}, "10.9": {"fyb": 900, "fub": 1000, "scinanie_0.6fub_gM2": 480, "rozciaganie_0.9fub_gM2": 720}},
+ "stale_fy_fu_N_mm2_t_do_40": {"S235": [235, 360], "S275": [275, 430], "S355": [355, 510], "S460": [460, 570]},
+ "rozstawy_mm": {
+  "uwaga": "SIA 263 (SZS C5 s. 90); kolumny M10, M12, M16, M20, M24, M27, M30; e2 dla kształtowników wg tablic profili",
+  "d0": [12, 14, 18, 22, 26, 30, 33],
+  "p1_zalecane": [30, 40, 50, 60, 70, 80, 90], "p1_minimum": [30, 35, 40, 45, 55, 65, 70],
+  "p2_zalecane": [30, 40, 50, 60, 70, 80, 90], "p2_minimum": [30, 35, 40, 45, 55, 65, 70],
+  "e1_zalecane": [20, 25, 35, 40, 50, 55, 60], "e1_minimum": [15, 20, 25, 30, 35, 40, 45],
+  "e2_zalecane": [15, 20, 25, 30, 40, 45, 50], "e2_minimum": [12, 15, 20, 25, 30, 35, 40]
+ },
+ "sruby_SBS_wymiary_mm": {
+  "uwaga": "śruby zwykłe z łbem sześciokątnym z nakrętką (DIN 7990 / ISO 4016 M10), klasy 4.6 i 5.6, ocynkowane ogniowo; kolumny M5, M6, M8, M10, M12, M16, M20, M24, M27, M30",
+  "k_wysokosc_lba": [4, 4, 6, 7, 8, 10, 13, 15, 17, 19],
+  "s_klucz": [8, 10, 13, 17, 19, 24, 30, 36, 41, 46],
+  "e_min_M10_M30": [18.7, 20.9, 26.2, 32.9, 39.6, 45.2, 50.8],
+  "m_wysokosc_nakretki": [4, 5, 6.5, 8, 10, 13, 16, 19, 22, 24],
+  "podkladka_D": [10, 12, 16, 21, 24, 30, 37, 44, 50, 56],
+  "podkladka_d2": [5.3, 6.4, 8.4, 11, 14, 18, 22, 26, 30, 33],
+  "podkladka_s1_M10_M30": 8,
+  "otwor": [6, 8, 10, 12, 14, 18, 22, 26, 30, 33]
+ },
+ "sruby_SHV_wymiary_mm": {
+  "uwaga": "śruby sprężane HV wg EN 14399-4 i -6, klasa 10.9 (nakrętka 10); kolumny M12, M16, M20, M24, M27, M30",
+  "k_wysokosc_lba": [8, 10, 13, 15, 17, 19],
+  "b_nom_gwint": [23, 28, 33, 39, 41, 44],
+  "s_klucz_max": [22, 27, 32, 41, 46, 50],
+  "e_min": [23.91, 29.56, 35.03, 45.20, 50.85, 55.37],
+  "m_wysokosc_nakretki": [10, 13, 16, 20, 22, 24],
+  "podkladka_D": [24, 30, 37, 44, 50, 56],
+  "podkladka_d2": [13, 17, 21, 25, 28, 31],
+  "podkladka_s1": [3, 4, 4, 4, 5, 5],
+  "otwor": [14, 18, 22, 26, 30, 33]
+ },
+ "sprezanie_HV_10.9": {
+  "uwaga": "SZS C5 s. 96 (SIA 263/1); kolumny M12, M16, M20, M24, M27, M30",
+  "As_mm2": [84.3, 157, 245, 353, 459, 561],
+  "Fp_Cd_pelne_sprezenie_kN": [50, 100, 160, 220, 290, 350],
+  "Fp_Cd_wzor": "Fp,Cd = 0,64·fub·As",
+  "Fp_czesciowe_min_kN_M12_M27": [25, 50, 80, 110, 145],
+  "moment_pelne_czarne_oliwione_Nm": [120, 350, 600, 1100, 1650, 2200],
+  "moment_pelne_ocynkowane_nakretka_MoS2_Nm": [100, 250, 450, 800, 1250, 1600],
+  "moment_czesciowe_ocynkowane_Nm_M12_M27": [50, 120, 220, 400, 620],
+  "metoda_kombinowana_moment_wstepny_czarne_Nm": [90, 260, 450, 800, 1200, 1600],
+  "metoda_kombinowana_moment_wstepny_ocynkowane_Nm": [75, 190, 340, 600, 900, 1200],
+  "metoda_kombinowana_kat_dokrecenia": {"L<2d": "45°", "2d≤L<6d": "60°", "6d≤L≤10d": "90°"},
+  "metoda_momentowa": "klucz dynamometryczny ±5 %; wkrętarka udarowa nastawiona 10 % powyżej momentu z tablicy; wkrętarki udarowe zabronione przy zmęczeniowym rozciąganiu śrub"
+ },
+ "otwory_podluzne": {
+  "uwaga": "SZS C5 s. 92; kolumny M10, M12, M16, M20, M24, M27",
+  "d0_x_l_mm": ["11x14", "13x16", "18x22", "22x26", "26x32", "30x37"],
+  "max_t_wykrawanie_S235": [10, 12, 15, 20, 20, 20],
+  "max_t_wykrawanie_S355": [8, 10, 12, 15, 15, 15],
+  "FbRd_poprzecznie_do_otworu": "wartości ze strony 97 × 0,8",
+  "FsRd_kN_SHV_mu_0.25_krotkie_M12_M27": [8.2, 15, 24, 34, 45],
+  "FsRd_kN_SHV_mu_0.25_dlugie_M12_M27": [6.7, 13, 20, 28, 37],
+  "docisk_przy_otworach_podluznych_60proc": "przy przenoszeniu siły wzdłuż otworu podłużnego nośność na docisk zredukowana do 60 % (SIA 263 wzór 71)"
+ },
+ "polaczenia_dwoma_katownikami_SZS_C9.1": {
+  "uwaga": "połączenia standardowe belki ze słupem lub belką dwoma kątownikami równoramiennymi; kolumny M12, M16, M20, M24",
+  "katownik": ["L 80x8", "L 90x9", "L 100x10", "L 120x12"],
+  "w1_w2": [45, 55, 60, 70], "e1": [25, 35, 40, 50], "p1_min": [40, 50, 60, 80], "p1_max": [120, 150, 180, 240], "l_min": [90, 120, 140, 180],
+  "k_mm": ["8/11", "10/14", "13/17", "15/19"], "D_przez_2": [12, 15, 18.5, 22], "z_max": ["25/26", "29/32", "32/37", "36/41"], "b": ["29/26", "36/32", "37/33", "43/39"],
+  "w_ogolnie": "w = 2·w1 + tw + 2 mm", "f_max": [70, 85, 90, 100], "w3_min": [30, 30, 35, 40], "2c_min": [160, 180, 200, 230],
+  "uklad_przesuniety_SBS": {"katownik": ["L 60x6", "L 70x7", "L 80x8", "L 90x9"], "w1_w2": [35, 40, 45, 50], "e1_min": [25, 35, 40, 50], "g_min": [35, 40, 45, 50], "p1_min": [70, 80, 90, 100], "a_otwor_belki": [30, 35, 40, 50]}
+ },
+ "sruby_duze_M33_M64": {
+  "uwaga": "SZS C5 s. 99 (DIN 931/934, ISO 4014/4032); kolumny M33, M36, M39, M42, M45, M48, M52, M56, M60, M64; dostępne z magazynu do M48",
+  "k": [21, 23, 25, 26, 28, 30, 33, 35, 38, 40], "b_min": [72, 78, 84, 90, 96, 102, 116, 124, 132, 140], "s": [50, 55, 60, 65, 70, 75, 80, 85, 90, 95],
+  "e_min": [55.4, 60.8, 66.4, 72.1, 77.7, 83.4, 89.0, 94.5, 100.1, 105.8], "m_nakretka": [26, 29, 31, 34, 36, 38, 42, 45, 48, 51],
+  "otwor_d0": [36, 39, 42, 45, 48, 51, 55, 60, 64, 68], "A_mm2": [855, 1018, 1195, 1385, 1590, 1810, 2124, 2463, 2827, 3217], "As_mm2": [694, 817, 976, 1120, 1310, 1470, 1760, 2030, 2360, 2680],
+  "FtRd_5.6_kN": [250, 294, 351, 403, 472, 530, 633, 731, 850, 963],
+  "uwagi": "wartości dla śrub dokręconych bez sprężenia, odniesione do As; zaleca się wykorzystanie do 75 %; spawanie zabronione"
+ },
+ "spoiny_pachwinowe": {
+  "wzor": "FRd = a · ΔL · 0,6 · fu,E / γM2 (SIA 263; a — grubość spoiny, ΔL — długość odcinka spoiny, fu,E — wytrzymałość spoiwa)",
+  "0.6_fuE_S355_N_mm2": 306,
+  "uwaga": "dla materiału rodzimego S235 miarodajny przekrój styku spoiny (Schenkelquerschnitt), dla S275/S355 przekrój obliczeniowy (Wurzelquerschnitt); klasy jakości C i B; szczegóły SZS C5 s. 102–111"
+ }
+}

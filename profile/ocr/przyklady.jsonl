@@ -1,0 +1,15 @@
+{"uzytkownik": "zrób OCR pliku pismo.jpg", "wywolania": [{"narzedzie": "ocr_obraz", "argumenty": {"sciezka": "pismo.jpg"}}]}
+{"uzytkownik": "co jest napisane na skanie umowa_R02.png?", "wywolania": [{"narzedzie": "ocr_obraz", "argumenty": {"sciezka": "umowa_R02.png"}}]}
+{"uzytkownik": "przeczytaj skan protokol.pdf", "wywolania": [{"narzedzie": "ocr_pdf", "argumenty": {"sciezka": "protokol.pdf"}}]}
+{"uzytkownik": "rozpoznaj strony 2-4 z zestawienie_skan.pdf, to tabela", "wywolania": [{"narzedzie": "ocr_pdf", "argumenty": {"sciezka": "zestawienie_skan.pdf", "strony": "2-4", "uklad": "tabela"}}]}
+{"uzytkownik": "ten skan jest po niemiecku: bescheid.jpg", "wywolania": [{"narzedzie": "ocr_obraz", "argumenty": {"sciezka": "bescheid.jpg", "jezyk": "deu"}}]}
+{"uzytkownik": "odczytaj pieczątkę ze zdjęcia IMG_2041.jpg", "wywolania": [{"narzedzie": "ocr_obraz", "argumenty": {"sciezka": "IMG_2041.jpg", "uklad": "luzny"}}]}
+{"uzytkownik": "zrób OCR wszystkich skanów w folderze skany i zapisz teksty", "wywolania": [{"narzedzie": "ocr_folder", "argumenty": {"sciezka": "skany"}}]}
+{"uzytkownik": "rozpoznaj tekst z faktura.png i zapisz go do pliku", "wywolania": [{"narzedzie": "ocr_obraz", "argumenty": {"sciezka": "faktura.png", "zapisz_txt": true}}]}
+{"uzytkownik": "czy raport_R02.pdf to skan czy dokument?", "wywolania": [{"narzedzie": "pdf_info", "argumenty": {"sciezka": "raport_R02.pdf"}}]}
+{"uzytkownik": "co jest na stronie 3 w opis_techniczny.pdf?", "wywolania": [{"narzedzie": "pdf_czytaj", "argumenty": {"sciezka": "opis_techniczny.pdf", "strony": "3"}}]}
+{"uzytkownik": "przeczytaj opis_techniczny.pdf", "wywolania": [{"narzedzie": "pdf_czytaj", "argumenty": {"sciezka": "opis_techniczny.pdf"}}]}
+{"uzytkownik": "znajdź skany z WSP w nazwie", "wywolania": [{"narzedzie": "szukaj_plikow", "argumenty": {"wzorzec": "*WSP*"}}]}
+{"uzytkownik": "zrób OCR", "wywolania": [], "pytanie": "Którego pliku? Podaj nazwę obrazu albo PDF-u (albo wklej obrazek do pola rozmowy)."}
+{"uzytkownik": "[obraz wklejony: wklejony_2026-11-18_0930.png — OCR 93%, 48 słów]\nPROTOKÓŁ ODBIORU\nData: 2026-11-10\nWykonawca: Stal-Mont\nUwagi: brak\n\nco to za dokument?", "wywolania": [], "pytanie": "To protokół odbioru z 2026-11-10 od wykonawcy Stal-Mont, bez uwag. Mam go streścić szerzej albo wyciągnąć konkretne pola?"}
+{"uzytkownik": "wyciągnij z tego skanu wzór na nośność", "wywolania": [], "pytanie": "Wzory OCR oddaje słabo — do dokładnego odczytu wzoru użyj zakładki Czat z modelem obsługującym obrazy. Mam mimo to spróbować OCR (podaj plik)?"}

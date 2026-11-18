@@ -1,0 +1,77 @@
+duct – kanał
+secondary air duct – kanał powietrza wtórnego
+flue gas duct – kanał spalin
+flue gas recirculation duct – kanał recyrkulacji spalin
+reheating duct – kanał dogrzewający (niepotwierdzone)
+polymer duct – kanał polimerowy
+removable section – wstawka (demontowalny odcinek kanału)
+duct bend – zagięcie kanału
+elbow – kolano
+tee – trójnik
+diffuser – dyfuzor
+cross-section reduction – redukcja przekroju
+damper – klapa
+expansion joint – kompensator
+inspection manhole – właz rewizyjny
+injection nozzle – dysza wtryskowa
+drain valve – zawór odwadniający
+flow guide vane – kierownica przepływu
+suction hub – czerpnia
+fan – wentylator
+burner – palnik
+bag filter – filtr workowy
+flue gas condenser – skraplacz spalin
+chimney – komin
+structural system – ustrój nośny
+support structure – konstrukcja wsporcza
+access platform – podest dostępowy
+access structure – konstrukcja dostępowa
+cantilever – wspornik
+support bracket – konsola podporowa
+support lug – łapa podporowa
+support band – bandaż podporowy
+fixed support – podpora stała
+guide support – prowadzenie (podpora)
+sliding guide – prowadzenie ślizgowe
+sliding surface (made from stainless steel plate) – powierzchnia ślizgowa (z blachy nierdzewnej)
+swing link – wahacz
+horizontal support – podparcie poziome
+temporary support – podpora montażowa, tymczasowe podparcie
+bearing welded from plates – łożysko wyspawane z blach
+PG-System bearing – łożysko systemowe PG-System
+hanger rod – cięgno (niepotwierdzone, alternatywa: tie rod)
+turnbuckle – śruba rzymska, nakrętka rzymska
+height adjustment – rektyfikacja wysokości
+statically determinate – statycznie wyznaczalny
+stiffening rib – żebro, żebrowanie
+circumferential band – bandaż obwodowy (niepotwierdzone)
+mounting sleeve – mufa montażowa (niepotwierdzone)
+shell element – element powłokowy
+beam element – element prętowy
+member – pręt
+rigid link – pręt sztywny
+releases – zwolnienia (MES)
+casing plating – płaszcz poszycia (niepotwierdzone, alternatywa: shell plating)
+effective width – efektywna szerokość współpracująca (niepotwierdzone)
+static scheme – schemat statyczny (niepotwierdzone)
+inverted static scheme – odwrócony schemat statyczny
+nodal support – podpora węzłowa (niepotwierdzone)
+eccentricity – mimośród
+eigenvalue – wartość własna
+second-order effects – efekty II rzędu
+governing load combination – miarodajna kombinacja obciążeń
+elastic model – model sprężysty
+stable structure – konstrukcja stateczna
+displacement – przemieszczenie
+lateral displacement – przemieszczenie poprzeczne (do wyboru: lateral lub transverse)
+resultant – wypadkowy
+working pressure – ciśnienie robocze (do wyboru: working lub operating)
+
+Dokumentacja i organizacja
+
+specification – specyfikacja
+report – raport
+drawings – dokumentacja rysunkowa
+installation sequence – sekwencja montażu
+PZITB Gliwice Branch – PZITB Oddział w Gliwicach
+Branch Secretary – sekretarz oddziału

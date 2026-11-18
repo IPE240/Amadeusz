@@ -1,0 +1,20 @@
+{"uzytkownik": "co jest w modelu hala.rf5?", "wywolania": [{"narzedzie": "rfem_info", "argumenty": {"sciezka": "hala.rf5"}}]}
+{"uzytkownik": "otwórz plik Deodorization_duct_PB.rf5 i powiedz, ile ma prętów", "wywolania": [{"narzedzie": "rfem_info", "argumenty": {"sciezka": "Deodorization_duct_PB.rf5"}}]}
+{"uzytkownik": "jaki przekrój i jaką długość ma pręt 28?", "wywolania": [{"narzedzie": "rfem_pret", "argumenty": {"numer": 28}}]}
+{"uzytkownik": "pręt 4 w hala.rf5 — co to za pręt?", "wywolania": [{"narzedzie": "rfem_pret", "argumenty": {"sciezka": "hala.rf5", "numer": 4}}]}
+{"uzytkownik": "jaka jest siła w pręcie 28?", "wywolania": [{"narzedzie": "rfem_sily", "argumenty": {"numer": 28}}]}
+{"uzytkownik": "podaj siły w pręcie 29 od kombinacji KO5", "wywolania": [{"narzedzie": "rfem_sily", "argumenty": {"numer": 29, "obciazenie": "KO5"}}]}
+{"uzytkownik": "jaki moment My ma pręt 61 dla CO12 w modelu kanal.rf5?", "wywolania": [{"narzedzie": "rfem_sily", "argumenty": {"sciezka": "kanal.rf5", "numer": 61, "obciazenie": "CO12"}}]}
+{"uzytkownik": "jakie jest ugięcie pręta 95?", "wywolania": [{"narzedzie": "rfem_sily", "argumenty": {"numer": 95, "co": "przemieszczenia"}}]}
+{"uzytkownik": "które pręty mają przekrój HEA 160?", "wywolania": [{"narzedzie": "rfem_szukaj_pretow", "argumenty": {"przekroj": "HEA 160"}}]}
+{"uzytkownik": "wypisz pręty kratownicowe", "wywolania": [{"narzedzie": "rfem_szukaj_pretow", "argumenty": {"typ": "kratownicowy"}}]}
+{"uzytkownik": "jakie pręty schodzą się w węźle 47?", "wywolania": [{"narzedzie": "rfem_szukaj_pretow", "argumenty": {"wezel": 47}}]}
+{"uzytkownik": "pręty dłuższe niż 6 m", "wywolania": [{"narzedzie": "rfem_szukaj_pretow", "argumenty": {"min_dlugosc": 6}}]}
+{"uzytkownik": "gdzie jest węzeł 46?", "wywolania": [{"narzedzie": "rfem_wezel", "argumenty": {"numer": 46}}]}
+{"uzytkownik": "jakie przekroje są w modelu i z jakiej stali?", "wywolania": [{"narzedzie": "rfem_przekroje", "argumenty": {}}]}
+{"uzytkownik": "jakie są kombinacje obciążeń w tym modelu?", "wywolania": [{"narzedzie": "rfem_przypadki", "argumenty": {}}]}
+{"uzytkownik": "ile waży stal w tym modelu? (wszystkie pręty)", "wywolania": [{"narzedzie": "rfem_przekroje", "argumenty": {}}]}
+{"uzytkownik": "znajdź modele RFEM w projekcie WSP", "wywolania": [{"narzedzie": "szukaj_plikow", "argumenty": {"wzorzec": "*.rf5", "sciezka": "1095_WSP"}}]}
+{"uzytkownik": "co jest w folderze Obliczenia?", "wywolania": [{"narzedzie": "pokaz_zawartosc", "argumenty": {"sciezka": "Obliczenia"}}]}
+{"uzytkownik": "jakie są reakcje podporowe w węźle 1?", "wywolania": []}
+{"uzytkownik": "jaki jest przekrój pręta?", "wywolania": []}

@@ -1,0 +1,204 @@
+{
+  "narzedzia": [
+    {
+      "nazwa": "szukaj_plikow",
+      "opis": "Szuka plików i folderów po nazwie w folderze i wszystkich podfolderach (najwyżej 60 wyników), np. modeli *.rf5.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "wzorzec": {
+            "type": "string",
+            "description": "fragment nazwy albo wzorzec, np. *.rf5, hala*, *WSP*"
+          },
+          "sciezka": {
+            "type": "string",
+            "description": "gdzie szukać; pusta = folder bieżący"
+          }
+        },
+        "required": [
+          "wzorzec"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pokaz_zawartosc",
+      "opis": "Pokazuje foldery i pliki w folderze (opcjonalnie tylko pasujące do wzorca, np. *.rf5).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "folder; pusta = folder bieżący"
+          },
+          "wzorzec": {
+            "type": "string",
+            "description": "np. *.rf5; pusty = wszystko"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_info",
+      "opis": "Podsumowanie modelu RFEM 5: wersja, liczba węzłów, linii i prętów (z typami), przekroje z liczbą prętów, materiały, przypadki, kombinacje i czy są wyniki. Od tego zaczynaj pracę z nowym plikiem.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "plik .rf5 (nazwa w folderze bieżącym albo pełna ścieżka); pusta = jedyny plik .rf5 w folderze bieżącym"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_pret",
+      "opis": "Dane pręta: typ (belka, pręt sztywny, kratownicowy…), linia i węzły ze współrzędnymi, długość [m], obrót, przekrój z charakterystykami (A, Iy, Iz, It) i materiałem, a gdy plik ma wyniki — ekstrema sił ze wszystkich kombinacji.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "numer": {
+            "type": "integer",
+            "description": "numer pręta w RFEM"
+          },
+          "sciezka": {
+            "type": "string",
+            "description": "plik .rf5; pusta = jedyny plik .rf5 w folderze bieżącym"
+          }
+        },
+        "required": [
+          "numer"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_wezel",
+      "opis": "Współrzędne węzła [m], linie przez ten węzeł i pręty, które się w nim schodzą.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "numer": {
+            "type": "integer",
+            "description": "numer węzła w RFEM"
+          },
+          "sciezka": {
+            "type": "string",
+            "description": "plik .rf5; pusta = jedyny plik .rf5 w folderze bieżącym"
+          }
+        },
+        "required": [
+          "numer"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_przekroje",
+      "opis": "Tabela przekrojów modelu: numer, nazwa, materiał, A [cm²], Iy, Iz, It [cm⁴], które pręty go mają i ich łączna długość; na końcu materiały (E, G, ciężar objętościowy, norma).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "plik .rf5; pusta = jedyny plik .rf5 w folderze bieżącym"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_przypadki",
+      "opis": "Przypadki obciążeń (PO) z opisami, kombinacje obciążeń (KO) z wyrażeniami, np. 1.35*PO1 + 1.5*PO11, kombinacje wyników (KW) i które z nich mają wyniki.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string",
+            "description": "plik .rf5; pusta = jedyny plik .rf5 w folderze bieżącym"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_sily",
+      "opis": "Siły wewnętrzne pręta z wyników RFEM [kN, kNm]: bez obciazenie — ekstrema N, Vy, Vz, Mt, My, Mz ze wszystkich kombinacji (z numerem kombinacji i miejscem x); z obciazenie (np. KO5 albo PO1) — przebieg wzdłuż pręta. co=przemieszczenia daje ugięcia [mm]. Wymaga pliku zapisanego po obliczeniu.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "numer": {
+            "type": "integer",
+            "description": "numer pręta"
+          },
+          "obciazenie": {
+            "type": "string",
+            "description": "kombinacja albo przypadek, np. KO5, CO5, PO1, LC1; pusty = ekstrema ze wszystkich"
+          },
+          "co": {
+            "type": "string",
+            "description": "sily (domyślnie) albo przemieszczenia"
+          },
+          "sciezka": {
+            "type": "string",
+            "description": "plik .rf5; pusta = jedyny plik .rf5 w folderze bieżącym"
+          }
+        },
+        "required": [
+          "numer"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_szukaj_pretow",
+      "opis": "Lista prętów spełniających kryteria (wszystkie, gdy brak kryteriów): przekrój (numer albo fragment nazwy, np. HEA 160, Rura), typ (belka, sztywny, kratownicowy, cięgno), węzeł, zakres długości [m]. Każdy pręt z typem, przekrojem, długością i węzłami.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "przekroj": {
+            "type": "string",
+            "description": "numer przekroju albo fragment nazwy, np. HEA 160, IPE, Rura 810"
+          },
+          "typ": {
+            "type": "string",
+            "description": "belka, sztywny, kratownicowy, cięgno, ściskany"
+          },
+          "wezel": {
+            "type": "integer",
+            "description": "numer węzła — tylko pręty w tym węźle"
+          },
+          "min_dlugosc": {
+            "type": "number",
+            "description": "najmniejsza długość [m]"
+          },
+          "max_dlugosc": {
+            "type": "number",
+            "description": "największa długość [m]"
+          },
+          "sciezka": {
+            "type": "string",
+            "description": "plik .rf5; pusta = jedyny plik .rf5 w folderze bieżącym"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

@@ -569,10 +569,18 @@ public sealed class NetworkViewModel : ObservableObject
         }
     }
 
+    /// <summary>Ile zapytań w kolejce bramy właśnie liczy (do ikony w zasobniku).</summary>
+    public int QueueRunning { get; private set; }
+
+    /// <summary>Ile zapytań czeka w kolejce bramy (liczba na ikonie w zasobniku).</summary>
+    public int QueueWaiting { get; private set; }
+
     private void Notify()
     {
         var running = Queue.Count(r => r.State != QueueState.Waiting);
         var waiting = Queue.Count(r => r.State == QueueState.Waiting);
+        QueueRunning = running;
+        QueueWaiting = waiting;
         var served = _gateway?.Queue.ServedForOthers ?? 0;
         var queue = _gateway is null ? "Kolejka: brak bramy" : $"Kolejka: liczy {running}, czeka {waiting}";
         var sharing = _gateway?.IsListeningOnLan == true ? $" · Udostępniam w sieci (policzone dla innych: {served})" : "";

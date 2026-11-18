@@ -20,13 +20,15 @@ wykonuje. Nic nie wychodzi do internetu. Nazwa repozytorium to Amadeusz, a proje
 | `LokalneAI.Harness.Wpf` | panel rozmowy `HarnessPanel` (net48 i net10.0-windows) |
 | `LokalneAI.Harness.Postgres` | SQL tylko do odczytu dla profilu `cde` (Npgsql 8) |
 | `LokalneAI.Harness.Office` | Word, Excel, Outlook i PowerPoint dla profilu `office` przez COM zainstalowanego Microsoft 365 (późne wiązanie, bez paczek Interop; `OfficeExecutor`, `OfficeOptions`) |
+| `LokalneAI.Harness.Ocr` | OCR skryptem (Tesseract 5, dane tessdata_fast pobierane do `%LOCALAPPDATA%\LokalneAI\tessdata`) i PDF (PDFium przez Docnet.Core: tekst i render stron; PDFsharp 6.1 MIT: scalanie, wycinanie, obrót) dla umiejętności `ocr` i poleceń `pdf_*` w `office`; `OcrExecutor`, `OcrEngine`, `OcrOptions`, `PdfTools`, `OcrLanguages` |
+| `LokalneAI.Harness.Rfem` | czytnik plików RFEM 5 (.rf5) bez programu Dlubal dla umiejętności `rfem`: kontener ZIP/OLE (`Rf5Archive`, własny `CompoundFile`), tabele modelu z inżynierii wstecznej (`Rf5Parser`: węzły, linie, pręty, przekroje, materiały, PO/KO/KW), siatka (`Rf5Mesh`), siły w prętach z plików solvera (`Rf5Results`), `RfemExecutor` |
 | `LokalneAI.Harness.Tests` | testy xUnit, uruchamiane na net10.0 i net48 |
 | `LokalneAI.App` | okno `LokalneAI.exe`: zakładki Czat, Code (asystent z uprawnieniami) i Ustawienia (gdzie liczyć, modele w chmurze, udostępnianie, kolejka); lista modeli z ulubionymi; wygląd jak TransmittalMaster (`Theme.xaml`: te same klucze kolorów i stylów, własny pasek tytułu z kartami) |
 | `LokalneAI.Gateway` | brama okna (Kestrel, net10.0): kolejka zapytań, liczenie na innym komputerze, udostępnianie w podsieci ([docs/siec.md](docs/siec.md)) |
 | `LokalneAI.Core`, `LokalneAI.Core.Tests` | klient Ollamy okna i testy (także bramy: `GatewayTests`) |
 | `LokalneAI.Eval` | testy profili z prawdziwym modelem, rozmiar promptu, aktualizacja i przeszukiwanie wiedzy |
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie (WinForms, .NET Framework 4.8) |
-| `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer`, `mkk` (sama wiedza: programy Marka Kowolika i Robot, RFEM, IDEA, IFC z repozytorium MKK), `office` (dokumenty Word, Excel, Outlook, PowerPoint), `tlumaczenie` (sama wiedza: tłumaczenie tekstów biura na angielski ze słownikiem konstrukcyjnym) ([docs/profile.md](docs/profile.md)) |
+| `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer`, `mkk` (sama wiedza: programy Marka Kowolika i Robot, RFEM, IDEA, IFC z repozytorium MKK), `office` (dokumenty Word, Excel, Outlook, PowerPoint i PDF), `tlumaczenie` (sama wiedza: tłumaczenie tekstów biura na angielski ze słownikiem konstrukcyjnym), `ocr` (tekst ze skanów, zdjęć i PDF-ów bez warstwy tekstowej), `rfem` (modele RFEM 5 z pliku .rf5: pręty, przekroje, długości, kombinacje, siły — bez Dlubala), `tablice` (sama wiedza: tablice Żyburtowicza, połączenia DAST, SZS C5 — dane z OCR w `wiedza\dane\*.json`, `.md` generowane) ([docs/profile.md](docs/profile.md)) |
 | `szablony\` | szablon profilu i plików dla repozytoriów programów biura |
 | `narzedzia\` | budowanie instalatora, porównanie modeli, `sprawdz_przyklady` (kompilacja przykładów z dokumentacji) |
 | `instalator\` | skrypty instalacji u użytkownika |
@@ -111,6 +113,18 @@ Zasady: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md). W tym repo
   a `NumberGuard` sprawdza liczby w odpowiedzi.
 - **Ukośniki od modelu:** małe modele psują ukośniki w ścieżkach (`\t` zamiast `\` i podwójne `\\`).
   `HarnessSession.RepairEscapes` to naprawia; nie usuwaj tego.
+- **OCR i PDF (`LokalneAI.Harness.Ocr`):** Tesseract i PDFium to natywne dll (`x64\tesseract50.dll`, `leptonica`, `runtimes\win-x64\native\pdfium.dll`)
+  kopiowane przez paczki do folderu programu; dane języków (`*.traineddata`) nie leżą w repozytorium — `OcrLanguages` pobiera je
+  z tessdata_fast przy pierwszym użyciu albo przyciskiem w Ustawieniach → OCR. PDFium renderuje z przezroczystym tłem:
+  `PngWriter` składa alfę na biel (inaczej czarny tekst znika). `PDFsharp` zostaje na **6.1.1** — 6.5 sprawdza licencję
+  (`PdfSharpLicenseException`). PDFium nie jest wielowątkowy (`PdfTools` ma blokadę). Testy na żywo (`OcrLiveTests`) tworzą PDF
+  w PDFsharp z czcionką Arial z Windows i przechodzą bez sprawdzania, gdy brak danych języków.
+- **Pliki RFEM 5 (`LokalneAI.Harness.Rfem`):** układ strumienia modelu jest z inżynierii wstecznej (pięć modeli biura z RFEM 5.27), nie
+  z dokumentacji — rekordy obiektów kończy znacznik `OwnerParamGroup`, a tabele przekrojów, materiałów, przypadków i kombinacji mają
+  stałe układy opisane w komentarzach `Rf5Parser`. Zmieniając parser, sprawdź na prawdziwym pliku (`RfemLiveTests` ze zmienną
+  `LOKALNEAI_RFEM_PROBKA`), nie zgaduj; pliki klientów (modele z OneDrive) nie trafiają do repozytorium — testy jednostkowe budują
+  rekordy syntetycznie (`Rf5Bytes`). Który zestaw wyników to która kombinacja, czyta się z protokołu solvera `.PRON<nr>` (`NCOMB=`),
+  nie z kolejności plików. Plik jest czytany cały do pamięci, żeby nie trzymać uchwytu (RFEM może go w tym czasie zapisywać).
 - **COM Office’a (profil `office`):** wywołania idą przez `Type.InvokeMember` z `GetProperty | InvokeMethod` (w bibliotekach
   typów Office’a `Item` bywa metodą), zawsze w wątku STA (`Com.RunSta`). Instancja uruchomiona przez nas startuje niewidoczna
   i jest zamykana po czytaniu; po edycji dokument zostaje otwarty na wierzchu. Próba, która się wysypie, zostawia
@@ -118,6 +132,12 @@ Zasady: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md). W tym repo
   nie `taskkill`, bo widoczna instancja może być użytkownika. Testy nie ruszają Outlooka (szkic otworzyłby okno w poczcie).
 - **Sprzęt:** RTX 4060 8 GB mieści Bielika 11B tylko w 60–73% przy kontekście 16k. Odpowiedź trwa kilka do
   kilkudziesięciu sekund.
+- **Blok ```wykres (umiejętność `formatowanie`):** format JSON żyje w trzech miejscach, które muszą się zgadzać: czytanie
+  w `ChartSpec.Parse` (`LokalneAI.Harness\Charts`, bez WPF — testowalne na net48 i net10), zasady dla modelu
+  w `profile\formatowanie\system.md` (test `ChartSpecTests` sprawdza, że opisuje każde pole i że przykład się czyta) i rysowanie
+  w `ChartView` (`LokalneAI.Harness.Wpf`). Nowa opcja = wszystkie trzy. Zakładka Czat bierze `system.md` tej umiejętności
+  bezpośrednio (`MainViewModel.FormattingRules`). Sortowanie i odwrócenie kolejności są zrobione już w `Parse` — `Labels` i `Series`
+  są w kolejności rysowania, więc „Kopiuj do Excela” też daje posortowane dane.
 
 ## Dokumentacja
 

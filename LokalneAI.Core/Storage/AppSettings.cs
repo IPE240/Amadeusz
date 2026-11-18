@@ -46,6 +46,45 @@ public sealed class AppSettings
     /// </summary>
     public List<WorkProfileSetting>? WorkProfiles { get; set; }
 
+    /// <summary>
+    /// Wiedza umiejętności z dysku (nazwa umiejętności → pliki albo foldery), np. wspólny glosariusz biura na serwerze.
+    /// Tylko w ustawieniach tego komputera — adresy serwerów nie trafiają do repozytorium. Zob. <see cref="DiskKnowledge"/>.
+    /// </summary>
+    public Dictionary<string, List<string>>? DiskKnowledge { get; set; }
+
+    /// <summary>Umiejętności „zawsze włączone” (<see cref="WorkProfileSetting.AlwaysOn"/>) już raz dopisane do profili — drugi raz program ich nie dopisze.</summary>
+    public List<string> AddedDefaultSkills { get; set; } = [];
+
+    /// <summary>
+    /// Raz na umiejętność: dopisuje nowe umiejętności „zawsze włączone” (np. formatowanie) do wszystkich zapisanych profili
+    /// i do bieżącego wyboru w zakładce Code. Potem użytkownik może je odznaczyć — nie wrócą. Zwraca, czy coś zmieniło.
+    /// </summary>
+    public bool AddDefaultSkills(IEnumerable<string> availableSkills)
+    {
+        var available = availableSkills.ToHashSet(StringComparer.Ordinal);
+        var changed = false;
+        foreach (var skill in WorkProfileSetting.AlwaysOn.Where(available.Contains).Where(s => !AddedDefaultSkills.Contains(s)))
+        {
+            foreach (var profile in WorkProfiles ?? [])
+            {
+                if (!profile.Skills.Contains(skill))
+                {
+                    profile.Skills.Add(skill);
+                }
+            }
+
+            if (HarnessProfiles is { Count: > 0 } && !HarnessProfiles.Contains(skill))
+            {
+                HarnessProfiles.Add(skill);
+            }
+
+            AddedDefaultSkills.Add(skill);
+            changed = true;
+        }
+
+        return changed;
+    }
+
     /// <summary>Zakładka Code: grupy rozmów (foldery). Same wskazania — rozmowy leżą w <c>&lt;folder&gt;\.amadeusz\</c>.</summary>
     public List<CodeGroupSetting> CodeGroups { get; set; } = [];
 
@@ -121,6 +160,36 @@ public sealed class AppSettings
     /// <summary>Rozwinięte sekcje zakładki Ustawienia (nazwy z okna). Null = domyślne okna.</summary>
     public List<string>? OpenSections { get; set; }
 
+    // OCR (Ustawienia → OCR): Tesseract skryptem, bez modelu. Używane przez umiejętności „ocr” i „office” (PDF) oraz przy
+    // wklejaniu obrazka do pola rozmowy.
+
+    /// <summary>Języki Tesseracta, np. <c>pol+eng</c>.</summary>
+    public string OcrLanguages { get; set; } = "pol+eng";
+
+    /// <summary>Obrót strony przed OCR: <c>auto</c> (wykrywanie), <c>0</c>, <c>90</c>, <c>180</c>, <c>270</c>.</summary>
+    public string OcrRotation { get; set; } = "auto";
+
+    /// <summary>Układ strony: <c>auto</c>, <c>tabela</c> (zachowane odstępy kolumn), <c>kolumna</c>, <c>luzny</c>.</summary>
+    public string OcrLayout { get; set; } = "auto";
+
+    /// <summary>Próg pewności słowa 0–100 (słowa poniżej są pomijane); 0 = bez progu.</summary>
+    public int OcrMinConfidence { get; set; }
+
+    /// <summary>Reguły ignorowania linii: wyrażenia regularne, po jednym w linii.</summary>
+    public string? OcrIgnorePatterns { get; set; }
+
+    /// <summary>Rozdzielczość renderowania stron PDF do OCR (dpi).</summary>
+    public int OcrDpi { get; set; } = 300;
+
+    /// <summary>Gdy strona PDF nie ma tekstu, <c>pdf_czytaj</c> robi na niej OCR.</summary>
+    public bool OcrWhenNoText { get; set; } = true;
+
+    /// <summary>Folder z danymi języków (<c>*.traineddata</c>); null = <c>%LOCALAPPDATA%\LokalneAI\tessdata</c>.</summary>
+    public string? OcrTessdataFolder { get; set; }
+
+    /// <summary>Obrazek wklejony do pola rozmowy (Code, Czat) jest od razu rozpoznawany, a tekst trafia do pola.</summary>
+    public bool OcrOnPaste { get; set; } = true;
+
     /// <summary>Klucz modelu do ulubionych: sama nazwa dla Ollamy, „dostawca|id” dla chmury.</summary>
     public static string ModelKey(string? provider, string model)
         => string.IsNullOrEmpty(provider) ? model : provider + "|" + model;
@@ -165,6 +234,7 @@ public sealed class AppSettings
         FavoriteModels = (FavoriteModels ?? []).Where(f => !string.IsNullOrWhiteSpace(f)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         OpenSections = OpenSections?.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.Ordinal).ToList();
         ComputeOn = string.IsNullOrWhiteSpace(ComputeOn) ? null : ComputeOn.Trim();
+        AddedDefaultSkills = (AddedDefaultSkills ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.Ordinal).ToList();
         HarnessProfiles = HarnessProfiles?.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.Ordinal).ToList();
         CodeGroups = (CodeGroups ?? [])
             .Where(g => g is not null && !string.IsNullOrWhiteSpace(g.Folder))
@@ -183,8 +253,15 @@ public sealed class AppSettings
             {
                 Name = g.Key,
                 Skills = (g.First().Skills ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).Distinct(StringComparer.Ordinal).ToList(),
+                Models = (g.First().Models ?? []).Where(m => !string.IsNullOrWhiteSpace(m)).Select(m => m.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             })
             .ToList();
+        DiskKnowledge = DiskKnowledge?
+            .Where(p => !string.IsNullOrWhiteSpace(p.Key))
+            .Select(p => (Skill: p.Key.Trim(), Paths: (p.Value ?? []).Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList()))
+            .Where(p => p.Paths.Count > 0)
+            .GroupBy(p => p.Skill, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.SelectMany(p => p.Paths).Distinct(StringComparer.OrdinalIgnoreCase).ToList(), StringComparer.Ordinal);
         CodeUngroupedFolder = string.IsNullOrWhiteSpace(CodeUngroupedFolder) ? null : CodeUngroupedFolder.Trim();
         CodeLastGroup = string.IsNullOrWhiteSpace(CodeLastGroup) ? null : CodeLastGroup.Trim();
 
@@ -200,16 +277,25 @@ public sealed class WorkProfileSetting
     public List<string> Skills { get; set; } = [];
 
     /// <summary>
+    /// Preferowane modele od najlepszego (klucze jak <see cref="AppSettings.ModelKey"/>: nazwa z Ollamy albo „dostawca|id”).
+    /// Wybór profilu przełącza na pierwszy dostępny na maszynie, która liczy; gdy żadnego nie ma — zostaje bieżący model.
+    /// </summary>
+    public List<string> Models { get; set; } = [];
+
+    /// <summary>
     /// Profile na pierwsze uruchomienie (potem lista żyje w ustawieniach: „Zapisz jako profil…”, „Usuń profil”).
     /// Umiejętności, których na danym komputerze nie ma (np. cde bez poświadczenia), są pomijane; profil bez żadnej jest ukryty.
     /// </summary>
     public static List<WorkProfileSetting> Defaults() =>
     [
-        new() { Name = "Konstruktor", Skills = ["tekla", "mkk", "pliki"] },
-        new() { Name = "Biuro", Skills = ["office", "tlumaczenie", "pliki"] },
-        new() { Name = "Baza CDE", Skills = ["cde"] },
-        new() { Name = "Komputer", Skills = ["komputer"] },
+        new() { Name = "Konstruktor", Skills = ["tekla", "mkk", "pliki", "formatowanie"] },
+        new() { Name = "Biuro", Skills = ["office", "tlumaczenie", "pliki", "formatowanie"] },
+        new() { Name = "Baza CDE", Skills = ["cde", "formatowanie"] },
+        new() { Name = "Komputer", Skills = ["komputer", "formatowanie"] },
     ];
+
+    /// <summary>Umiejętności domyślnie we wszystkich profilach (dopisywane raz także do profili zapisanych wcześniej).</summary>
+    public static IReadOnlyList<string> AlwaysOn { get; } = ["formatowanie"];
 }
 
 /// <summary>Model w chmurze dodany w Ustawieniach.</summary>

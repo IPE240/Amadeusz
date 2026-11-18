@@ -16,7 +16,10 @@ public class ProfileFilesTests
     [InlineData("tekla", 23)]
     [InlineData("cde", 1)]
     [InlineData("mkk", 0)]
-    [InlineData("office", 15)]
+    [InlineData("office", 20)]
+    [InlineData("ocr", 7)]
+    [InlineData("rfem", 9)]
+    [InlineData("tablice", 0)]
     [InlineData("tlumaczenie", 0)]
     public void Profil_WczytujeSieZFolderu(string name, int hostTools)
     {

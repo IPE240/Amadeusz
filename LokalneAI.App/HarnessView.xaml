@@ -40,6 +40,9 @@
                             </DockPanel>
                         </HierarchicalDataTemplate>
                         <DataTemplate DataType="{x:Type local:ConversationNode}">
+                            <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource RowDeleteButton}" Click="TrashButton_Click"
+                                    ToolTip="Usuń rozmowę (do kosza .amadeusz\kosz — kasowana po 7 dniach)" />
                             <TextBlock Text="{Binding DisplayTitle}" ToolTip="{Binding Tooltip}" TextTrimming="CharacterEllipsis">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
@@ -51,6 +54,7 @@
                                     </Style>
                                 </TextBlock.Style>
                             </TextBlock>
+                            </DockPanel>
                         </DataTemplate>
                     </TreeView.Resources>
                 </TreeView>
@@ -127,14 +131,9 @@
                         <CheckBox x:Name="StepsBox" Content="Pokaż kroki modelu (JSON)" VerticalAlignment="Center" Margin="14,0,0,0"
                                   Checked="Steps_Changed" Unchecked="Steps_Changed" />
                     </WrapPanel>
+                    <!-- Źródła wiedzy i aktualizacja dokumentacji: Ustawienia → Umiejętności. -->
                     <WrapPanel Margin="0,8,0,0">
-                        <Button Content="Źródła wiedzy…" Padding="8,2" Click="Sources_Click"
-                                ToolTip="Repozytoria i adresy, z których asystent bierze dokumentację (wklej link do repozytorium)" />
-                        <Button x:Name="SyncButton" Content="Aktualizuj wiedzę" Margin="6,0,0,0" Padding="8,2" Click="Sync_Click"
-                                ToolTip="Pobiera nowe wersje dokumentacji z repozytoriów wpisanych w zrodla.json zaznaczonych profili" />
-                        <Button x:Name="WindowButton" Content="W osobnym oknie" Margin="6,0,0,0" Padding="8,2" Click="OpenWindow_Click"
-                                ToolTip="Drugi asystent w osobnym oknie (własna rozmowa), np. obok Tekli" />
-                        <TextBlock x:Name="ModelText" VerticalAlignment="Center" Margin="14,0,0,0" Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock x:Name="ModelText" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
                     </WrapPanel>
                     <WrapPanel x:Name="TeklaOptions" Margin="0,8,0,0">
                         <RadioButton x:Name="SimulatorRadio" Content="Symulator (bez Tekli)" IsChecked="True" VerticalAlignment="Center" Checked="Executor_Changed" />

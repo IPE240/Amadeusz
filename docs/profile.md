@@ -9,6 +9,16 @@ Gotowe profile:
 - [profile/office](../profile/office): dokumenty Microsoft 365 — Word (czytanie, dopisywanie, zamiana), Excel (czytanie,
   wpisywanie wartości i formuł), Outlook (szkic maila, lista odebranych), PowerPoint (czytanie, nowy slajd), zapis kopii jako
   PDF; wykonawca `OfficeExecutor` z projektu `LokalneAI.Harness.Office` (COM zainstalowanego Office’a);
+- [profile/ocr](../profile/ocr): tekst ze skanów, zdjęć i PDF-ów bez warstwy tekstowej (`ocr_obraz`, `ocr_pdf`, `ocr_folder`,
+  `pdf_info`, `pdf_czytaj`) — Tesseract skryptem z ustawieniami z okna (Ustawienia → OCR: języki, obrót, układ, próg pewności,
+  reguły ignorowania); obrazek wklejony do pola rozmowy jest rozpoznawany od razu. Wykonawca `OcrExecutor` z `LokalneAI.Harness.Ocr`;
+  ten sam wykonawca obsługuje polecenia `pdf_*` umiejętności `office` (scalanie, wycinanie, obrót stron);
+- [profile/rfem](../profile/rfem): modele RFEM 5 (.rf5) czytane z pliku bez programu Dlubal (`rfem_info`, `rfem_pret`, `rfem_wezel`,
+  `rfem_przekroje`, `rfem_przypadki`, `rfem_sily`, `rfem_szukaj_pretow`): węzły, pręty z długością i przekrojem, materiały, przypadki
+  i kombinacje, siły w prętach z wyników solvera. Wykonawca `RfemExecutor` z `LokalneAI.Harness.Rfem`, tylko do odczytu;
+- [profile/tablice](../profile/tablice): tablice do projektowania konstrukcji stalowych — profil samej wiedzy (`narzedzia.json` z pustą
+  tablicą, `szukaj_wiedzy` i `kalkulator`): charakterystyki przekrojów (Bogucki, Żyburtowicz), połączenia doczołowe DAST, tablice SZS C5
+  do połączeń; pliki `.md` w `wiedza\` są generowane z `wiedza\dane\*.json` (jedna sekcja `#` na przekrój albo połączenie);
 - [profile/tlumaczenie](../profile/tlumaczenie): tłumaczenie tekstów biura na angielski (opisy techniczne, maile, pisma, notatki,
   tytuły rysunków). Profil samej wiedzy: `narzedzia.json` z pustą tablicą, `zakonczenie: model`, słownik konstrukcyjny
   i zwroty w `wiedza\` przez `szukaj_wiedzy`; odpowiedź modelu to samo tłumaczenie;
@@ -36,6 +46,8 @@ Gotowe profile:
 | Najważniejsze pojęcia i jednostki | `karta.md` | krótko (każde słowo zajmuje kontekst w każdym pytaniu) |
 | Dłuższa dokumentacja, instrukcje, opisy | `wiedza\*.md` | dowolnie dużo; model szuka w niej narzędziem `szukaj_wiedzy`, gdy czegoś nie wie |
 | Dokumentacja z repozytorium | przycisk **Źródła wiedzy…** w oknie asystenta (zapisuje `zrodla.json`) | wklej adres repozytorium i wzorce plików; aktualizuje się samo (niżej) |
+| Glosariusz (pary terminów) | `wiedza\*.txt` (`.tsv`, `.csv`) — jedna para w wierszu: `expansion joint – kompensator` | model nie musi szukać: sesja sama znajduje w poleceniu (i w tekście z narzędzi, np. dokumencie Word) terminy z glosariusza, także odmienione, i dokleja ich odpowiedniki (`Glossary`) |
+| Wspólny plik biura na dysku (np. glosariusz dla wszystkich) | **Źródła wiedzy… → Pliki i foldery na dysku** | ścieżka tylko w ustawieniach komputera (`AppSettings.DiskKnowledge`); plik czytany przy każdej nowej sesji, kopia w `%LOCALAPPDATA%\LokalneAI\wiedza_z_dysku\` na czas, gdy dysk jest niedostępny |
 
 Gdzie trzymać wiedzę o programach biura (folder `lokalne-ai\` w ich repozytoriach) i jak pisać notatki, żeby model je
 znalazł: [wiedza-dla-modeli.md](wiedza-dla-modeli.md). `CZYTAJ.md` w `wiedza\` to opis folderu dla ludzi; model go
@@ -107,6 +119,9 @@ przeliczony początek rozmowy, więc ten sam początek liczy się szybko. Koszt 
 | `tekla`, `pliki`, `komputer` | `["anthropic", "openai", "google"]` | testy obsługi programów przez AI |
 | `mkk` | bez pola | dokumentacja MKK jest wewnętrzna i poufna (LICENCE w repozytorium); dopisanie `["anthropic"]` to decyzja użytkownika |
 | `office` | bez pola | model czyta treść dokumentów i maili biura (umowy, raporty, korespondencja); dopisanie dostawcy to decyzja użytkownika |
+| `ocr` | bez pola | skany to dokumenty biura (protokoły, pisma, umowy) |
+| `rfem` | bez pola | modele obliczeniowe projektów klientów |
+| `tablice` | bez pola | wiedza z książek objętych prawem autorskim zostaje na komputerze |
 | nowy profil bez pola | — | tylko modele lokalne, dopóki ktoś świadomie nie dopisze dostawców |
 
 Dozwolone wartości: `anthropic`, `openai`, `google`. Innych (np. `deepseek`) biblioteka nie przyjmie. Model w chmurze
@@ -124,6 +139,9 @@ takiego wpisu nie ma (np. `cde` widzą tylko osoby z dostępem do bazy). Adresó
 | `cde` | `false` | model widzi dane z bazy i mógłby je wysłać w zapytaniu do wyszukiwarki |
 | `tekla`, `pliki`, `komputer`, `mkk` | `true` | dokumentacja, normy, producenci (`mkk`: publiczna dokumentacja Dlubal, Autodesk, IDEA StatiCa; `system.md` zakazuje wysyłania fragmentów wiedzy) |
 | `office` | `false` | jak `cde`: model widzi treść dokumentów i maili i mógłby ją wysłać w zapytaniu do wyszukiwarki |
+| `ocr` | `false` | jak `office`: tekst ze skanów zostaje na komputerze |
+| `rfem` | `false` | model widzi geometrię i siły z projektów klientów |
+| `tablice` | `false` | odpowiedzi tylko z tablic, bez szukania w internecie |
 | nowy profil bez pola | — | bez internetu |
 
 Adresy w sieci biura i na tym komputerze (prywatne IP, nazwy bez kropki, `.local`, nazwy wskazujące adres prywatny,

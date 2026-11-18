@@ -1,0 +1,53 @@
+<UserControl x:Class="LokalneAI.App.ChatSidebar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:LokalneAI.App">
+    <!-- Panel rozmów Czatu: Dokumenty\Amadeusz\Czat\ (grupa = podfolder), kosz Czat\kosz\ kasowany po 7 dniach. -->
+    <Border Style="{StaticResource PanelBox}" Padding="8">
+        <DockPanel>
+            <Button DockPanel.Dock="Top" Content="+ Nowa rozmowa" Padding="8,5" HorizontalAlignment="Stretch"
+                    Click="NewConversation_Click" ToolTip="Nowa rozmowa w zaznaczonej grupie (bieżąca zostaje zapisana)" />
+            <Button DockPanel.Dock="Bottom" Content="+ Nowa grupa…" Margin="0,8,0,0" Padding="8,3" HorizontalAlignment="Stretch"
+                    Click="AddGroup_Click" ToolTip="Nowa grupa rozmów (podfolder w Dokumenty\Amadeusz\Czat)" />
+            <TextBlock DockPanel.Dock="Bottom" x:Name="SidebarHint" Margin="2,6,0,0" FontSize="11" TextWrapping="Wrap"
+                       Foreground="{StaticResource MutedBrush}" />
+            <TreeView x:Name="ConversationTree" Margin="0,8,0,0" BorderThickness="0" Background="Transparent"
+                      SelectedItemChanged="Tree_SelectedItemChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <TreeView.Resources>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                        <Setter Property="Padding" Value="2,3" />
+                        <EventSetter Event="PreviewMouseRightButtonDown" Handler="TreeItem_RightClick" />
+                    </Style>
+                    <HierarchicalDataTemplate DataType="{x:Type local:ConversationGroupNode}" ItemsSource="{Binding Conversations}">
+                        <DockPanel ToolTip="{Binding Tooltip}" LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Left" Text="&#xE8BD;" FontFamily="Segoe MDL2 Assets" Margin="0,1,6,0"
+                                       VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" Margin="6,0,0,0" FontSize="11"
+                                       VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                    </HierarchicalDataTemplate>
+                    <DataTemplate DataType="{x:Type local:ConversationNode}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource RowDeleteButton}" Click="TrashButton_Click"
+                                    ToolTip="Usuń rozmowę (do kosza — kasowana po 7 dniach)" />
+                            <TextBlock Text="{Binding DisplayTitle}" ToolTip="{Binding Tooltip}" TextTrimming="CharacterEllipsis">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </DockPanel>
+                    </DataTemplate>
+                </TreeView.Resources>
+            </TreeView>
+        </DockPanel>
+    </Border>
+</UserControl>

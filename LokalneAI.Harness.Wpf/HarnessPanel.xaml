@@ -21,8 +21,15 @@
                     <TextBlock x:Name="MarkText" DockPanel.Dock="Left" Text="{Binding Mark}" Margin="0,0,6,0" FontWeight="Bold" VerticalAlignment="Top" />
                     <StackPanel>
                         <TextBox x:Name="MainText" Text="{Binding Text, Mode=OneWay}" Style="{StaticResource Selectable}" />
+                        <!-- Odpowiedź i pytanie modelu: Markdown (tabele, listy, pogrubienia). -->
+                        <local:MarkdownText x:Name="RichText" Markdown="{Binding Text, Mode=OneWay}" Visibility="Collapsed" />
                         <TextBox Text="{Binding Detail, Mode=OneWay}" Style="{StaticResource Selectable}" FontSize="12" Foreground="#4B5563"
                                  Margin="0,2,0,0" Visibility="{Binding HasDetail, Converter={StaticResource BoolToVis}}" />
+                        <!-- Pytanie o zgodę: odpowiedź w rozmowie, bez wyskakującego okna. -->
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,2" Visibility="{Binding IsPending, Converter={StaticResource BoolToVis}}">
+                            <Button x:Name="YesButton" Content="Tak, wykonaj" MinWidth="110" Padding="10,3" Margin="0,0,8,0" Click="ConfirmYes_Click" FontWeight="SemiBold" />
+                            <Button x:Name="NoButton" Content="Nie" MinWidth="80" Padding="10,3" Click="ConfirmNo_Click" />
+                        </StackPanel>
                     </StackPanel>
                 </DockPanel>
             </Border>
@@ -46,9 +53,13 @@
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Kind}" Value="Answer">
                     <Setter TargetName="Card" Property="Background" Value="#ECFDF5" />
+                    <Setter TargetName="MainText" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="RichText" Property="Visibility" Value="Visible" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Kind}" Value="Question">
                     <Setter TargetName="Card" Property="Background" Value="#FFF7E6" />
+                    <Setter TargetName="MainText" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="RichText" Property="Visibility" Value="Visible" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Kind}" Value="Warning">
                     <Setter TargetName="Card" Property="Background" Value="#FFF7E6" />
@@ -58,6 +69,18 @@
                 <DataTrigger Binding="{Binding Kind}" Value="Error">
                     <Setter TargetName="Card" Property="Background" Value="#FEF2F2" />
                     <Setter TargetName="MainText" Property="Foreground" Value="#B91C1C" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Confirm">
+                    <Setter TargetName="Card" Property="Background" Value="#FFF7E6" />
+                    <Setter TargetName="Card" Property="BorderBrush" Value="#F5C46B" />
+                    <Setter TargetName="Card" Property="BorderThickness" Value="1" />
+                    <Setter TargetName="MarkText" Property="Foreground" Value="#B45309" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Dangerous}" Value="True">
+                    <Setter TargetName="Card" Property="Background" Value="#FEF2F2" />
+                    <Setter TargetName="Card" Property="BorderBrush" Value="#F2A7A7" />
+                    <Setter TargetName="YesButton" Property="FontWeight" Value="Normal" />
+                    <Setter TargetName="NoButton" Property="FontWeight" Value="SemiBold" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Kind}" Value="Info">
                     <Setter TargetName="Card" Property="Background" Value="Transparent" />
@@ -106,7 +129,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBox x:Name="InputBox" MinHeight="54" MaxHeight="160" AcceptsReturn="True" TextWrapping="Wrap" Padding="6,4"
-                     VerticalScrollBarVisibility="Auto" PreviewKeyDown="Input_PreviewKeyDown" />
+                     VerticalScrollBarVisibility="Auto" PreviewKeyDown="Input_PreviewKeyDown" DataObject.Pasting="Input_Pasting" />
             <StackPanel Grid.Column="1" Margin="8,0,0,0">
                 <Button x:Name="SendButton" Content="Wyślij" Width="90" Height="30" Click="Send_Click" FontWeight="SemiBold" />
                 <Button x:Name="StopButton" Content="Stop" Width="90" Height="24" Margin="0,6,0,0" Click="Stop_Click" IsEnabled="False" />

@@ -19,6 +19,8 @@ namespace LokalneAI.Harness.Wpf
         Error,
         /// <summary>Informacja (czas tury, liczba wywołań modelu).</summary>
         Info,
+        /// <summary>Pytanie o zgodę przed poleceniem, które coś zmienia — z przyciskami Tak/Nie w rozmowie.</summary>
+        Confirm,
     }
 
     /// <summary>Jeden wpis w rozmowie: polecenie użytkownika, wywołanie narzędzia, odpowiedź…</summary>
@@ -80,7 +82,37 @@ namespace LokalneAI.Harness.Wpf
             }
         }
 
-        /// <summary>Znaczek przy wywołaniu: ⏳ trwa, ✓ OK, ✗ błąd.</summary>
-        public string Mark => Kind != PanelEntryKind.Call ? "" : _success == null ? "⏳" : _success == true ? "✓" : "✗";
+        /// <summary>Znaczek przy wywołaniu: ⏳ trwa, ✓ OK, ✗ błąd; przy pytaniu o zgodę: ? czeka, ✓ tak, ✗ nie.</summary>
+        public string Mark => Kind == PanelEntryKind.Confirm ? (_success == null ? "?" : _success == true ? "✓" : "✗")
+            : Kind != PanelEntryKind.Call ? "" : _success == null ? "⏳" : _success == true ? "✓" : "✗";
+
+        private System.Threading.Tasks.TaskCompletionSource<bool> _answer;
+
+        /// <summary>Pytanie o zgodę czeka na kliknięcie (przyciski Tak/Nie widoczne).</summary>
+        public bool IsPending => _answer != null && !_answer.Task.IsCompleted;
+
+        /// <summary>Polecenie może coś zniszczyć (kasuje) — przycisk „Nie” jest wyróżniony.</summary>
+        public bool Dangerous { get; set; }
+
+        /// <summary>Zaczyna czekać na odpowiedź Tak/Nie (<see cref="PanelEntryKind.Confirm"/>).</summary>
+        internal System.Threading.Tasks.Task<bool> Ask()
+        {
+            _answer = new System.Threading.Tasks.TaskCompletionSource<bool>();
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPending)));
+            return _answer.Task;
+        }
+
+        /// <summary>Odpowiedź na pytanie o zgodę (kliknięcie albo Stop = nie). Druga odpowiedź nic nie zmienia.</summary>
+        internal void Resolve(bool yes, string note)
+        {
+            if (_answer == null || !_answer.TrySetResult(yes))
+            {
+                return;
+            }
+
+            Success = yes;
+            Detail = note;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPending)));
+        }
     }
 }

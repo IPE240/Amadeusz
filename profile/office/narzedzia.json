@@ -398,6 +398,132 @@
         ],
         "additionalProperties": false
       }
+    },
+    {
+      "nazwa": "pdf_info",
+      "opis": "Opisuje PDF: liczba stron, format, rozmiar, tytuł i czy strony mają warstwę tekstową (dokument) czy są skanami.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pdf_czytaj",
+      "opis": "Pokazuje tekst stron PDF z numerami stron: z warstwy tekstowej, a dla stron bez tekstu (skany) przez OCR.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "strony": {
+            "type": "string",
+            "description": "np. 1-3,5; pusty = od od_strony do wyczerpania miejsca"
+          },
+          "od_strony": {
+            "type": "integer",
+            "description": "od której strony (domyślnie 1)"
+          }
+        },
+        "required": [
+          "sciezka"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pdf_polacz",
+      "opis": "Scala kilka plików PDF w jeden nowy plik (kolejność jak na liście). Niczego nie nadpisuje.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "pliki": {
+            "type": "array",
+            "description": "np. [\"raport.pdf\", \"zalacznik.pdf\"]",
+            "items": {
+              "type": "string"
+            }
+          },
+          "wynik": {
+            "type": "string",
+            "description": "nowy plik, np. komplet_R02.pdf"
+          }
+        },
+        "required": [
+          "pliki",
+          "wynik"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pdf_wytnij",
+      "opis": "Wycina wybrane strony PDF do nowego pliku (np. same rysunki z kompletu).",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "strony": {
+            "type": "string",
+            "description": "np. 1-3,5,8- (od 8 do końca)"
+          },
+          "wynik": {
+            "type": "string",
+            "description": "nowy plik, np. rysunki_R02.pdf"
+          }
+        },
+        "required": [
+          "sciezka",
+          "strony",
+          "wynik"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "pdf_obroc",
+      "opis": "Obraca strony PDF (wszystkie albo wybrane) o 90, 180 lub 270 stopni w prawo i zapisuje nowy plik (domyślnie <nazwa>_obrocony.pdf).",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "sciezka": {
+            "type": "string"
+          },
+          "stopnie": {
+            "type": "integer",
+            "enum": [90, 180, 270],
+            "description": "w prawo; 270 = 90 w lewo"
+          },
+          "strony": {
+            "type": "string",
+            "description": "np. 2,4-6; pusty = wszystkie"
+          },
+          "wynik": {
+            "type": "string",
+            "description": "nowy plik; pusty = <nazwa>_obrocony.pdf"
+          }
+        },
+        "required": [
+          "sciezka",
+          "stopnie"
+        ],
+        "additionalProperties": false
+      }
     }
   ]
 }

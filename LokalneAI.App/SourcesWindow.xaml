@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Źródła wiedzy"
-        Width="860" Height="460" MinWidth="560" MinHeight="300"
+        Width="860" Height="640" MinWidth="560" MinHeight="420"
         Background="{StaticResource PageBrush}"
         Foreground="{StaticResource TextBrush}"
         FontFamily="Segoe UI" FontSize="13"
@@ -31,6 +31,25 @@
                     </StackPanel>
                     <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Margin="0,0,12,0" TextWrapping="Wrap" />
                 </DockPanel>
+                <!-- Pliki i foldery na dysku (np. wspólny glosariusz biura): ścieżki tylko w ustawieniach tego komputera. -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+                    <TextBlock Text="Pliki i foldery na dysku" FontWeight="SemiBold" />
+                    <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,6"
+                               Text="Np. wspólny glosariusz biura na serwerze — jeden plik dla wszystkich. Program czyta go przy każdej nowej sesji (pliki .md, .txt, .tsv, .csv; z folderu — wszystkie takie pliki), a kopię trzyma na tym komputerze na wypadek, gdy dysk jest niedostępny. Plik z parami terminów w wierszach („expansion joint – kompensator”) działa jako glosariusz: asystent sam dostaje odpowiedniki terminów z tłumaczonego tekstu. Ścieżki zapisują się tylko na tym komputerze (nie w repozytorium)." />
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0">
+                            <Button Content="Dodaj" Margin="0,0,6,0" Click="AddDiskPath_Click" ToolTip="Dodaj ścieżkę wpisaną w polu" />
+                            <Button Content="Plik…" Margin="0,0,6,0" Click="BrowseDiskFile_Click" />
+                            <Button Content="Folder…" Click="BrowseDiskFolder_Click" />
+                        </StackPanel>
+                        <TextBox x:Name="DiskPathBox" VerticalContentAlignment="Center"
+                                 ToolTip="Wklej ścieżkę, np. \\serwer\biuro\glosariusz.txt albo X:\Wspólne\Słowniki" />
+                    </DockPanel>
+                    <DockPanel Margin="0,6,0,0">
+                        <Button DockPanel.Dock="Right" Content="Usuń zaznaczoną" Margin="8,0,0,0" VerticalAlignment="Top" Click="RemoveDiskPath_Click" />
+                        <ListBox x:Name="DiskList" Height="64" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" />
+                    </DockPanel>
+                </StackPanel>
                 <DataGrid x:Name="Grid" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column"
                           GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource RowLineBrush}"
                           Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" RowHeight="28">

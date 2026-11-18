@@ -1,9 +1,9 @@
 ﻿# Buduje paczkę instalacyjną Amadeusza: dist\Amadeusz-<wersja>.zip
-#   powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 [-Wersja 0.4.0] [-ZDokumentacjaZRepozytoriow]
+#   powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 [-Wersja 0.5.0] [-ZDokumentacjaZRepozytoriow]
 # Program jest publikowany jako self-contained (win-x64): na komputerach biura nie trzeba instalować .NET.
 # Pliki pobrane z repozytoriów (profile\*\wiedza\zrodla) domyślnie NIE trafiają do paczki — bywają z prywatnych
 # repozytoriów; na każdym komputerze program pobierze je sam, jeśli jego użytkownik ma dostęp.
-param([string]$Wersja = "0.4.0", [switch]$ZDokumentacjaZRepozytoriow)
+param([string]$Wersja = "0.5.0", [switch]$ZDokumentacjaZRepozytoriow)
 
 $ErrorActionPreference = "Stop"
 $repo = Split-Path $PSScriptRoot -Parent
@@ -17,7 +17,8 @@ if (Test-Path $folder) { Remove-Item $folder -Recurse -Force }
 New-Item -ItemType Directory -Force $folder | Out-Null
 
 Write-Host "[1/4] Testy..."
-dotnet test LokalneAI.sln -nologo -v q
+# -m:1 = po kolei: testy Office na net10 i net48 naraz walczą o tego samego Worda/PowerPointa (COM).
+dotnet test LokalneAI.sln -nologo -v q -m:1
 if ($LASTEXITCODE -ne 0) { throw "Testy nie przeszły — paczki nie buduję." }
 
 Write-Host "[2/4] Publikacja programu (self-contained, win-x64)..."

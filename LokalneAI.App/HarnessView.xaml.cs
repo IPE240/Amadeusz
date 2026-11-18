@@ -6,6 +6,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using LokalneAI.Core.Storage;
 using LokalneAI.Harness.Llm;
+using LokalneAI.Harness.Ocr;
+using LokalneAI.Harness.Rfem;
 using LokalneAI.Harness.Office;
 using LokalneAI.Harness.Postgres;
 using LokalneAI.Harness.Profiles;
@@ -62,6 +64,7 @@ public partial class HarnessView : UserControl
         Panel.TurnEnded += (_, _) => SaveCurrent();
         // Rozmowa jest już zapisana po ostatnim poleceniu, a panel właśnie się wyczyścił — nie zapisujemy pustej.
         Panel.NewSessionClicked += (_, _) => StartNewConversation(_currentGroup, save: false);
+        Panel.ImagePasted = OcrPastedImageAsync;
         ConversationTree.ItemsSource = _groups;
         // Lista umiejętności: kliknięcie w przycisk przy otwartej liście ma ją zamknąć, a nie otworzyć od nowa.
         SkillsPopup.Opened += (_, _) => SkillsButton.IsHitTestVisible = false;
@@ -106,7 +109,6 @@ public partial class HarnessView : UserControl
             ? "C:\\ODS;%USERPROFILE%\\Documents;%USERPROFILE%\\Desktop"
             : settings.FileRoots;
         PermissionBox.SelectedIndex = settings.CodePermission == "czyta" ? 0 : 1;
-        WindowButton.Visibility = allowSeparateWindow ? Visibility.Visible : Visibility.Collapsed;
 
         var chosen = settings.HarnessProfiles ?? (settings.HarnessProfile is { } old ? [old] : []);
         _loading = true;
@@ -558,7 +560,7 @@ public partial class HarnessView : UserControl
         menu.Items.Add(move);
         menu.Items.Add(Item("Pokaż plik w Eksploratorze", () => OpenInExplorer(CodeConversationStore.PathFor(conversation.Group.Folder, conversation.Id), select: true)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item("Przenieś do kosza (.amadeusz\\kosz)", () => TrashConversation(conversation), !(Panel.IsBusy && conversation == _currentNode)));
+        menu.Items.Add(Item("Usuń (do kosza na " + ConversationTrash.KeepDays + " dni)", () => TrashConversation(conversation), !(Panel.IsBusy && conversation == _currentNode)));
         return menu;
     }
 
@@ -683,6 +685,15 @@ public partial class HarnessView : UserControl
         SidebarHint.Text = "Przeniesiono do grupy „" + target.Name + "”.";
     }
 
+    private void TrashButton_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is FrameworkElement { DataContext: ConversationNode node } && !(Panel.IsBusy && node == _currentNode))
+        {
+            TrashConversation(node);
+        }
+    }
+
     private void TrashConversation(ConversationNode node)
     {
         try
@@ -703,7 +714,8 @@ public partial class HarnessView : UserControl
             StartNewConversation(group, save: false);
         }
 
-        SidebarHint.Text = "Rozmowa jest w " + Path.Combine(CodeConversationStore.StoreFolder(group.Folder), CodeConversationStore.TrashName) + ".";
+        SidebarHint.Text = "Rozmowa „" + node.DisplayTitle + "” jest w koszu (" + CodeConversationStore.TrashFolder(group.Folder)
+            + ") — można ją stamtąd przywrócić przez " + ConversationTrash.KeepDays + " dni, potem program ją skasuje.";
     }
 
     /// <summary>
@@ -917,6 +929,11 @@ public partial class HarnessView : UserControl
         }
 
         var parts = names.Select(n => HarnessProfile.Load(Path.Combine(_context.ProfilesRoot, n))).ToList();
+        for (var i = 0; i < parts.Count; i++)
+        {
+            LoadDiskKnowledge(names[i], parts[i]);
+        }
+
         var profile = HarnessProfile.Combine(parts);
         (_llm as IDisposable)?.Dispose();
         _llm = null;
@@ -962,6 +979,20 @@ public partial class HarnessView : UserControl
         var notes = new List<string>();
         var router = new RoutingExecutor();
         FileSystemExecutor? files = null;
+        OcrExecutor? ocr = null;
+        RfemExecutor? rfem = null;
+        // OCR i PDF (Tesseract, PDFium, PDFsharp) z ustawieniami z Ustawienia → OCR, w tych samych folderach co pliki.
+        OcrExecutor OcrFor()
+        {
+            if (ocr is null)
+            {
+                var (roots, work) = FileRoots();
+                ocr = new OcrExecutor(OcrViewModel.ToOptions(_context.Settings, roots, work));
+            }
+
+            return ocr;
+        }
+
         foreach (var part in parts)
         {
             var hostTools = part.Tools.Where(t => !t.IsBuiltIn).Select(t => t.Name).ToList();
@@ -991,6 +1022,12 @@ public partial class HarnessView : UserControl
 
                 executor = new PostgresReadOnlyExecutor(new PostgresReadOnlyOptions { ConnectionString = connection });
                 options.Variables["ja"] = person.Trim();
+                if (part.Name == "cde" && !Guid.TryParse(person.Trim(), out _))
+                {
+                    // W CDE person_id to UUID z bazy; login („jan.kowalski”) da błąd bazy „invalid input syntax for type uuid”.
+                    Panel.AddInfo("Uwaga: person_id przy bazie „" + credentialName + "” to „" + person.Trim() + "”, a w CDE identyfikator osoby ma postać "
+                        + "UUID z bazy (np. 3f2b…-…), nie login. Popraw go w Ustawieniach → Menedżer poświadczeń — inaczej pytania o „moje” dane skończą się błędem bazy.");
+                }
                 notes.Add("Pytający ma w bazie identyfikator osoby {{ja}} — w SQL wpisuj dosłownie '{{ja}}', program podstawi wartość.");
             }
             else if (IsFilesProfile(part.Name))
@@ -1015,6 +1052,26 @@ public partial class HarnessView : UserControl
                         ? " Folder bieżący na start (folder tej rozmowy): " + work + ". Dozwolone foldery: " + string.Join("; ", roots.Select(Environment.ExpandEnvironmentVariables)) + "."
                         : ""));
             }
+            else if (IsOcrProfile(part.Name))
+            {
+                executor = OcrFor();
+                var (roots, work) = FileRoots();
+                notes.Add("OCR robi Tesseract (języki " + _context.Settings.OcrLanguages + ", ustawienia w Ustawienia → OCR)."
+                    + (files is null
+                        ? " Folder bieżący na start (folder tej rozmowy): " + work + ". Dozwolone foldery: " + string.Join("; ", roots.Select(Environment.ExpandEnvironmentVariables)) + "."
+                        : ""));
+            }
+            else if (IsRfemProfile(part.Name))
+            {
+                // Modele RFEM 5 (.rf5) czytane z pliku bez programu Dlubal, tylko do odczytu, w tych samych folderach co pliki.
+                var (roots, work) = FileRoots();
+                rfem ??= new RfemExecutor(new RfemOptions { AllowedRoots = roots, WorkingFolder = work });
+                executor = rfem;
+                notes.Add("Pliki RFEM 5 (.rf5) czyta program z pliku, bez RFEM-a; gdy w folderze bieżącym jest jeden plik .rf5, polecenia biorą go bez podawania ścieżki."
+                    + (files is null
+                        ? " Folder bieżący na start (folder tej rozmowy): " + work + ". Dozwolone foldery: " + string.Join("; ", roots.Select(Environment.ExpandEnvironmentVariables)) + "."
+                        : ""));
+            }
             else if (BridgeRadio.IsChecked == true)
             {
                 executor = new TeklaBridgeExecutor(new TeklaBridgeOptions { ExchangeFolder = ExchangeBox.Text.Trim(), ProfileFolder = part.Folder });
@@ -1027,7 +1084,8 @@ public partial class HarnessView : UserControl
 
             foreach (var tool in hostTools)
             {
-                router.Route(tool, executor);
+                // Polecenia PDF umiejętności „office” (pdf_czytaj, pdf_polacz…) wykonuje wykonawca OCR/PDF, nie COM Office’a.
+                router.Route(tool, IsOfficeProfile(part.Name) && OcrExecutor.PdfTools.Contains(tool) ? OcrFor() : executor);
             }
         }
 
@@ -1123,14 +1181,22 @@ public partial class HarnessView : UserControl
         SkillsSummary.Text = chosen.Count == 0 ? "wybierz…" : string.Join(", ", chosen);
         SkillsSummary.Foreground = (Brush)FindResource(chosen.Count == 0 ? "MutedBrush" : "TextBrush");
         SyncWorkProfile();
-        bool IsKnowledge(string n) => n != "cde" && !IsFilesProfile(n) && !IsOfficeProfile(n) && !HarnessProfile.HasHostTools(Path.Combine(_context.ProfilesRoot, n));
+        bool IsKnowledge(string n) => n != "cde" && !IsFilesProfile(n) && !IsOfficeProfile(n) && !IsOcrProfile(n) && !IsRfemProfile(n) && !IsRuleOnly(n) && !HarnessProfile.HasHostTools(Path.Combine(_context.ProfilesRoot, n));
         var isCde = names.Contains("cde");
         var isOffice = names.Any(IsOfficeProfile);
-        var isFiles = names.Any(IsFilesProfile) || isOffice;   // Office używa tego samego pola z dozwolonymi folderami
+        var isOcr = names.Any(IsOcrProfile);
+        var isRfem = names.Any(IsRfemProfile);
+        var isFiles = names.Any(IsFilesProfile) || isOffice || isOcr || isRfem;   // Office, OCR i RFEM używają tego samego pola z dozwolonymi folderami
         var isComputer = names.Contains("komputer");
         var hasKnowledge = names.Any(IsKnowledge);
-        var hasTekla = names.Any(n => n != "cde" && !IsFilesProfile(n) && !IsOfficeProfile(n) && !IsKnowledge(n));
-        Panel.ResultPreviewLength = isComputer || isOffice || hasKnowledge ? 3000 : 600;
+        var hasTekla = names.Any(n => n != "cde" && !IsFilesProfile(n) && !IsOfficeProfile(n) && !IsOcrProfile(n) && !IsRfemProfile(n) && !IsRuleOnly(n) && !IsKnowledge(n));
+        // Umiejętność samych zasad (np. formatowanie) nie jest „rolą” — podpowiedzi liczą tylko pozostałe.
+        var roleNames = names.Where(n => !IsRuleOnly(n)).ToList();
+        if (roleNames.Count == 0)
+        {
+            roleNames = names;
+        }
+        Panel.ResultPreviewLength = isComputer || isOffice || isOcr || isRfem || hasKnowledge ? 3000 : 600;
         TeklaOptions.Visibility = hasTekla ? Visibility.Visible : Visibility.Collapsed;
         CdeOptions.Visibility = isCde ? Visibility.Visible : Visibility.Collapsed;
         RefreshCdeText();
@@ -1141,9 +1207,9 @@ public partial class HarnessView : UserControl
         {
             HintText.Text = "Wybierz co najmniej jedną umiejętność.";
         }
-        else if (names.Count == 1)
+        else if (roleNames.Count == 1)
         {
-            var name = names[0];
+            var name = roleNames[0];
             HintText.Text = name == "cde"
                 ? "SQL od modelu wykonuje się w transakcji tylko do odczytu. Przykłady: „Ile przepracowałem godzin na projekcie WSP?”, „W których dokumentach projektu EDO jest mowa o kotwach?”."
                 : name == "komputer"
@@ -1155,6 +1221,14 @@ public partial class HarnessView : UserControl
                     ? "Przykład: „co jest w notatka.docx?”, „dopisz na końcu raportu akapit…”, „wpisz do B10 sumę B2:B9”, „zapisz raport jako PDF”, "
                       + "„przygotuj maila do … z załącznikiem”. Czytanie idzie od razu; zmiany zależą od uprawnień, a mail zostaje szkicem (nie wysyła). "
                       + "Programy Office na tym komputerze: " + OfficeExecutor.InstalledSummary() + "."
+                : IsOcrProfile(name)
+                    ? "Przykład: „zrób OCR pliku skan.jpg”, „przeczytaj protokol.pdf (skan)”, „zrób OCR wszystkich skanów w folderze skany”, „czy raport.pdf to skan czy dokument?”. "
+                      + "Obrazek wklejony do pola rozmowy (Ctrl+V) jest rozpoznawany od razu. Języki, obrót, układ i reguły: Ustawienia → OCR (teraz: "
+                      + _context.Settings.OcrLanguages + ", obrót " + _context.Settings.OcrRotation + ")."
+                : IsRfemProfile(name)
+                    ? "Przykład: „co jest w modelu hala.rf5?”, „jaki przekrój i długość ma pręt 28?”, „jaka jest siła w pręcie 28 od KO5?”, „które pręty mają HEA 160?”, "
+                      + "„jakie są kombinacje?”. Plik .rf5 jest czytany z dysku bez RFEM-a (RFEM 6 .rf6 — nie). Siły są tylko w plikach zapisanych po obliczeniu; "
+                      + "wszystko tylko do odczytu, bez pytań o zgodę."
                 : name == "tlumaczenie"
                     ? "Wklej tekst po polsku — model odda tłumaczenie na angielski brytyjski (terminy konstrukcyjne bierze ze słownika umiejętności przez szukaj_wiedzy). "
                       + "Razem z umiejętnością office tłumaczy dokumenty: „przeczytaj opis.docx i zapisz tłumaczenie jako opis_EN.docx”. Najlepiej z qwen3.5:9b albo Bielikiem 11B."
@@ -1162,21 +1236,24 @@ public partial class HarnessView : UserControl
                     ? "Umiejętność oparta na wiedzy: model szuka w dokumentacji (szukaj_wiedzy) i odpowiada, nie wykonuje poleceń. "
                       + (name == "mkk"
                           ? "Przykład: „jak w Hali dodać stężenia dachowe?”, „jaki znak ma siła osiowa w Robocie, a jaki w RFEM?”, „ile zapytań ma plan Free API RFEM 6?”."
-                          : "Dokumentację pobiera przycisk „Aktualizuj wiedzę”.")
+                          : name == "tablice"
+                              ? "Przykład: „jaki Wy ma IPE 200?”, „ile waży 12 m HEB 200?”, „nośność połączenia IH1.1 IPE 240 M16 S235 8.8”, „rozstaw śrub M20”, „nośność śruby M16 10.9”. "
+                                + "Tablice Żyburtowicza (przekroje), DAST (połączenia doczołowe IH) i SZS C5 (śruby, spoiny) — liczby tylko z wiedzy, rachunki kalkulatorem."
+                              : "Źródła i aktualizacja dokumentacji: Ustawienia → Umiejętności.")
                     : "Przykład: „wstaw słup HEB300 w punkcie 6000, 0 od zera do 3,53”, potem „zmień go na HEB320”, „dodaj mu podstawę z 4 kotwami M24”.";
         }
         else
         {
-            var settings = SelectedSettings;
+            var settings = roleNames.Select(n => CloudViewModel.SafeSettings(Path.Combine(_context.ProfilesRoot, n)) ?? new ProfileSettings()).ToList();
             var rules = new List<string>();
             if (settings.Any(s => !s.Internet))
             {
-                rules.Add("internet wyłączony (" + string.Join(", ", names.Where((_, i) => !settings[i].Internet)) + ")");
+                rules.Add("internet wyłączony (" + string.Join(", ", roleNames.Where((_, i) => !settings[i].Internet)) + ")");
             }
 
             var cloud = settings.Skip(1).Aggregate((IEnumerable<string>)settings[0].CloudProviders, (a, s) => a.Intersect(s.CloudProviders, StringComparer.OrdinalIgnoreCase)).ToList();
             rules.Add(cloud.Count == 0 ? "tylko modele lokalne" : "chmura: " + string.Join(", ", cloud.Select(c => CloudProvider.Find(c)?.Family ?? c)));
-            HintText.Text = "Kilka umiejętności naraz: " + string.Join(" + ", names) + ". Obowiązują najostrzejsze zasady: " + string.Join(", ", rules)
+            HintText.Text = "Kilka umiejętności naraz: " + string.Join(" + ", roleNames) + ". Obowiązują najostrzejsze zasady: " + string.Join(", ", rules)
                 + ". Polecenie systemowe to suma umiejętności — przy trzech i więcej ustaw kontekst 32768 (Ustawienia → Czat); mały model gorzej wybiera spośród wielu narzędzi."
                 + (SelectedProfiles.Contains("pliki") && isComputer ? " Umiejętność pliki pominięta: komputer ma wszystkie jej polecenia." : "");
         }
@@ -1193,6 +1270,38 @@ public partial class HarnessView : UserControl
     /// <summary>Profil dokumentów Office (Word, Excel, Outlook, PowerPoint przez COM) — <c>OfficeExecutor</c> z tymi samymi dozwolonymi folderami.</summary>
     private static bool IsOfficeProfile(string? name) => name == "office";
 
+    /// <summary>Umiejętność OCR (Tesseract, PDFium) — <c>OcrExecutor</c> z tymi samymi dozwolonymi folderami i ustawieniami z Ustawienia → OCR.</summary>
+    private static bool IsOcrProfile(string? name) => name == "ocr";
+
+    /// <summary>Umiejętność RFEM (pliki .rf5 bez Dlubala) — <c>RfemExecutor</c> z tymi samymi dozwolonymi folderami.</summary>
+    private static bool IsRfemProfile(string? name) => name == "rfem";
+
+    /// <summary>
+    /// Obrazek wklejony do pola polecenia: zapis do <c>.amadeusz\obrazy\</c> folderu rozmowy (albo folderu tymczasowego
+    /// w kontroli bez klikania) i OCR z ustawień okna; zwraca blok z nagłówkiem i tekstem do pola. Wyłączony w Ustawieniach → zwraca pusty tekst.
+    /// </summary>
+    private async Task<string> OcrPastedImageAsync(byte[] png)
+    {
+        if (!_context.Settings.OcrOnPaste)
+        {
+            return "";
+        }
+
+        var (roots, work) = FileRoots();
+        var folder = Path.Combine(work ?? roots.Select(Environment.ExpandEnvironmentVariables).FirstOrDefault(Directory.Exists) ?? Path.GetTempPath(), ".amadeusz", "obrazy");
+        return await new OcrViewModel(_context.Settings, () => _context.Save?.Invoke()).RecognizePastedAsync(png, folder);
+    }
+
+    /// <summary>
+    /// Umiejętność samych zasad odpowiedzi (np. formatowanie): bez poleceń gospodarza i bez narzędzi wbudowanych.
+    /// W sesji nie jest rolą (<see cref="HarnessProfile.Combine"/>), a w podpowiedziach okna się jej nie liczy.
+    /// </summary>
+    private bool IsRuleOnly(string name)
+    {
+        var folder = Path.Combine(_context.ProfilesRoot, name);
+        return !HarnessProfile.HasHostTools(folder) && CloudViewModel.SafeSettings(folder) is { BuiltInTools.Count: 0 };
+    }
+
     private void Executor_Changed(object sender, RoutedEventArgs e)
     {
         if (IsLoaded)
@@ -1203,21 +1312,9 @@ public partial class HarnessView : UserControl
 
     private void Steps_Changed(object sender, RoutedEventArgs e) => Panel.ShowModelSteps = StepsBox.IsChecked == true;
 
-    private void OpenWindow_Click(object sender, RoutedEventArgs e)
-    {
-        if (_contextProvider is null)
-        {
-            return;
-        }
-
-        SaveChoices();
-        new HarnessWindow(_contextProvider) { Owner = Window.GetWindow(this) }.Show();
-    }
-
     private string FolderOf(string profile) => Path.Combine(_context.ProfilesRoot, profile);
 
-    private static string RepoCache => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LokalneAI", "repo");
+    private static string RepoCache => SkillsViewModel.RepoCache;
 
     /// <summary>Sama aktualizacja wiedzy zaznaczonych profili, gdy mają źródła, a od ostatniej minęło ponad 6 godzin.</summary>
     private async Task AutoSyncAsync()
@@ -1238,57 +1335,46 @@ public partial class HarnessView : UserControl
         }
     }
 
-    private async void Sync_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Wiedza umiejętności z dysku (Źródła wiedzy… → Pliki i foldery na dysku), np. wspólny glosariusz biura: do wyszukiwarki
+    /// i do glosariusza sesji. Dysk niedostępny = kopia z tego komputera (z uwagą w rozmowie).
+    /// </summary>
+    private void LoadDiskKnowledge(string skill, HarnessProfile part)
     {
-        var names = EffectiveProfiles.Where(n => KnowledgeSync.ReadSources(FolderOf(n)).Count > 0).ToList();
-        if (names.Count == 0)
+        if (_context.Settings.DiskKnowledge is not { } map || !map.TryGetValue(skill, out var paths) || paths.Count == 0)
         {
-            HintText.Text = "Wybrane umiejętności nie mają źródeł dokumentacji. Kliknij „Źródła wiedzy…” i wklej adres repozytorium.";
             return;
         }
 
-        foreach (var name in names)
+        var result = DiskKnowledge.Collect(skill, paths);
+        var problems = result.Notes.ToList();
+        foreach (var file in result.Files)
         {
-            await SyncAsync(name);
+            try
+            {
+                part.AddKnowledgeFile(file.Path, file.Source);
+            }
+            catch (IOException e)
+            {
+                problems.Add(file.Source + ": " + e.Message);
+            }
+        }
+
+        if (problems.Count > 0)
+        {
+            Panel.AddInfo("Wiedza z dysku (" + skill + "): " + string.Join(" ", problems));
         }
     }
 
-    private void Sources_Click(object sender, RoutedEventArgs e)
-    {
-        var names = EffectiveProfiles;
-        if (names.Count == 1)
-        {
-            OpenSources(names[0]);
-            return;
-        }
-
-        // Kilka profili: który ma dostać źródła?
-        var menu = new ContextMenu { PlacementTarget = (UIElement)sender };
-        foreach (var name in names)
-        {
-            var profile = name;
-            menu.Items.Add(Item("Umiejętność " + profile + "…", () => OpenSources(profile)));
-        }
-
-        menu.IsOpen = menu.Items.Count > 0;
-    }
-
-    private void OpenSources(string profile)
-    {
-        new SourcesWindow(profile, FolderOf(profile), RepoCache) { Owner = Window.GetWindow(this) }.ShowDialog();
-        RebuildSession(); // nowa sesja zbuduje indeks wiedzy z nowych plików
-    }
-
+    /// <summary>Automatyczna aktualizacja dokumentacji umiejętności (ręczna: Ustawienia → Umiejętności → Aktualizuj).</summary>
     private async Task SyncAsync(string profile)
     {
         var folder = FolderOf(profile);
         if (KnowledgeSync.ReadSources(folder).Count == 0)
         {
-            HintText.Text = "Umiejętność " + profile + " nie ma źródeł dokumentacji. Kliknij „Źródła wiedzy…” i wklej adres repozytorium.";
             return;
         }
 
-        SyncButton.IsEnabled = false;
         HintText.Text = "Aktualizuję wiedzę umiejętności " + profile + "…";
         try
         {
@@ -1299,10 +1385,6 @@ public partial class HarnessView : UserControl
         catch (Exception ex)
         {
             HintText.Text = "Aktualizacja wiedzy nie powiodła się: " + ex.Message;
-        }
-        finally
-        {
-            SyncButton.IsEnabled = true;
         }
     }
 
@@ -1463,7 +1545,29 @@ public partial class HarnessView : UserControl
 
         _loading = false;
         SkillsChanged();
+        ApplyPreferredModel(profile);
     }
+
+    /// <summary>Przełącza model na pierwszy dostępny z preferowanych modeli profilu; gdy żadnego nie ma — mówi, który zostaje.</summary>
+    private void ApplyPreferredModel(WorkProfileSetting profile)
+    {
+        if (profile.Models.Count == 0 || _context.SelectPreferredModel is not { } select)
+        {
+            return;
+        }
+
+        var settings = SelectedSettings;
+        List<string> allowed = settings.Count == 0 ? [] : settings.Skip(1).Aggregate(
+            (IEnumerable<string>)settings[0].CloudProviders, (a, s) => a.Intersect(s.CloudProviders, StringComparer.OrdinalIgnoreCase)).ToList();
+        var chosen = select(profile.Models, allowed);
+        _context = _contextProvider?.Invoke() ?? _context;
+        HintText.Text = chosen is not null
+            ? "Profil " + profile.Name + ": model " + chosen.Label + (SameKey(chosen.Key, profile.Models[0]) ? "." : " (lepszych z listy profilu tu nie ma).")
+            : "Profil " + profile.Name + ": żadnego z preferowanych modeli (" + string.Join(", ", profile.Models.Select(ModelChoice.ShortKey)) + ") nie ma na maszynie, która liczy — zostaje " + _context.ModelLabel + ".";
+        RefreshModelText();
+    }
+
+    private static bool SameKey(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
     private void SaveWorkProfile_Click(object sender, RoutedEventArgs e)
     {
@@ -1485,7 +1589,10 @@ public partial class HarnessView : UserControl
 
         name = name.Trim();
         var index = _workProfiles.FindIndex(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
-        var profile = new WorkProfileSetting { Name = name, Skills = chosen };
+        // Nowy profil zapamiętuje bieżący model jako preferowany; istniejący zachowuje swoją listę modeli.
+        var models = index >= 0 ? _workProfiles[index].Models.ToList()
+            : _contextProvider?.Invoke().CurrentModelKey is { } current ? [current] : new List<string>();
+        var profile = new WorkProfileSetting { Name = name, Skills = chosen, Models = models };
         if (index >= 0)
         {
             _workProfiles[index] = profile;
@@ -1550,7 +1657,7 @@ public partial class HarnessView : UserControl
 
     /// <summary>Kopia listy (null = domyślne), żeby zmiany tutaj nie ruszały ustawień przed zapisem.</summary>
     private static List<WorkProfileSetting> CopyWorkProfiles(List<WorkProfileSetting>? profiles)
-        => (profiles ?? WorkProfileSetting.Defaults()).Select(p => new WorkProfileSetting { Name = p.Name, Skills = p.Skills.ToList() }).ToList();
+        => (profiles ?? WorkProfileSetting.Defaults()).Select(p => new WorkProfileSetting { Name = p.Name, Skills = p.Skills.ToList(), Models = p.Models.ToList() }).ToList();
 
     /// <summary>Kontrola bez klikania: wybiera profil po nazwie (jak z listy).</summary>
     internal bool SelectWorkProfileForTest(string name)
@@ -1594,6 +1701,15 @@ public sealed class HarnessContext
 
     /// <summary>Klucz API dostawcy (z programu albo zmiennej środowiskowej).</summary>
     public Func<CloudProvider, string?>? GetApiKey { get; init; }
+
+    /// <summary>Wybór profilu: przełącz na pierwszy dostępny z preferowanych modeli (klucze, dozwoleni dostawcy chmury); null = żadnego nie ma.</summary>
+    public Func<IEnumerable<string>, IReadOnlyCollection<string>, ModelItem?>? SelectPreferredModel { get; init; }
+
+    /// <summary>Klucz wybranego modelu (do „Zapisz jako profil…”).</summary>
+    public string? CurrentModelKey { get; init; }
+
+    /// <summary>Modele na liście okna (do okna preferowanych modeli profilu).</summary>
+    public IReadOnlyList<ModelChoice> ModelChoices { get; init; } = [];
 
     /// <summary>Połączenie z bazą z Menedżera poświadczeń po nazwie wpisu (hasło odszyfrowane dopiero tutaj); null = brak wpisu.</summary>
     public Func<string, PostgresAccess?>? GetPostgres { get; init; }

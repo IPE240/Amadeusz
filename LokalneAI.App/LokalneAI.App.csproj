@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Ikona w zasobniku (NotifyIcon). Bez globalnych using WinForms/Drawing — nazwy kolidowałyby z WPF. -->
+    <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>LokalneAI</AssemblyName>
     <RootNamespace>LokalneAI.App</RootNamespace>
     <Version>0.1.0</Version>
@@ -19,6 +21,8 @@
     <ProjectReference Include="..\LokalneAI.Gateway\LokalneAI.Gateway.csproj" />
     <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
     <ProjectReference Include="..\LokalneAI.Harness.Office\LokalneAI.Harness.Office.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness.Ocr\LokalneAI.Harness.Ocr.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness.Rfem\LokalneAI.Harness.Rfem.csproj" />
     <ProjectReference Include="..\LokalneAI.Harness.Postgres\LokalneAI.Harness.Postgres.csproj" />
     <ProjectReference Include="..\LokalneAI.Harness.Wpf\LokalneAI.Harness.Wpf.csproj" />
   </ItemGroup>
@@ -34,5 +38,12 @@
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\narzedzia\odswiez_amadeusza.ps1&quot;"
           ContinueOnError="WarnAndContinue" />
   </Target>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <!-- Sylwetka Mozarta do ikony w zasobniku (bez pliku — sylwetka zastępcza narysowana w kodzie). -->
+    <Resource Include="Assets\mozart.png" Condition="Exists('Assets\mozart.png')" />
+  </ItemGroup>
 
 </Project>

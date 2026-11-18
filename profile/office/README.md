@@ -15,6 +15,7 @@ maila nigdy nie jest wysyłany. Ścieżki tylko w dozwolonych folderach (pole na
 | Excel | `excel_czytaj` (tabela z literami kolumn; `arkusz`, `zakres`, `formuly`), `excel_zapisz` (liczba, tekst albo formuła; polskie nazwy funkcji, potem angielskie), `excel_wstaw_wiersze` (blok wartości, nowy skoroszyt powstaje sam) |
 | PowerPoint | `powerpoint_czytaj` (tytuły, punkty, notatki), `powerpoint_dodaj_slajd` (układ „Tytuł i zawartość”) |
 | Outlook | `outlook_szkic` (szkic z załącznikami z dozwolonych folderów, otwarty do sprawdzenia — NIE wysyła), `outlook_odebrane` (ostatnie wiadomości, filtr po temacie albo nadawcy), `outlook_czytaj` (treść wiadomości z listy) |
+| PDF | `pdf_info` (strony, format, czy skan), `pdf_czytaj` (tekst stron; skany przez OCR), `pdf_polacz`, `pdf_wytnij`, `pdf_obroc` (zawsze nowy plik) — wykonuje `OcrExecutor` z `LokalneAI.Harness.Ocr` (PDFium, PDFsharp 6.1, Tesseract), ustawienia OCR w Ustawienia → OCR |
 | wspólne | `office_otworz` (dokument na wierzchu; inne pliki domyślnym programem, nigdy programy), `office_zapisz_jako` (PDF i formaty Office’a), `szukaj_plikow`, `pokaz_zawartosc` (jak w `komputer`) |
 
 ## Pliki

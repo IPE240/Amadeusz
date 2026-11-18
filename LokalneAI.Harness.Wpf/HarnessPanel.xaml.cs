@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -8,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using LokalneAI.Harness.Llm;
 using LokalneAI.Harness.Session;
 using LokalneAI.Harness.Tools;
@@ -91,25 +93,36 @@ namespace LokalneAI.Harness.Wpf
 
         /// <summary>
         /// Gotowe pytanie o zgodę przed poleceniem zmieniającym model — do <see cref="SessionOptions.ConfirmMutation"/>.
-        /// Pokazuje okno Tak/Nie z treścią od wykonawcy (np. polecenie PowerShella z ostrzeżeniami) albo z nazwą polecenia
-        /// i argumentami. Gdy polecenie może coś zniszczyć (kasuje), domyślnym przyciskiem jest „Nie”.
+        /// Pytanie pojawia się w rozmowie (bez wyskakującego okna) z treścią od wykonawcy (np. polecenie PowerShella
+        /// z ostrzeżeniami) albo z nazwą polecenia i argumentami, i z przyciskami Tak/Nie. Stop, Esc albo zamknięcie sesji = „Nie”.
+        /// Gdy polecenie może coś zniszczyć (kasuje), wyróżniony jest przycisk „Nie”.
         /// </summary>
         public Task<bool> ConfirmMutationAsync(ToolCall call, CancellationToken cancellationToken)
         {
             var message = !string.IsNullOrWhiteSpace(call.ConfirmationMessage)
                 ? call.ConfirmationMessage
                 : "Wykonać polecenie zmieniające model?\n\n" + call.Name + "\n" + DescribeArguments(call.ArgumentsJson);
-            var icon = call.ConfirmationDangerous ? MessageBoxImage.Warning : MessageBoxImage.Question;
-            var defaultAnswer = call.ConfirmationDangerous ? MessageBoxResult.No : MessageBoxResult.Yes;
             return Dispatcher.InvokeAsync(() =>
             {
-                var owner = Window.GetWindow(this);
-                var answer = owner != null
-                    ? MessageBox.Show(owner, message, "Potwierdź polecenie", MessageBoxButton.YesNo, icon, defaultAnswer)
-                    : MessageBox.Show(message, "Potwierdź polecenie", MessageBoxButton.YesNo, icon, defaultAnswer);
-                return answer == MessageBoxResult.Yes;
-            }).Task;
+                var entry = new PanelEntry(PanelEntryKind.Confirm, message.Trim()) { Dangerous = call.ConfirmationDangerous };
+                var answer = entry.Ask();
+                Insert(entry);
+                _follow = true;
+                if (cancellationToken.CanBeCanceled)
+                {
+                    var registration = cancellationToken.Register(() => Dispatcher.BeginInvoke(new Action(() => entry.Resolve(false, "Przerwano — bez zgody."))));
+                    answer.ContinueWith(_ => registration.Dispose(), TaskScheduler.Default);
+                }
+
+                return answer;
+            }).Task.Unwrap();
         }
+
+        private void ConfirmYes_Click(object sender, RoutedEventArgs e)
+            => ((sender as FrameworkElement)?.DataContext as PanelEntry)?.Resolve(true, "Tak — wykonuję.");
+
+        private void ConfirmNo_Click(object sender, RoutedEventArgs e)
+            => ((sender as FrameworkElement)?.DataContext as PanelEntry)?.Resolve(false, "Nie — polecenie odrzucone.");
 
         /// <summary>Wysyła polecenie (jak klik „Wyślij”).</summary>
         public async Task<TurnResult> SendAsync(string text)
@@ -378,6 +391,69 @@ namespace LokalneAI.Harness.Wpf
         {
             NewSession();
             NewSessionClicked?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Obrazek wklejony do pola polecenia (Ctrl+V ze schowka, np. zrzut ekranu albo fragment skanu): gospodarz dostaje
+        /// PNG i zwraca tekst do wstawienia w pole (np. wynik OCR z nagłówkiem). Null = wklejanie obrazków wyłączone
+        /// (zwykłe wklejanie tekstu działa zawsze). Wołane w wątku okna; może trwać kilka sekund — pole jest wtedy zablokowane.
+        /// </summary>
+        public Func<byte[], Task<string>> ImagePasted { get; set; }
+
+        private async void Input_Pasting(object sender, DataObjectPastingEventArgs e)
+        {
+            if (ImagePasted == null || !e.DataObject.GetDataPresent(DataFormats.Bitmap) || e.DataObject.GetDataPresent(DataFormats.UnicodeText))
+            {
+                return; // tekst (także tekst z obrazkiem, np. z Worda) wkleja się jak zwykle
+            }
+
+            e.CancelCommand();
+            byte[] png;
+            try
+            {
+                var image = Clipboard.GetImage();
+                if (image == null)
+                {
+                    return;
+                }
+
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(image));
+                using (var stream = new MemoryStream())
+                {
+                    encoder.Save(stream);
+                    png = stream.ToArray();
+                }
+            }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException || ex is NotSupportedException || ex is InvalidOperationException)
+            {
+                AddInfo("Nie udało się odczytać obrazka ze schowka: " + ex.Message);
+                return;
+            }
+
+            var caret = InputBox.CaretIndex;
+            InputBox.IsEnabled = false;
+            AddInfo("Rozpoznaję tekst z wklejonego obrazka…");
+            try
+            {
+                var text = await ImagePasted(png) ?? "";
+                var before = InputBox.Text.Substring(0, Math.Min(caret, InputBox.Text.Length));
+                var after = InputBox.Text.Substring(Math.Min(caret, InputBox.Text.Length));
+                InputBox.Text = before + text + after;
+                InputBox.CaretIndex = before.Length + text.Length;
+                var firstLine = text.Split('\n').FirstOrDefault(l => l.Trim().Length > 0) ?? "";
+                _entries.RemoveAt(_entries.Count - 1);
+                AddInfo(firstLine.StartsWith("[", StringComparison.Ordinal) ? firstLine.Trim('[', ']') + " — tekst jest w polu polecenia, dopisz, co z nim zrobić." : "Obrazek rozpoznany — tekst jest w polu polecenia.");
+            }
+            catch (Exception ex) when (ex is IOException || ex is InvalidOperationException || ex is UnauthorizedAccessException)
+            {
+                AddInfo("OCR wklejonego obrazka nie powiódł się: " + ex.Message);
+            }
+            finally
+            {
+                InputBox.IsEnabled = true;
+                InputBox.Focus();
+            }
         }
 
         private void Input_PreviewKeyDown(object sender, KeyEventArgs e)

@@ -1,0 +1,437 @@
+{
+ "zrodlo": "Bogucki, Żyburtowicz: Tablice do projektowania konstrukcji metalowych, wyd. 7, Arkady 2007",
+ "tablice": [
+  {
+   "tablica": "1.1",
+   "tytul": "Dwuteowniki zwykłe I (PN-91/H-93407, DIN 1025-1:1995)",
+   "strona": 2,
+   "wierszy": 18,
+   "niepewnych": 0,
+   "plik": "t1_1.json"
+  },
+  {
+   "tablica": "1.10",
+   "tytul": "Dwuteowniki IPE 750 (Salzgitter Mannesmann, Arcelor)",
+   "strona": 11,
+   "wierszy": 4,
+   "niepewnych": 0,
+   "plik": "t1_10.json"
+  },
+  {
+   "tablica": "1.11",
+   "tytul": "Dwuteowniki HL (Arcelor)",
+   "strona": 12,
+   "wierszy": 10,
+   "niepewnych": 0,
+   "plik": "t1_11.json"
+  },
+  {
+   "tablica": "1.12",
+   "tytul": "Dwuteowniki wg BS 4 Part 1:1993",
+   "strona": 13,
+   "wierszy": 18,
+   "niepewnych": 0,
+   "plik": "t1_12.json"
+  },
+  {
+   "tablica": "1.13",
+   "tytul": "Dwuteowniki wg JIS G 3192:2000",
+   "strona": 14,
+   "wierszy": 27,
+   "niepewnych": 0,
+   "plik": "t1_13.json"
+  },
+  {
+   "tablica": "1.14",
+   "tytul": "Dwuteowniki HE (ciężkie, 400x307–1000x694)",
+   "strona": 15,
+   "wierszy": 31,
+   "niepewnych": 0,
+   "plik": "t1_14.json"
+  },
+  {
+   "tablica": "1.15",
+   "tytul": "Dwuteowniki HD (260x54–400x314)",
+   "strona": 16,
+   "wierszy": 23,
+   "niepewnych": 0,
+   "plik": "t1_15.json"
+  },
+  {
+   "tablica": "1.15b",
+   "tytul": "Dwuteowniki HD (ciąg dalszy)",
+   "strona": 17,
+   "wierszy": 4,
+   "niepewnych": 0,
+   "plik": "t1_15b.json"
+  },
+  {
+   "tablica": "1.16",
+   "tytul": "Dwuteowniki HP",
+   "strona": 18,
+   "wierszy": 27,
+   "niepewnych": 0,
+   "plik": "t1_16.json"
+  },
+  {
+   "tablica": "1.17",
+   "tytul": "Połówki dwuteowników zwykłych 1/2 I",
+   "strona": 19,
+   "wierszy": 18,
+   "niepewnych": 0,
+   "plik": "t1_17.json"
+  },
+  {
+   "tablica": "1.18",
+   "tytul": "Połówki dwuteowników równoległościennych 1/2 IPE",
+   "strona": 19,
+   "wierszy": 18,
+   "niepewnych": 0,
+   "plik": "t1_18.json"
+  },
+  {
+   "tablica": "1.2",
+   "tytul": "Dwuteowniki równoległościenne IPE (PN-91/H-93419, DIN 1025-5:1995, EN 19-57)",
+   "strona": 3,
+   "wierszy": 18,
+   "niepewnych": 0,
+   "plik": "t1_2.json"
+  },
+  {
+   "tablica": "1.20",
+   "tytul": "Ceowniki zwykłe C (PN-86/H-93403, DIN 1026-1:2000)",
+   "strona": 21,
+   "wierszy": 19,
+   "niepewnych": 0,
+   "plik": "t1_20.json"
+  },
+  {
+   "tablica": "1.21",
+   "tytul": "Ceowniki ekonomiczne CE (PN-71/H-93451)",
+   "strona": 22,
+   "wierszy": 15,
+   "niepewnych": 0,
+   "plik": "t1_21.json"
+  },
+  {
+   "tablica": "1.22",
+   "tytul": "Ceowniki równoległościenne UPE (DIN 1026-2:2002)",
+   "strona": 23,
+   "wierszy": 14,
+   "niepewnych": 0,
+   "plik": "t1_22.json"
+  },
+  {
+   "tablica": "1.23",
+   "tytul": "Ceowniki równoległościenne UAP (Arcelor)",
+   "strona": 24,
+   "wierszy": 9,
+   "niepewnych": 0,
+   "plik": "t1_23.json"
+  },
+  {
+   "tablica": "1.24",
+   "tytul": "Kątowniki równoramienne L (PN-EN 10056-1:2000)",
+   "strona": 25,
+   "wierszy": 29,
+   "niepewnych": 0,
+   "plik": "t1_24.json"
+  },
+  {
+   "tablica": "1.24b",
+   "tytul": "Kątowniki równoramienne L (ciąg dalszy)",
+   "strona": 26,
+   "wierszy": 28,
+   "niepewnych": 0,
+   "plik": "t1_24b.json"
+  },
+  {
+   "tablica": "1.25",
+   "tytul": "Kątowniki nierównoramienne L (PN-EN 10056-1:2000)",
+   "strona": 27,
+   "wierszy": 16,
+   "niepewnych": 0,
+   "plik": "t1_25.json"
+  },
+  {
+   "tablica": "1.25b",
+   "tytul": "Kątowniki nierównoramienne L (ciąg dalszy)",
+   "strona": 28,
+   "wierszy": 25,
+   "niepewnych": 0,
+   "plik": "t1_25b.json"
+  },
+  {
+   "tablica": "1.26",
+   "tytul": "Teowniki równoramienne wysokie T (PN-EN 10055:1999)",
+   "strona": 29,
+   "wierszy": 14,
+   "niepewnych": 0,
+   "plik": "t1_26.json"
+  },
+  {
+   "tablica": "1.29",
+   "tytul": "Kształtowniki zamknięte okrągłe (PN-EN 10210-2, 10219-2)",
+   "strona": 31,
+   "wierszy": 25,
+   "niepewnych": 2,
+   "plik": "t1_29.json"
+  },
+  {
+   "tablica": "1.29b",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 31,
+   "wierszy": 21,
+   "niepewnych": 4,
+   "plik": "t1_29b.json"
+  },
+  {
+   "tablica": "1.29c",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 32,
+   "wierszy": 24,
+   "niepewnych": 1,
+   "plik": "t1_29c.json"
+  },
+  {
+   "tablica": "1.29d",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 32,
+   "wierszy": 20,
+   "niepewnych": 4,
+   "plik": "t1_29d.json"
+  },
+  {
+   "tablica": "1.29e",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 33,
+   "wierszy": 29,
+   "niepewnych": 3,
+   "plik": "t1_29e.json"
+  },
+  {
+   "tablica": "1.29f",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 33,
+   "wierszy": 29,
+   "niepewnych": 2,
+   "plik": "t1_29f.json"
+  },
+  {
+   "tablica": "1.29g",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 34,
+   "wierszy": 29,
+   "niepewnych": 1,
+   "plik": "t1_29g.json"
+  },
+  {
+   "tablica": "1.29h",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 34,
+   "wierszy": 29,
+   "niepewnych": 0,
+   "plik": "t1_29h.json"
+  },
+  {
+   "tablica": "1.29i",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 35,
+   "wierszy": 30,
+   "niepewnych": 0,
+   "plik": "t1_29i.json"
+  },
+  {
+   "tablica": "1.29j",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 35,
+   "wierszy": 30,
+   "niepewnych": 3,
+   "plik": "t1_29j.json"
+  },
+  {
+   "tablica": "1.29k",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 36,
+   "wierszy": 30,
+   "niepewnych": 1,
+   "plik": "t1_29k.json"
+  },
+  {
+   "tablica": "1.29l",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 36,
+   "wierszy": 30,
+   "niepewnych": 1,
+   "plik": "t1_29l.json"
+  },
+  {
+   "tablica": "1.29m",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 37,
+   "wierszy": 27,
+   "niepewnych": 2,
+   "plik": "t1_29m.json"
+  },
+  {
+   "tablica": "1.29n",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 37,
+   "wierszy": 27,
+   "niepewnych": 3,
+   "plik": "t1_29n.json"
+  },
+  {
+   "tablica": "1.29o",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 38,
+   "wierszy": 30,
+   "niepewnych": 2,
+   "plik": "t1_29o.json"
+  },
+  {
+   "tablica": "1.29p",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 38,
+   "wierszy": 30,
+   "niepewnych": 1,
+   "plik": "t1_29p.json"
+  },
+  {
+   "tablica": "1.29r",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 39,
+   "wierszy": 27,
+   "niepewnych": 3,
+   "plik": "t1_29r.json"
+  },
+  {
+   "tablica": "1.29s",
+   "tytul": "Kształtowniki zamknięte okrągłe (ciąg dalszy)",
+   "strona": 39,
+   "wierszy": 26,
+   "niepewnych": 0,
+   "plik": "t1_29s.json"
+  },
+  {
+   "tablica": "1.3",
+   "tytul": "Dwuteowniki równoległościenne IPE AA (katalog Mittal Steel Poland)",
+   "strona": 4,
+   "wierszy": 18,
+   "niepewnych": 0,
+   "plik": "t1_3.json"
+  },
+  {
+   "tablica": "1.30",
+   "tytul": "Kształtowniki zamknięte kwadratowe na gorąco (PN-EN 10210-2:2000)",
+   "strona": 40,
+   "wierszy": 31,
+   "niepewnych": 0,
+   "plik": "t1_30.json"
+  },
+  {
+   "tablica": "1.30b",
+   "tytul": "Kształtowniki zamknięte kwadratowe (ciąg dalszy)",
+   "strona": 41,
+   "wierszy": 32,
+   "niepewnych": 0,
+   "plik": "t1_30b.json"
+  },
+  {
+   "tablica": "1.30c",
+   "tytul": "Kształtowniki zamknięte kwadratowe (ciąg dalszy)",
+   "strona": 42,
+   "wierszy": 31,
+   "niepewnych": 0,
+   "plik": "t1_30c.json"
+  },
+  {
+   "tablica": "1.30d",
+   "tytul": "Kształtowniki zamknięte kwadratowe (ciąg dalszy)",
+   "strona": 43,
+   "wierszy": 17,
+   "niepewnych": 0,
+   "plik": "t1_30d.json"
+  },
+  {
+   "tablica": "1.31",
+   "tytul": "Kształtowniki zamknięte prostokątne na gorąco (PN-EN 10210-2:2000)",
+   "strona": 44,
+   "wierszy": 30,
+   "niepewnych": 0,
+   "plik": "t1_31.json"
+  },
+  {
+   "tablica": "1.31b",
+   "tytul": "Kształtowniki zamknięte prostokątne (ciąg dalszy)",
+   "strona": 45,
+   "wierszy": 32,
+   "niepewnych": 0,
+   "plik": "t1_31b.json"
+  },
+  {
+   "tablica": "1.31c",
+   "tytul": "Kształtowniki zamknięte prostokątne (ciąg dalszy)",
+   "strona": 46,
+   "wierszy": 32,
+   "niepewnych": 0,
+   "plik": "t1_31c.json"
+  },
+  {
+   "tablica": "1.31d",
+   "tytul": "Kształtowniki zamknięte prostokątne (ciąg dalszy)",
+   "strona": 47,
+   "wierszy": 18,
+   "niepewnych": 0,
+   "plik": "t1_31d.json"
+  },
+  {
+   "tablica": "1.4",
+   "tytul": "Dwuteowniki równoległościenne IPE o i IPE v (Salzgitter Mannesmann, Arcelor)",
+   "strona": 5,
+   "wierszy": 0,
+   "niepewnych": 0,
+   "plik": "t1_4.json"
+  },
+  {
+   "tablica": "1.5",
+   "tytul": "Dwuteowniki szerokostopowe HEB (PN-H-93452:2005, DIN 1025-2:1995, EN 53-62)",
+   "strona": 6,
+   "wierszy": 23,
+   "niepewnych": 0,
+   "plik": "t1_5.json"
+  },
+  {
+   "tablica": "1.6",
+   "tytul": "Dwuteowniki szerokostopowe HEC (PN-H-93452:2005)",
+   "strona": 7,
+   "wierszy": 12,
+   "niepewnych": 0,
+   "plik": "t1_6.json"
+  },
+  {
+   "tablica": "1.7",
+   "tytul": "Dwuteowniki szerokostopowe HEA (PN-H-93452:2005, DIN 1025-3:1994, EN 53-62)",
+   "strona": 8,
+   "wierszy": 24,
+   "niepewnych": 0,
+   "plik": "t1_7.json"
+  },
+  {
+   "tablica": "1.8",
+   "tytul": "Dwuteowniki szerokostopowe HEM (PN-H-93452:2005, DIN 1025-4:1994, EN 53-62)",
+   "strona": 9,
+   "wierszy": 25,
+   "niepewnych": 0,
+   "plik": "t1_8.json"
+  },
+  {
+   "tablica": "1.9",
+   "tytul": "Dwuteowniki szerokostopowe HEAA",
+   "strona": 10,
+   "wierszy": 24,
+   "niepewnych": 0,
+   "plik": "t1_9.json"
+  }
+ ]
+}

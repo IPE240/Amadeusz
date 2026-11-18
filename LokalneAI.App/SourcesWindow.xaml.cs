@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using LokalneAI.Core.Storage;
 using LokalneAI.Harness.Tools;
 
 namespace LokalneAI.App;
@@ -14,10 +15,26 @@ public partial class SourcesWindow : Window
     private readonly string _cacheFolder;
     private readonly ObservableCollection<SourceRow> _rows = new();
     private readonly List<KnowledgeSource> _original;
+    private readonly string _profileName;
+    private readonly ObservableCollection<string> _diskPaths = new();
+    private readonly Action<List<string>>? _saveDiskPaths;
 
-    public SourcesWindow(string profileName, string profileFolder, string cacheFolder)
+    /// <summary>
+    /// <paramref name="diskPaths"/> i <paramref name="saveDiskPaths"/>: pliki i foldery na dysku tej umiejętności
+    /// (<see cref="AppSettings.DiskKnowledge"/>); null = bez tej sekcji (np. kontrola bez klikania).
+    /// </summary>
+    public SourcesWindow(string profileName, string profileFolder, string cacheFolder,
+        IEnumerable<string>? diskPaths = null, Action<List<string>>? saveDiskPaths = null)
     {
         InitializeComponent();
+        _profileName = profileName;
+        _saveDiskPaths = saveDiskPaths;
+        foreach (var path in diskPaths ?? [])
+        {
+            _diskPaths.Add(path);
+        }
+
+        DiskList.ItemsSource = _diskPaths;
         _profileFolder = profileFolder;
         _cacheFolder = cacheFolder;
         Title = "Źródła wiedzy — umiejętność " + profileName;
@@ -46,6 +63,85 @@ public partial class SourcesWindow : Window
     }
 
     private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void AddDiskPath_Click(object sender, RoutedEventArgs e) => AddDiskPath(DiskPathBox.Text);
+
+    private void BrowseDiskFile_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Plik wiedzy albo glosariusz",
+            Filter = "Wiedza i glosariusze (*.txt;*.md;*.tsv;*.csv)|*.txt;*.md;*.tsv;*.csv|Wszystkie pliki|*.*",
+        };
+        if (dialog.ShowDialog(this) == true)
+        {
+            AddDiskPath(dialog.FileName);
+        }
+    }
+
+    private void BrowseDiskFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Folder z wiedzą (pliki .md, .txt, .tsv, .csv)" };
+        if (dialog.ShowDialog(this) == true)
+        {
+            AddDiskPath(dialog.FolderName);
+        }
+    }
+
+    private void RemoveDiskPath_Click(object sender, RoutedEventArgs e)
+    {
+        if (DiskList.SelectedItem is string path)
+        {
+            _diskPaths.Remove(path);
+            _saveDiskPaths?.Invoke(_diskPaths.ToList());
+            StatusText.Text = "Usunięto ścieżkę. Nowa sesja asystenta już jej nie użyje (kopia na tym komputerze zostaje).";
+        }
+    }
+
+    /// <summary>Dodaje ścieżkę, zapisuje ją i od razu sprawdza: ile plików, ile par glosariusza (przy okazji robi kopię).</summary>
+    private async void AddDiskPath(string? raw)
+    {
+        var path = (raw ?? "").Trim().Trim('"');
+        if (path.Length == 0)
+        {
+            StatusText.Text = "Wpisz albo wybierz ścieżkę do pliku lub folderu.";
+            return;
+        }
+
+        if (_saveDiskPaths is null)
+        {
+            return;
+        }
+
+        if (!_diskPaths.Contains(path, StringComparer.OrdinalIgnoreCase))
+        {
+            _diskPaths.Add(path);
+            _saveDiskPaths(_diskPaths.ToList());
+        }
+
+        DiskPathBox.Text = "";
+        StatusText.Text = "Sprawdzam " + path + "…";
+        try
+        {
+            var (files, terms, notes) = await Task.Run(() =>
+            {
+                var result = DiskKnowledge.Collect(_profileName, [path], timeout: TimeSpan.FromSeconds(10));
+                var glossary = new Glossary();
+                foreach (var file in result.Files)
+                {
+                    glossary.AddFile(file.Path, file.Source);
+                }
+
+                return (result.Files.Count, glossary.Count, result.Notes);
+            });
+            StatusText.Text = "Zapisano. " + (files == 0 ? "" : "Plików: " + files + (terms > 0 ? ", w tym glosariusz: " + terms + " par terminów" : "") + ". ")
+                + string.Join(" ", notes) + " Nowa sesja asystenta użyje tej wiedzy.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Zapisano ścieżkę, ale nie mogę jej odczytać: " + ex.Message;
+        }
+    }
 
     private void Add_Click(object sender, RoutedEventArgs e) => _rows.Add(new SourceRow());
 

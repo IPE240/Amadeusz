@@ -49,7 +49,7 @@ public sealed class WorkProfilesViewModel : ObservableObject
         var skills = ProfilesFolder.List(_skillsRoot).ToList();
         foreach (var profile in _settings.WorkProfiles ?? WorkProfileSetting.Defaults())
         {
-            Rows.Add(new WorkProfileRow(this, profile.Name, skills, profile.Skills));
+            Rows.Add(new WorkProfileRow(this, profile.Name, skills, profile.Skills, profile.Models));
         }
 
         _loading = false;
@@ -59,7 +59,7 @@ public sealed class WorkProfilesViewModel : ObservableObject
     private void Add()
     {
         var skills = ProfilesFolder.List(_skillsRoot).ToList();
-        Rows.Add(new WorkProfileRow(this, UniqueName("Nowy profil", null), skills, []));
+        Rows.Add(new WorkProfileRow(this, UniqueName("Nowy profil", null), skills, [], []));
         Commit();
     }
 
@@ -71,7 +71,7 @@ public sealed class WorkProfilesViewModel : ObservableObject
         {
             if (!Rows.Any(r => string.Equals(r.Name, profile.Name, StringComparison.OrdinalIgnoreCase)))
             {
-                Rows.Add(new WorkProfileRow(this, profile.Name, skills, profile.Skills));
+                Rows.Add(new WorkProfileRow(this, profile.Name, skills, profile.Skills, profile.Models));
             }
         }
 
@@ -105,13 +105,18 @@ public sealed class WorkProfilesViewModel : ObservableObject
             return;
         }
 
-        _settings.WorkProfiles = Rows.Select(r => new WorkProfileSetting { Name = r.Name, Skills = r.SelectedSkills }).ToList();
+        _settings.WorkProfiles = Rows.Select(r => new WorkProfileSetting { Name = r.Name, Skills = r.SelectedSkills, Models = r.Models.ToList() }).ToList();
         _saveSettings();
         OnPropertyChanged(nameof(Summary));
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
     internal string? Describe(string skill) => CloudViewModel.SafeDescription(Path.Combine(_skillsRoot, skill));
+
+    /// <summary>Kliknięto „modele” w wierszu — okno otwiera edycję preferowanych modeli.</summary>
+    public event EventHandler<WorkProfileRow>? EditModelsRequested;
+
+    internal void RequestEditModels(WorkProfileRow row) => EditModelsRequested?.Invoke(this, row);
 }
 
 /// <summary>Wiersz sekcji „Profile”.</summary>
@@ -121,13 +126,43 @@ public sealed class WorkProfileRow : ObservableObject
     private readonly List<string> _unknownSkills;
     private string _name;
 
-    public WorkProfileRow(WorkProfilesViewModel owner, string name, IReadOnlyList<string> allSkills, IReadOnlyCollection<string> chosen)
+    public WorkProfileRow(WorkProfilesViewModel owner, string name, IReadOnlyList<string> allSkills, IReadOnlyCollection<string> chosen,
+        IEnumerable<string> models)
     {
         _owner = owner;
         _name = name;
         Skills = new ObservableCollection<SkillChoice>(allSkills.Select(s => new SkillChoice(this, s, chosen.Contains(s), owner.Describe(s))));
         _unknownSkills = chosen.Where(s => !allSkills.Contains(s)).ToList();
+        Models = models.ToList();
         RemoveCommand = new RelayCommand(() => _owner.Remove(this));
+        EditModelsCommand = new RelayCommand(() => _owner.RequestEditModels(this));
+    }
+
+    /// <summary>Preferowane modele od najlepszego (klucze modeli).</summary>
+    public List<string> Models { get; private set; }
+
+    /// <summary>Do przycisku w wierszu: „qwen3.5:9b → gemma4:12b” albo „bez preferencji”.</summary>
+    public string ModelsSummary => Models.Count == 0 ? "modele: bez preferencji" : "modele: " + string.Join(" → ", Models.Select(ModelChoice.ShortKey));
+
+    /// <summary>Do listy rozwijanej w wierszu: zaznaczone umiejętności albo „wybierz…”.</summary>
+    public string SkillsSummary
+    {
+        get
+        {
+            var chosen = SelectedSkills;
+            return chosen.Count == 0 ? "wybierz…" : string.Join(", ", chosen);
+        }
+    }
+
+    public RelayCommand EditModelsCommand { get; }
+
+    /// <summary>Nowa kolejność modeli z okna; zapisuje się od razu.</summary>
+    public void SetModels(List<string> models)
+    {
+        Models = models;
+        OnPropertyChanged(nameof(Models));
+        OnPropertyChanged(nameof(ModelsSummary));
+        _owner.Commit();
     }
 
     /// <summary>Nazwa profilu; zmiana zapisuje się po wyjściu z pola. Pusta = zostaje poprzednia.</summary>
@@ -157,7 +192,11 @@ public sealed class WorkProfileRow : ObservableObject
 
     public RelayCommand RemoveCommand { get; }
 
-    internal void SkillToggled() => _owner.Commit();
+    internal void SkillToggled()
+    {
+        OnPropertyChanged(nameof(SkillsSummary));
+        _owner.Commit();
+    }
 }
 
 /// <summary>Pole wyboru jednej umiejętności w wierszu profilu.</summary>

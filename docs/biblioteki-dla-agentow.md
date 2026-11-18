@@ -75,6 +75,8 @@ Model niczego nie wykonuje sam. Wybiera tylko narzędzie z listy i podaje argume
 | pytań do bazy CDE (SQL tylko do odczytu) | `PostgresReadOnlyExecutor` i profil `cde` | `LokalneAI.Harness.Postgres` |
 | folderów, plików, PowerShella i uruchamiania programów | `FileSystemExecutor` i profil `pliki` albo `komputer` | `LokalneAI.Harness` |
 | dokumentów Word, Excel, PowerPoint i Outlooka (COM zainstalowanego Microsoft 365) | `OfficeExecutor` i profil `office` | `LokalneAI.Harness.Office` |
+| OCR skanów i zdjęć (Tesseract) oraz PDF: tekst, OCR skanów, scalanie, wycinanie, obrót | `OcrExecutor` i umiejętność `ocr` (polecenia `pdf_*` także w `office`) | `LokalneAI.Harness.Ocr` |
+| modeli RFEM 5 (.rf5) bez programu Dlubal: pręty, przekroje, długości, kombinacje, siły w prętach | `RfemExecutor` i umiejętność `rfem` | `LokalneAI.Harness.Rfem` |
 | poleceń w Tekli przez most TeklaBridge | `TeklaBridgeExecutor` i profil `tekla` | `LokalneAI.Harness` |
 | prób bez Tekli | `SimulatedModelExecutor` | `LokalneAI.Harness` |
 | serwera innego niż Ollama (llama.cpp, LM Studio, vLLM) | `OpenAiCompatibleLlmClient` | `LokalneAI.Harness` |
@@ -423,6 +425,7 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `SessionOptions` | `ConfirmMutation`, `ContextNote`, `Variables` (`{{ja}}`), `CompactAt`, `KeepRecentMessages`, `ToolResultRole`, `History` (wznowienie zapisanej rozmowy: wiadomości `user`/`assistant`) |
 | | `TurnResult`, `TurnKind` | wynik polecenia: `Answer`, `Question` albo `Failed`; `Calls`, `Warnings`, `NumbersVerified` |
 | | `HarnessEvent`, `HarnessEventKind` | zdarzenia postępu (`Progress`) |
+| | `TurnIntent` | wyraźne prośby w poleceniu, pilnowane przez sesję: „sprawdź w internecie” (`AsksForWeb` — sesja z internetem musi go użyć, inaczej raz cofa model) i „popraw / jeszcze raz” (`AsksForCorrection` — uwaga „nie powtarzaj” i temperatura ≥ 0,5 na tę turę) |
 | | `ExecutedCall` | wykonane wywołanie (w `TurnResult.Calls` i zdarzeniach) |
 | | `ContextUsage` | licznik kontekstu |
 | | `PromptBuilder` | podgląd polecenia systemowego |
@@ -442,6 +445,7 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `PowerShellRunner`, `CommandRunResult` | uruchomienie polecenia PowerShella z limitem czasu |
 | | `TeklaBridgeExecutor`, `TeklaBridgeOptions` | most TeklaBridge (szablony C# z profilu `tekla`) |
 | | `KnowledgeIndex` | wyszukiwarka `szukaj_wiedzy` w `wiedza\`; `AddFrom(indeks, przedrostek)` łączy indeksy profili |
+| | `Glossary`, `GlossaryEntry` | glosariusz: pary terminów w wierszach (`wiedza\*.txt`, `.tsv`, `.csv` albo plik z dysku przez `HarnessProfile.AddKnowledgeFile(ścieżka)`); sesja sama dokleja do polecenia i wyników narzędzi gospodarza odpowiedniki terminów znalezionych w tekście (`BuildHint`, także w odmianie) |
 | | `KnowledgeSync`, `KnowledgeSource`, `KnowledgeSyncResult` | aktualizacja wiedzy z `zrodla.json` |
 | | `BuiltInTools`, `Calculator` | narzędzia wbudowane: `kalkulator`, `szukaj_wiedzy` |
 | `LokalneAI.Harness.Llm` | `ILlmClient` | dostęp do modelu (własna implementacja: testy, inny serwer) |
@@ -458,12 +462,25 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | `LokalneAI.Harness.Validation` | `SqlGuard` | strażnik SQL: jedno zapytanie, tylko odczyt |
 | | `SchemaValidator` | sprawdzenie argumentów z JSON Schema |
 | | `NumberGuard` | czy liczby w odpowiedzi są w wynikach narzędzi |
+| `LokalneAI.Harness.Charts` | `ChartSpec`, `ChartSeries`, `ChartKind`, `ChartSort` | opis wykresu z bloku ```` ```wykres ```` w odpowiedzi modelu (JSON po polsku: `typ` słupkowy/poziomy/skumulowany/liniowy/obszarowy/kołowy/pierścieniowy, `tytul`, `os_x`, `os_y`, `etykiety`, `serie[{nazwa, wartosci, kolor, typ, wypelnienie, przerywana}]`, `grupy`, `kolory`, `kolory_grup`, `sortuj`, `sortuj_wg`, `odwroc_x`, `odwroc_y`, `zakres_y`, `wartosci`, `wypelnij_miedzy`, `max_czesci`, `wysokosc`; zamiast etykiet i serii także `dane` z wierszami): `Parse(json, out błąd)` sortuje i odwraca już przy czytaniu, `ToTsv()` dla Excela, `SeriesColor`/`PointColor`/`GroupColor` — bez WPF, do użycia w każdym gospodarzu (WinForms, strona) |
+| | `ChartColors` | paleta serii (`Palette`, `Of(miejsce)`, `Rest`) i nazwy kolorów po polsku i angielsku albo `#rrggbb` → `Parse`, `Split` na R, G, B |
 | `LokalneAI.Harness.Wpf` | `HarnessPanel` | panel rozmowy: `SessionFactory`, `ConfirmMutationAsync`, `SendAsync`, `NewSession`, `TurnCompleted`; do zapisywanych rozmów: `ResetSession` (nowa sesja, wpisy zostają), `LoadEntries`, `AddInfo`, `TurnEnded`, `NewSessionClicked`, `NewSessionText`, `IsBusy`, `FocusInput` |
-| | `PanelEntry`, `PanelEntryKind` | wpisy rozmowy w panelu |
+| | `PanelEntry`, `PanelEntryKind` | wpisy rozmowy w panelu; `Confirm` = pytanie o zgodę z przyciskami Tak/Nie w rozmowie (`ConfirmMutationAsync` nie otwiera okna; Stop = nie) |
+| | `MarkdownText`, `MarkdownRenderer` | odpowiedź w Markdownie (tabele z ramkami, listy, pogrubienia, kod, linki), tekst do zaznaczania; `Markdown` = tekst (wiązanie), `TablesAsTsv` i menu „Kopiuj tabele do Excela”; `HarnessPanel` używa go dla odpowiedzi i pytań modelu |
+| | `ChartView` | wykres z bloku ```` ```wykres ```` w odpowiedzi (opis: `ChartSpec` z `LokalneAI.Harness.Charts`): słupkowy (pionowy, poziomy, skumulowany, linie nad słupkami), liniowy (wypełnienie pod linią i między liniami, przerywany), kołowy i pierścieniowy; legenda po seriach albo grupach, wartości po najechaniu, dane do Excela (`Spec.ToTsv()`) |
 | `LokalneAI.Harness.Postgres` | `PostgresReadOnlyExecutor`, `PostgresReadOnlyOptions` | SQL tylko do odczytu (profil `cde`) |
 | | `QueryResult` | wynik zapytania |
 | `LokalneAI.Harness.Office` | `OfficeExecutor`, `OfficeOptions` | Word, Excel, PowerPoint, Outlook przez COM (profil `office`): `AllowedRoots`, `WorkingFolder`, `ShowAfterEdit`, `Timeout`; `InstalledSummary()`, `IsOfficeInstalled()` |
 | | `OfficeException` | błąd Office’a z komunikatem po polsku dla modelu (wyjątek COM w `InnerException`) |
+| `LokalneAI.Harness.Ocr` | `OcrExecutor`, `OcrOptions`, `OcrRotation`, `OcrLayout` | polecenia `ocr_*` i `pdf_*` (umiejętności `ocr`, `office`): foldery, języki (`pol+eng`), obrót (auto przez `osd`), układ (tabela = zachowane odstępy), próg pewności, reguły ignorowania, dpi; `Engine` = silnik do własnego użytku |
+| | `OcrEngine`, `OcrResult`, `OcrException` | Tesseract na pliku, PNG z pamięci (np. schowek) albo stronach PDF: `RecognizeFile`, `RecognizePng`, `RecognizePdf`, `EnsureLanguages`; `IsAvailable()` = natywne dll działają |
+| | `OcrLanguages` | dane języków: `DefaultFolder`, `Missing`, `Available`, `DownloadMissingAsync` (tessdata_fast), `Known` z nazwami |
+| | `PdfTools`, `PdfInfo` | PDFium (tekst strony, render do PNG, `Info`) i PDFsharp (`Merge`, `ExtractPages`, `Rotate`); `ParsePages("1-3,5,8-")` |
+| `LokalneAI.Harness.Rfem` | `RfemExecutor`, `RfemOptions` | polecenia `rfem_*` (umiejętność `rfem`): `AllowedRoots`, `WorkingFolder`, `MaxOutputChars`, `MaxListed`; `Document(path)` = wczytany plik z pamięci podręcznej |
+| | `Rf5Document` | plik .rf5 w pamięci: `Open(path)`, `FromBytes`, `Model`, `Mesh`, `Results`, `MemberLength(no)`, `HasResults`, `Container` |
+| | `Rf5Model`, `Rf5Node`, `Rf5Line`, `Rf5Member`, `Rf5CrossSection`, `Rf5Material`, `Rf5LoadCase`, `Rf5Combination` | tabele modelu (SI: m, m², m⁴, Pa); `MemberLength`, `SectionOf`, `MaterialOf`, `MembersWithSection`, `MembersAtNode`, `Warnings` |
+| | `Rf5Results`, `Rf5ResultSet`, `Rf5ForcePoint` | zestawy wyników z protokołem solvera (`CombinationNo`, `CaseNos`, `Label`), `Find("KO5")`, `MemberForces(set, no)` → punkty x, N, Vy, Vz, Mt, My, Mz [N, Nm] i przemieszczenia [m] |
+| | `Rf5Archive`, `CompoundFile`, `Rf5Parser`, `Rf5Mesh` | kontener ZIP/OLE, czytnik OLE, parser strumienia modelu (`Parse`, `ReadVersion`), siatka (`ParseMto`, `ParseGeo`) |
 
 ## 16. Gdy zmieniasz bibliotekę
 

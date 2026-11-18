@@ -1,0 +1,33 @@
+{
+ "tablica": "1.4",
+ "tytul": "Dwuteowniki równoległościenne IPE o i IPE v (Salzgitter Mannesmann, Arcelor)",
+ "zrodlo": "Bogucki, Żyburtowicz: Tablice do projektowania konstrukcji metalowych, wyd. 7, Arkady 2007",
+ "strona_pdf": 16,
+ "strona_ksiazki": 5,
+ "jednostki": {
+  "h": "mm",
+  "b": "mm",
+  "tw": "mm",
+  "tf": "mm",
+  "R": "mm",
+  "d": "mm",
+  "w": "mm",
+  "A": "cm2",
+  "m": "kg/m",
+  "U": "m2/m",
+  "Iy": "cm4",
+  "Iz": "cm4",
+  "Wy": "cm3",
+  "Wz": "cm3",
+  "iy": "cm",
+  "iz": "cm",
+  "wmax": "cm2",
+  "Iw_1000": "1000 cm6",
+  "Ww": "cm4",
+  "IT": "cm4",
+  "k": "1/cm"
+ },
+ "wiersze": [],
+ "do_sprawdzenia": [],
+ "sprawdzono": []
+}

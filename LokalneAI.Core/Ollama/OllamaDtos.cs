@@ -34,6 +34,12 @@ public sealed class ChatOptions
     public int? NumCtx { get; set; }
 
     public int? Seed { get; set; }
+
+    /// <summary>
+    /// Najwięcej tokenów odpowiedzi (<c>num_predict</c>). Bez limitu model z trybem myślenia potrafił generować bez końca
+    /// i blokować Ollamę (liczy jedno zapytanie naraz) — zmierzone 2026-11-18 na qwen3.5:9b.
+    /// </summary>
+    public int? NumPredict { get; set; }
 }
 
 /// <summary>Żądanie <c>POST /api/chat</c>.</summary>
@@ -49,6 +55,9 @@ public sealed class ChatRequest
 
     /// <summary>Jak długo trzymać model w pamięci po odpowiedzi, np. <c>5m</c>; null = domyślnie Ollamy.</summary>
     public string? KeepAlive { get; set; }
+
+    /// <summary>„Myślenie” modelu (pole <c>think</c>); false = odpowiada od razu; null = pole nie jest wysyłane.</summary>
+    public bool? Think { get; set; }
 }
 
 /// <summary>Fragment odpowiedzi strumieniowej czatu. Ostatni ma <see cref="Done"/> i statystyki.</summary>

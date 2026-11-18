@@ -140,7 +140,8 @@ namespace LokalneAI.Harness.Profiles
         /// Narzędzia wbudowane z <see cref="ProfileSettings.BuiltInTools"/> są dokładane do <paramref name="tools"/> same.
         /// </summary>
         public HarnessProfile(string name, string systemText, IEnumerable<ToolDefinition> tools, ProfileSettings settings = null,
-            string cardText = null, IEnumerable<FewShotExample> examples = null, KnowledgeIndex knowledge = null, string folder = null)
+            string cardText = null, IEnumerable<FewShotExample> examples = null, KnowledgeIndex knowledge = null, string folder = null,
+            Glossary glossary = null)
         {
             Name = name ?? "profil";
             SystemText = systemText ?? "";
@@ -148,6 +149,7 @@ namespace LokalneAI.Harness.Profiles
             Settings = settings ?? new ProfileSettings();
             Examples = (examples ?? Enumerable.Empty<FewShotExample>()).ToList();
             Knowledge = knowledge ?? new KnowledgeIndex();
+            Glossary = glossary ?? new Glossary();
             Folder = folder;
 
             var all = new List<ToolDefinition>(tools ?? Enumerable.Empty<ToolDefinition>());
@@ -177,7 +179,7 @@ namespace LokalneAI.Harness.Profiles
             var tools = Tools.Where(t => !t.IsBuiltIn || BuiltInTools.Get(t.Name) == null).ToList();
             tools.Add(BuiltInTools.Get(BuiltInTools.WebSearchName));
             tools.Add(BuiltInTools.Get(BuiltInTools.WebFetchName));
-            return new HarnessProfile(Name, SystemText, tools, Settings, CardText, Examples, Knowledge, Folder) { Description = Description, _parts = _parts };
+            return new HarnessProfile(Name, SystemText, tools, Settings, CardText, Examples, Knowledge, Folder, Glossary) { Description = Description, _parts = _parts };
         }
 
         private IReadOnlyList<HarnessProfile> _parts;
@@ -211,13 +213,40 @@ namespace LokalneAI.Harness.Profiles
             }
 
             var names = list.Select(p => p.Name).ToList();
+
+            // Profil bez żadnych narzędzi (np. „formatowanie”) to nie rola, tylko zasady odpowiedzi doklejane na końcu;
+            // nie zmienia zakończenia tury ani nie robi z jednej roli „kilku ról”.
+            var roles = list.Where(p => p.Tools.Count > 0).ToList();
+            var rules = list.Where(p => p.Tools.Count == 0).ToList();
+            if (roles.Count == 0)
+            {
+                roles = list;
+                rules = new List<HarnessProfile>();
+            }
+
             var system = new StringBuilder();
-            system.AppendLine("Pracujesz naraz w kilku rolach (profile: " + string.Join(", ", names) + "). Każda sekcja „Rola” niżej opisuje jedną rolę;")
-                .AppendLine("jej zasady obowiązują przy jej narzędziach. Do polecenia wybierz rolę, której narzędzia do niego pasują; gdy nie wiesz którą — zapytaj.");
+            if (roles.Count == 1)
+            {
+                system.AppendLine(roles[0].SystemText.Trim());
+            }
+            else
+            {
+                system.AppendLine("Pracujesz naraz w kilku rolach (profile: " + string.Join(", ", roles.Select(p => p.Name)) + "). Każda sekcja „Rola” niżej opisuje jedną rolę;")
+                    .AppendLine("jej zasady obowiązują przy jej narzędziach. Do polecenia wybierz rolę, której narzędzia do niego pasują; gdy nie wiesz którą — zapytaj.");
+                foreach (var profile in roles)
+                {
+                    system.AppendLine().AppendLine("# Rola: " + profile.Name).AppendLine(profile.SystemText.Trim());
+                }
+            }
+
+            foreach (var profile in rules)
+            {
+                system.AppendLine().AppendLine("# Zasady odpowiedzi (" + profile.Name + ")").AppendLine(profile.SystemText.Trim());
+            }
+
             var card = new StringBuilder();
             foreach (var profile in list)
             {
-                system.AppendLine().AppendLine("# Rola: " + profile.Name).AppendLine(profile.SystemText.Trim());
                 if (!string.IsNullOrWhiteSpace(profile.CardText))
                 {
                     card.AppendLine("### " + profile.Name).AppendLine(profile.CardText.Trim()).AppendLine();
@@ -234,13 +263,16 @@ namespace LokalneAI.Harness.Profiles
             }
 
             var knowledge = new KnowledgeIndex();
+            var glossary = new Glossary();
             foreach (var profile in list)
             {
                 knowledge.AddFrom(profile.Knowledge, profile.Name);
+                glossary.AddFrom(profile.Glossary);
             }
 
             var all = list.Select(p => p.Settings).ToList();
-            var finish = all.Select(s => s.Finish).Distinct().Count() == 1 ? all[0].Finish : FinishMode.Mixed;
+            var roleSettings = roles.Select(p => p.Settings).ToList();
+            var finish = roleSettings.Select(s => s.Finish).Distinct().Count() == 1 ? roleSettings[0].Finish : FinishMode.Mixed;
             var temperatures = all.Where(s => s.Temperature.HasValue).Select(s => s.Temperature.Value).ToList();
             var settings = new ProfileSettings
             {
@@ -263,7 +295,7 @@ namespace LokalneAI.Harness.Profiles
             };
 
             return new HarnessProfile(string.Join("+", names), system.ToString().TrimEnd(), tools, settings, card.ToString().TrimEnd(),
-                list.SelectMany(p => p.Examples), knowledge)
+                list.SelectMany(p => p.Examples), knowledge, null, glossary)
             {
                 Description = string.Join(" ", list.Select(p => p.Description).Where(d => !string.IsNullOrWhiteSpace(d))),
                 _parts = list,
@@ -293,6 +325,32 @@ namespace LokalneAI.Harness.Profiles
         /// więc nowa wiedza działa w następnej sesji.
         /// </summary>
         public KnowledgeIndex Knowledge { get; }
+
+        /// <summary>
+        /// Glosariusz: pliki <c>wiedza\*.txt</c> (i <c>.tsv</c>, <c>.csv</c>) z parami terminów, jedna para w wierszu, oraz pliki dołożone
+        /// przez <see cref="AddKnowledgeFile"/>. Sesja sama znajduje jego terminy w poleceniu i w wynikach narzędzi gospodarza
+        /// i podaje modelowi odpowiedniki (<see cref="Glossary.BuildHint"/>). Pusty = profil bez glosariusza.
+        /// </summary>
+        public Glossary Glossary { get; }
+
+        /// <summary>
+        /// Dokłada plik spoza folderu profilu (np. wspólny glosariusz biura na dysku sieciowym): do wyszukiwarki
+        /// <see cref="Knowledge"/>, a jeśli wygląda na glosariusz — także do <see cref="Glossary"/>. Wołać przed
+        /// <see cref="Combine"/> i przed utworzeniem sesji. Zwraca, czy plik trafił do glosariusza.
+        /// </summary>
+        public bool AddKnowledgeFile(string path, string source = null)
+        {
+            var name = source ?? Path.GetFileName(path);
+            var text = File.ReadAllText(path, Encoding.UTF8);
+            Knowledge.Add(name, text);
+            if (!Glossary.LooksLikeGlossary(text))
+            {
+                return false;
+            }
+
+            Glossary.Add(text, name);
+            return true;
+        }
 
         /// <summary>Ustawienia z <c>profil.json</c>.</summary>
         public ProfileSettings Settings { get; }
@@ -334,7 +392,8 @@ namespace LokalneAI.Harness.Profiles
             var tools = ReadTools(Path.Combine(folder, "narzedzia.json"));
             var examples = ReadExamples(Path.Combine(folder, "przyklady.jsonl"));
             var knowledge = KnowledgeIndex.FromFolder(Path.Combine(folder, "wiedza"));
-            return new HarnessProfile(name ?? Path.GetFileName(folder.TrimEnd('\\', '/')), system, tools, settings, card, examples, knowledge, folder)
+            var glossary = Glossary.FromFolder(Path.Combine(folder, "wiedza"));
+            return new HarnessProfile(name ?? Path.GetFileName(folder.TrimEnd('\\', '/')), system, tools, settings, card, examples, knowledge, folder, glossary)
             {
                 Description = description ?? "",
             };

@@ -16,12 +16,15 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Net.Http" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\LokalneAI.Harness\LokalneAI.Harness.csproj" />
     <ProjectReference Include="..\LokalneAI.Harness.Office\LokalneAI.Harness.Office.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness.Ocr\LokalneAI.Harness.Ocr.csproj" />
+    <ProjectReference Include="..\LokalneAI.Harness.Rfem\LokalneAI.Harness.Rfem.csproj" />
   </ItemGroup>
 
   <ItemGroup>

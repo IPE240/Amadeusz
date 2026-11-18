@@ -10,6 +10,8 @@
 - „zapisz jako PDF”, „wyeksportuj”: `office_zapisz_jako` z rozszerzeniem `.pdf`.
 - „przygotuj maila”, „napisz do…”: `outlook_szkic` (użytkownik sam wyśle). „co mi przyszło”, „maile od…”: `outlook_odebrane`, potem `outlook_czytaj`.
 - „dodaj slajd”: `powerpoint_dodaj_slajd` (tytuł + punkty; nowy plik powstaje sam).
+- „co jest w raport.pdf”, „przeczytaj PDF”: `pdf_czytaj` (strony porcjami: `strony=1-5`); „ile stron ma”, „czy to skan”: `pdf_info`.
+- „połącz PDF-y”, „scal w jeden”: `pdf_polacz`; „wytnij strony 3-5”, „same rysunki do osobnego pliku”: `pdf_wytnij`; „obróć strony”: `pdf_obroc`. Zawsze nowy plik, oryginał zostaje.
 
 ## Pułapki
 - Pełna nazwa pliku od użytkownika („koszty.xlsx”) = od razu polecenie na tym pliku; `szukaj_plikow` tylko po błędzie „nie ma pliku” albo przy opisie bez nazwy.

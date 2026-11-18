@@ -173,6 +173,24 @@ namespace LokalneAI.Harness.Session
             }
         }
 
+        /// <summary>Dokleja do wiadomości terminy glosariusza profilu znalezione w <paramref name="searchIn"/> (domyślnie w niej samej).</summary>
+        private string WithGlossary(string message, string searchIn = null)
+        {
+            if (_profile.Glossary.Count == 0)
+            {
+                return message;
+            }
+
+            var hint = _profile.Glossary.BuildHint(searchIn ?? message);
+            if (hint.Length == 0)
+            {
+                return message;
+            }
+
+            Raise(new HarnessEvent(HarnessEventKind.ModelThinking, "Glosariusz: " + _profile.Glossary.Find(searchIn ?? message).Count + " termin(ów) z tekstu dla modelu."));
+            return message + "\n\n" + hint;
+        }
+
         private void ClearState()
         {
             lock (_gate)
@@ -203,8 +221,34 @@ namespace LokalneAI.Harness.Session
                 _turnStart = _history.Count;
             }
 
-            AddHistory(new LlmMessage("user", userText));
+            // Wyraźne prośby użytkownika pilnuje program, nie model: „sprawdź w internecie”, „popraw / jeszcze raz”.
+            var hasWeb = _options.Web != null && _profile.Tools.Any(t => t.Name == BuiltInTools.WebSearchName);
+            var wantsWeb = TurnIntent.AsksForWeb(userText);
+            bool earlierAnswer;
+            lock (_gate)
+            {
+                earlierAnswer = _history.Any(m => m.Role == "assistant");
+            }
+
+            var correction = earlierAnswer && TurnIntent.AsksForCorrection(userText);
+            var webNudged = false;
+            var hints = new List<string>();
+            if (correction)
+            {
+                hints.Add(TurnIntent.CorrectionHint);
+            }
+
+            if (wantsWeb)
+            {
+                hints.Add(hasWeb ? TurnIntent.WebHint : TurnIntent.NoWebHint);
+            }
+
+            var userMessage = WithGlossary(userText);
+            AddHistory(new LlmMessage("user", hints.Count == 0 ? userMessage : userMessage + "\n\n" + string.Join("\n", hints)));
             _numberSources.Add(userText);
+
+            // Przy prośbie o poprawkę trochę wyższa temperatura — przy 0,1 to samo pytanie daje prawie tę samą odpowiedź.
+            var temperature = correction ? Math.Max(_profile.Settings.Temperature ?? 0.1, 0.5) : _profile.Settings.Temperature;
 
             for (var step = 1; step <= _profile.Settings.MaxSteps; step++)
             {
@@ -221,7 +265,7 @@ namespace LokalneAI.Harness.Session
                 {
                     Messages = BuildMessages(),
                     JsonSchema = _schema,
-                    Temperature = _profile.Settings.Temperature,
+                    Temperature = temperature,
                 }, cancellationToken).ConfigureAwait(false);
                 modelCalls++;
                 UpdateContext(response);
@@ -252,6 +296,17 @@ namespace LokalneAI.Harness.Session
                     if (kind == StepSchema.Answer)
                     {
                         var answer = ReadText(stepJson);
+                        if (wantsWeb && hasWeb && !webNudged && !calls.Any(c => BuiltInTools.IsWeb(c.Tool)))
+                        {
+                            // Użytkownik prosił o internet, a model odpowiedział z pamięci — raz go cofamy.
+                            webNudged = true;
+                            warnings.Add("Model odpowiedział bez sprawdzenia w internecie — program każe mu sprawdzić.");
+                            Raise(new HarnessEvent(HarnessEventKind.Warning, warnings.Last()));
+                            AddHistory(new LlmMessage("user",
+                                "Nie sprawdziłeś w internecie, a użytkownik wyraźnie o to prosił. Wywołaj teraz " + BuiltInTools.WebSearchName
+                                + " (potem " + BuiltInTools.WebFetchName + " dla najlepszego wyniku) i odpowiedz na podstawie znalezionych stron, ze „Źródła:”."));
+                            continue;
+                        }
                         if (_profile.Settings.CheckNumbers)
                         {
                             var unsupported = NumberGuard.FindUnsupported(answer, _numberSources);
@@ -282,7 +337,10 @@ namespace LokalneAI.Harness.Session
 
                     var executed = await ExecuteCallsAsync(stepJson, step, cancellationToken).ConfigureAwait(false);
                     calls.AddRange(executed);
-                    AddHistory(new LlmMessage(_options.ToolResultRole ?? "user", PromptBuilder.BuildResults(executed)));
+                    // Tekst z narzędzi gospodarza (np. dokument Word do przetłumaczenia) też dostaje terminy glosariusza.
+                    var hostText = string.Join("\n", executed.Where(c => c.Success && !c.BuiltIn).Select(c => c.Result));
+                    var results = PromptBuilder.BuildResults(executed);
+                    AddHistory(new LlmMessage(_options.ToolResultRole ?? "user", hostText.Length > 0 ? WithGlossary(results, hostText) : results));
                     foreach (var call in executed.Where(c => c.Success))
                     {
                         _numberSources.Add(call.Result);

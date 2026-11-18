@@ -43,6 +43,12 @@ namespace LokalneAI.Harness.Llm
         /// a Ollama przyjmuje to pole także dla modeli bez myślenia (Bielik, Gemma — sprawdzone 2026-11-17). True = pole nie jest wysyłane.
         /// </summary>
         public bool AllowThinking { get; set; }
+
+        /// <summary>
+        /// Najwięcej tokenów jednej odpowiedzi (<c>num_predict</c>); 0 = bez limitu. Domyślnie 4096: krok w JSON to zwykle kilkaset
+        /// tokenów, a model, który wpadnie w pętlę, nie blokuje Ollamy (liczy jedno zapytanie naraz) na długie minuty.
+        /// </summary>
+        public int MaxTokens { get; set; } = 4096;
     }
 
     /// <summary>Klient Ollamy: <c>POST /api/chat</c> bez strumienia, z <c>format</c> = JSON Schema.</summary>
@@ -175,6 +181,11 @@ namespace LokalneAI.Harness.Llm
                     writer.WriteStartObject("options");
                     writer.WriteNumber("temperature", request.Temperature ?? _options.Temperature);
                     writer.WriteNumber("num_ctx", _options.ContextLength);
+                    if (_options.MaxTokens > 0)
+                    {
+                        writer.WriteNumber("num_predict", _options.MaxTokens);
+                    }
+
                     writer.WriteEndObject();
                     writer.WriteEndObject();
                 }

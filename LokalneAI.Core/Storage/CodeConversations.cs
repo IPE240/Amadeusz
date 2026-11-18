@@ -111,6 +111,7 @@ public static class CodeConversationStore
             return [];
         }
 
+        PurgeTrash(groupFolder);
         var list = new List<CodeConversationInfo>();
         foreach (var file in Directory.GetFiles(folder, "*.json"))
         {
@@ -173,7 +174,10 @@ public static class CodeConversationStore
         return path;
     }
 
-    /// <summary>Przenosi rozmowę do <c>.amadeusz\kosz\</c> (nie kasuje). Zwraca nową ścieżkę albo null, gdy pliku nie było.</summary>
+    /// <summary>
+    /// Przenosi rozmowę do <c>.amadeusz\kosz\</c>. Rozmowy leżą tam <see cref="ConversationTrash.KeepDays"/> dni
+    /// (zabezpieczenie przed pomyłką), potem program je kasuje (<see cref="PurgeTrash"/>). Zwraca nową ścieżkę albo null, gdy pliku nie było.
+    /// </summary>
     public static string? MoveToTrash(string groupFolder, string id)
     {
         var path = PathFor(groupFolder, id);
@@ -182,17 +186,16 @@ public static class CodeConversationStore
             return null;
         }
 
-        var trash = Path.Combine(StoreFolder(groupFolder), TrashName);
-        Directory.CreateDirectory(trash);
-        var target = Path.Combine(trash, id + ".json");
-        for (var n = 2; File.Exists(target); n++)
-        {
-            target = Path.Combine(trash, id + "_" + n + ".json");
-        }
-
-        File.Move(path, target);
+        var target = ConversationTrash.Move(path, TrashFolder(groupFolder));
+        PurgeTrash(groupFolder);
         return target;
     }
+
+    /// <summary><c>&lt;folder grupy&gt;\.amadeusz\kosz</c>.</summary>
+    public static string TrashFolder(string groupFolder) => Path.Combine(StoreFolder(groupFolder), TrashName);
+
+    /// <summary>Kasuje z kosza grupy rozmowy starsze niż termin (przy wczytaniu listy grupy).</summary>
+    public static int PurgeTrash(string groupFolder) => ConversationTrash.Purge(TrashFolder(groupFolder));
 
     /// <summary>Przenosi plik rozmowy do innej grupy (folderu). Zwraca nową ścieżkę.</summary>
     public static string Move(string fromGroupFolder, string toGroupFolder, string id)
