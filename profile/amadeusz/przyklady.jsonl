@@ -1,0 +1,32 @@
+{"uzytkownik": "na jakim porcie działa brama Amadeusza?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "port bramy 11435"}}]}
+{"uzytkownik": "jakie porty muszę otworzyć w zaporze, żeby udostępnić kartę innym?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "zapora reguły otwórz port udostępnianie"}}]}
+{"uzytkownik": "jak podpiąć mój skrypt w Pythonie do Amadeusza?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "Python podpiąć brama api/chat"}}]}
+{"uzytkownik": "chcę używać biblioteki openai z Amadeuszem, jaki base_url?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "OpenAI base_url v1 klucz"}}]}
+{"uzytkownik": "czemu przez /v1/chat/completions dostaję pustą odpowiedź?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "pusta odpowiedź v1 chat completions myślenie reasoning_effort"}}]}
+{"uzytkownik": "jak ustawić Open WebUI, żeby korzystał z Amadeusza?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "Open WebUI OLLAMA_BASE_URL"}}]}
+{"uzytkownik": "jak sprawdzić z PowerShella, czy Amadeusz działa?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "lokalneai/info czy Amadeusz działa"}}]}
+{"uzytkownik": "jak liczyć na komputerze kolegi, który ma lepszą kartę?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "Gdzie liczyć inny komputer"}}]}
+{"uzytkownik": "dlaczego pobieranie modelu przez bramę zwraca 404?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "404 pobieranie modelu pull"}}]}
+{"uzytkownik": "jak zadać polecenie umiejętności tablice bez klikania w okno?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "autotest harness polecenie umiejętności"}}]}
+{"uzytkownik": "co znaczy kod wyjścia 1 z LokalneAI.exe --autotest?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "kody wyjścia kontroli autotest"}}]}
+{"uzytkownik": "gdzie są zapisane ustawienia Amadeusza?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "ustawienia.json gdzie pliki"}}]}
+{"uzytkownik": "mogę zmienić gatewayPort w ustawienia.json, gdy program działa?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "zmiana ustawienia.json wyłączony program"}}]}
+{"uzytkownik": "jak dodać nową umiejętność do Amadeusza?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "dodać nową umiejętność folder profil.json"}}]}
+{"uzytkownik": "który komputer ile tokenów u mnie policzył?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "liczniki tokenów kolejka komputer"}}]}
+{"uzytkownik": "jak wyłączyć Amadeusza całkiem, a nie tylko schować?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "zasobnik Zakończ Amadeusza zamykanie"}}]}
+{"uzytkownik": "który model wybrać na kartę 4 GB?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "wybór modelu karta 4 GB instalacja"}}]}
+{"uzytkownik": "błąd: Nie ma połączenia z PC-ODS12", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "nie ma połączenia inny komputer"}}]}
+{"uzytkownik": "podepnij mi Amadeusza", "wywolania": [], "pytanie": "Do czego chcesz go podpiąć — do skryptu (Python, PowerShell), programu .NET czy aplikacji takiej jak Open WebUI albo Continue?"}
+{"uzytkownik": "dlaczego Amadeusz nie chciał otworzyć portu w zaporze?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "bezpieczeństwo blokada port zapora dlaczego"}}]}
+{"uzytkownik": "co znaczy ZABLOKOWANE w wyniku polecenia?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "ZABLOKOWANE blokady bezpieczeństwo"}}]}
+{"uzytkownik": "na jakim porcie działa u mnie brama i czy udostępniam kartę?", "wywolania": [{"narzedzie": "ustawienia_amadeusza", "argumenty": {"pola": "gatewayPort, shareOnLan"}}]}
+{"uzytkownik": "na czym teraz liczę i jakim modelem?", "wywolania": [{"narzedzie": "stan_amadeusza", "argumenty": {}}]}
+{"uzytkownik": "jakie mam umiejętności do wyboru?", "wywolania": [{"narzedzie": "umiejetnosci_amadeusza", "argumenty": {}}]}
+{"uzytkownik": "co potrafi umiejętność rfem?", "wywolania": [{"narzedzie": "umiejetnosci_amadeusza", "argumenty": {"nazwa": "rfem"}}]}
+{"uzytkownik": "przełącz na teklę", "wywolania": [{"narzedzie": "wybierz_umiejetnosci", "argumenty": {"umiejetnosci": "tekla", "tryb": "ustaw"}}]}
+{"uzytkownik": "włącz jeszcze umiejętność pliki", "wywolania": [{"narzedzie": "wybierz_umiejetnosci", "argumenty": {"umiejetnosci": "pliki", "tryb": "dodaj"}}]}
+{"uzytkownik": "wybierz profil Biuro", "wywolania": [{"narzedzie": "wybierz_umiejetnosci", "argumenty": {"profil": "Biuro"}}]}
+{"uzytkownik": "co się ostatnio wysypało w Amadeuszu?", "wywolania": [{"narzedzie": "dziennik_amadeusza", "argumenty": {"dziennik": "bledy", "linie": 20}}]}
+{"uzytkownik": "czy strażnik coś dziś blokował?", "wywolania": [{"narzedzie": "dziennik_amadeusza", "argumenty": {"dziennik": "bezpieczenstwo", "linie": 10}}]}
+{"uzytkownik": "zmień port bramy na 12000", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "zmiana portu bramy Ustawienia gatewayPort"}}]}
+{"uzytkownik": "przełącz umiejętności", "wywolania": [], "pytanie": "Na które? Podaj nazwy, np. „tekla, pliki”, albo profil, np. „Biuro” — mogę też pokazać listę."}

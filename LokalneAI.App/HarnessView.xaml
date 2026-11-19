@@ -121,11 +121,24 @@
                             <TextBlock Text="Uprawnienia" VerticalAlignment="Center" Margin="10,0,6,0" />
                             <ComboBox x:Name="PermissionBox" Width="210" SelectionChanged="Permission_Changed">
                                 <ComboBoxItem Tag="czyta" Content="Tylko czyta"
-                                              ToolTip="Polecenia, które coś zmieniają, są odrzucane bez pytania. Asystent może tylko czytać i odpowiadać." />
+                                              ToolTip="Asystent czyta i odpowiada. Gdy potrzebuje coś zmienić, pyta o wyjątek dla tego jednego polecenia; Nie = odrzucone." />
                                 <ComboBoxItem Tag="pytaj" Content="Pyta o każdą zmianę"
                                               ToolTip="Przed każdą zmianą (plik, folder, model Tekli, program) pojawia się okienko Tak/Nie. Zalecane." />
                                 <ComboBoxItem Tag="bez" Content="Bez pytania (poza kasowaniem)"
                                               ToolTip="Zmiany wykonują się od razu; kasowanie i inne ryzykowne polecenia nadal pytają. Działa do zamknięcia programu." />
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Kontekst" VerticalAlignment="Center" Margin="14,0,6,0" />
+                            <ComboBox x:Name="ContextBox" Width="130" SelectionChanged="Context_Changed"
+                                      ToolTip="Ile tokenów mieści jedno zapytanie w zakładce Code: zasady, narzędzia i wiedza umiejętności (2–8 tys.) plus rozmowa. Więcej = dłuższa rozmowa, ale wolniej i więcej pamięci karty. Przy liczeniu na innym komputerze nie więcej, niż on przyjmuje („kontekst do”).">
+                                <ComboBoxItem Tag="0" Content="jak w Czacie"
+                                              ToolTip="Kontekst z Ustawienia → Czat, ale co najmniej 16 384 (dotychczasowe zachowanie)." />
+                                <ComboBoxItem Tag="8192" Content="8 192"
+                                              ToolTip="Mało: zasady większych umiejętności (Tekla, RFEM, Office) mogą się nie zmieścić — Ollama ucina początek po cichu." />
+                                <ComboBoxItem Tag="16384" Content="16 384" />
+                                <ComboBoxItem Tag="32768" Content="32 768"
+                                              ToolTip="Przy trzech i więcej umiejętnościach naraz albo długich rozmowach. Na karcie 8 GB większy model nie zmieści się cały w pamięci karty." />
                             </ComboBox>
                         </StackPanel>
                         <CheckBox x:Name="StepsBox" Content="Pokaż kroki modelu" VerticalAlignment="Center" Margin="14,0,0,0"

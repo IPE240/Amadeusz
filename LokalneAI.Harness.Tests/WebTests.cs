@@ -108,6 +108,9 @@ public sealed class WebTests
 
         Assert.False(cde.Settings.Internet);
         Assert.Same(cde, cde.WithInternet());
+        // Gospodarz może włączyć internet świadomie mimo braku zgody (okno: przełącznik nadrzędny, decyzja użytkownika z 2026-11-19).
+        Assert.Contains(cde.WithInternet(evenIfSkillsForbid: true).Tools, t => t.Name == BuiltInTools.WebSearchName);
+        Assert.False(cde.WithInternet(evenIfSkillsForbid: true).Settings.Internet);
         Assert.True(komputer.Settings.Internet);
         var withWeb = komputer.WithInternet();
         Assert.Contains(withWeb.Tools, t => t.Name == BuiltInTools.WebSearchName);

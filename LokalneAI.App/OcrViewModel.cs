@@ -194,7 +194,7 @@ public sealed class OcrViewModel : ObservableObject
                 + (result.RotationApplied != 0 ? ", obrót " + result.RotationApplied + "°" : "") + "]";
             return header + "\n" + (result.Text.Length == 0 ? "(nie rozpoznano tekstu)" : result.Text) + "\n\n";
         }
-        catch (Exception e) when (e is OcrException || e is IOException || e is InvalidOperationException || e is DllNotFoundException)
+        catch (Exception e) when (e is OcrException || e is IOException || e is InvalidOperationException || e is DllNotFoundException || e is System.Reflection.TargetInvocationException || e is TypeInitializationException)
         {
             return "[obraz wklejony: " + Path.GetFileName(path) + " — OCR nie powiódł się: " + e.Message + "]\n";
         }
@@ -261,7 +261,7 @@ public sealed class OcrViewModel : ObservableObject
 
             Status = preview.ToString();
         }
-        catch (Exception e) when (e is OcrException || e is IOException || e is InvalidOperationException || e is DllNotFoundException)
+        catch (Exception e) when (e is OcrException || e is IOException || e is InvalidOperationException || e is DllNotFoundException || e is System.Reflection.TargetInvocationException || e is TypeInitializationException)
         {
             Status = "Błąd OCR: " + e.Message;
         }

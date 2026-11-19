@@ -176,6 +176,7 @@ namespace LokalneAI.Harness.Llm
         {
             var system = new StringBuilder();
             var turns = new List<KeyValuePair<string, StringBuilder>>();
+            var turnImages = new List<List<byte[]>>(); // obrazy każdej tury (te same indeksy co turns)
             foreach (var m in request.Messages ?? new LlmMessage[0])
             {
                 var content = m.Content ?? "";
@@ -204,17 +205,25 @@ namespace LokalneAI.Harness.Llm
                 else
                 {
                     turns.Add(new KeyValuePair<string, StringBuilder>(role, new StringBuilder(content)));
+                    turnImages.Add(new List<byte[]>());
+                }
+
+                if (m.Images != null && role == "user")
+                {
+                    turnImages[turnImages.Count - 1].AddRange(m.Images);
                 }
             }
 
             if (turns.Count == 0 || turns[0].Key != "user")
             {
                 turns.Insert(0, new KeyValuePair<string, StringBuilder>("user", new StringBuilder("(początek rozmowy)")));
+                turnImages.Insert(0, new List<byte[]>());
             }
 
             if (turns[turns.Count - 1].Key != "user")
             {
                 turns.Add(new KeyValuePair<string, StringBuilder>("user", new StringBuilder("Kontynuuj.")));
+                turnImages.Add(new List<byte[]>());
             }
 
             using (var stream = new MemoryStream())
@@ -241,7 +250,37 @@ namespace LokalneAI.Harness.Llm
                     {
                         writer.WriteStartObject();
                         writer.WriteString("role", turns[i].Key);
-                        if (i == turns.Count - 1)
+                        if (turnImages[i].Count > 0)
+                        {
+                            // Obrazy przed tekstem tury (tak radzi dokumentacja Claude); na końcu rozmowy też punkt pamięci podręcznej.
+                            writer.WriteStartArray("content");
+                            foreach (var image in turnImages[i])
+                            {
+                                writer.WriteStartObject();
+                                writer.WriteString("type", "image");
+                                writer.WriteStartObject("source");
+                                writer.WriteString("type", "base64");
+                                writer.WriteString("media_type", LlmMessage.MediaType(image));
+                                writer.WriteString("data", Convert.ToBase64String(image));
+                                writer.WriteEndObject();
+                                writer.WriteEndObject();
+                            }
+
+                            if (i == turns.Count - 1)
+                            {
+                                WriteCachedText(writer, turns[i].Value.ToString());
+                            }
+                            else
+                            {
+                                writer.WriteStartObject();
+                                writer.WriteString("type", "text");
+                                writer.WriteString("text", turns[i].Value.ToString());
+                                writer.WriteEndObject();
+                            }
+
+                            writer.WriteEndArray();
+                        }
+                        else if (i == turns.Count - 1)
                         {
                             // Punkt pamięci podręcznej na końcu rozmowy: następny krok tej sesji czyta wszystko wcześniejsze taniej.
                             writer.WriteStartArray("content");

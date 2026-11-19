@@ -39,7 +39,12 @@ Gotowe profile:
   [profile/cs_statyka](../profile/cs_statyka) (model MES z IFC, `static`, obciążenia, porównanie modeli, wyniki 3D),
   [profile/cs_rysunki](../profile/cs_rysunki) (Układy, arkusze zespołów, części, NC DSTV, nesting),
   [profile/cs_robot](../profile/cs_robot) (Robot przez COM, wytężenie na IFC, most MES → Robot); dokumentacja RFEM
-  z tego repozytorium doszła do `rfem` (`zrodla.json`, `wiedza/rfem_dlubal.md`).
+  z tego repozytorium doszła do `rfem` (`zrodla.json`, `wiedza/rfem_dlubal.md`);
+- [profile/amadeusz](../profile/amadeusz): pytania o samego Amadeusza — okno i ustawienia, porty i zapora, brama HTTP,
+  podpinanie programów, kontrola `--autotest`, pliki, instalacja. Profil samej wiedzy (`szukaj_wiedzy`), wiedza przepisana
+  z [sterowanie.md](sterowanie.md), [porty.md](porty.md), [siec.md](siec.md) i README na krótkie sekcje; test
+  `AmadeuszWiedzaTests` pilnuje, żeby opisywała każdy przełącznik, trasę bramy i port z kodu;
+- [profile/formatowanie](../profile/formatowanie): same zasady tabel i wykresów (bez narzędzi), domyślnie w każdym profilu.
 
 | Plik | Obowiązkowy | Co zawiera |
 |---|---|---|
@@ -95,7 +100,7 @@ Zakładka Code pozwala zaznaczyć kilka profili naraz, a gospodarz w kodzie łą
 | narzędzia | suma; przy tej samej nazwie wygrywa pierwszy profil (`pliki` przy `komputer` okno pomija) |
 | `wiedza\` | jeden indeks `szukaj_wiedzy`, źródło z przedrostkiem profilu (`cde/stan_danych.md`) |
 | `chmura` | część wspólna — dostawca musi być dozwolony we **wszystkich** |
-| `internet` | tylko gdy pozwalają **wszystkie** |
+| `internet` | zgoda tylko, gdy pozwalają **wszystkie**; w oknie przełącznik jest nadrzędny (patrz niżej) |
 | `sql_reguly`, `sql_zabronione`, `sprawdzaj_liczby` | suma (obowiązują przy narzędziach SQL) |
 | `zakonczenie` | wspólne, gdy wszystkie mają takie samo; inaczej `mieszane` |
 | `max_krokow`, `max_wywolan_w_kroku` | największe |
@@ -138,6 +143,7 @@ przeliczony początek rozmowy, więc ten sam początek liczy się szybko. Koszt 
 | `rfem` | bez pola | modele obliczeniowe projektów klientów |
 | `tablice` | bez pola | wiedza z książek objętych prawem autorskim zostaje na komputerze |
 | `cs_program`, `cs_ifc`, `cs_konstrukcja`, `cs_polaczenia`, `cs_statyka`, `cs_rysunki`, `cs_robot` | bez pola | repozytorium CS jest prywatne, dokumentacja zawiera ustalenia biura i nazwy modeli; dopisanie `["anthropic"]` to decyzja użytkownika |
+| `amadeusz` | bez pola | wiedza o programie i sieci biura (porty, nazwy komputerów); dopisanie dostawców to decyzja użytkownika |
 | nowy profil bez pola | — | tylko modele lokalne, dopóki ktoś świadomie nie dopisze dostawców |
 
 Dozwolone wartości: `anthropic`, `openai`, `google`. Innych (np. `deepseek`) biblioteka nie przyjmie. Model w chmurze
@@ -147,8 +153,11 @@ dostaje to samo co lokalny: `system.md`, `karta.md`, przykłady, narzędzia i wy
 z narzędziem SQL bierze połączenie i `{{ja}}` (person_id). Profil z tym polem jest w zakładce Code ukryty, dopóki
 takiego wpisu nie ma (np. `cde` widzą tylko osoby z dostępem do bazy). Adresów i haseł nie wpisuj do profilu.
 
-**`internet`** — czy po włączeniu przełącznika „Odblokuj dostęp do internetu” model dostaje narzędzia
-`szukaj_w_internecie` (DuckDuckGo) i `czytaj_strone` (`HarnessProfile.WithInternet()` + `SessionOptions.Web`).
+**`internet`** — zgoda umiejętności na internet: czy po włączeniu przełącznika „Odblokuj dostęp do internetu” model dostaje
+narzędzia `szukaj_w_internecie` (DuckDuckGo) i `czytaj_strone` (`HarnessProfile.WithInternet()` + `SessionOptions.Web`).
+W oknie Amadeusza przełącznik jest **nadrzędny** (decyzja użytkownika z 2026-11-19): wybór umiejętności bez zgody sam go wyłącza
+(z informacją w rozmowie), a świadome włączenie z powrotem działa także z nią (`WithInternet(evenIfSkillsForbid: true)`; nagłówek:
+„internet: tak — włączony mimo braku zgody umiejętności …”). Inne programy z biblioteką domyślnie trzymają się zgody.
 
 | Profil | `internet` | Dlaczego |
 |---|---|---|
@@ -156,10 +165,11 @@ takiego wpisu nie ma (np. `cde` widzą tylko osoby z dostępem do bazy). Adresó
 | `tekla`, `pliki`, `komputer`, `mkk` | `true` | dokumentacja, normy, producenci (`mkk`: publiczna dokumentacja Dlubal, Autodesk, IDEA StatiCa; `system.md` zakazuje wysyłania fragmentów wiedzy) |
 | `office` | `false` | jak `cde`: model widzi treść dokumentów i maili i mógłby ją wysłać w zapytaniu do wyszukiwarki |
 | `ocr` | `false` | jak `office`: tekst ze skanów zostaje na komputerze |
-| `rfem` | `false` | model widzi geometrię i siły z projektów klientów |
+| `rfem` | `true` | decyzja użytkownika z 2026-11-19 (bez zgody wyłączał internet przy `komputer` + `rfem`); model widzi geometrię i siły z projektów klientów, więc wyciek ogranicza strażnik (fraza do 200 znaków, strony tylko z adresów od użytkownika albo z wyników) |
 | `tablice` | `false` | odpowiedzi tylko z tablic, bez szukania w internecie |
 | `cs_ifc`, `cs_robot` | `true` | publiczna dokumentacja buildingSMART, IfcOpenShell i Autodesk; `system.md` zakazuje wysyłania fragmentów wiedzy |
 | `cs_program`, `cs_konstrukcja`, `cs_polaczenia`, `cs_statyka`, `cs_rysunki` | `false` | treść wewnętrzna CS (decyzje biura, modele, reguły) |
+| `amadeusz` | `false` | odpowiedzi tylko z wiedzy o programie |
 | nowy profil bez pola | — | bez internetu |
 
 Adresy w sieci biura i na tym komputerze (prywatne IP, nazwy bez kropki, `.local`, nazwy wskazujące adres prywatny,

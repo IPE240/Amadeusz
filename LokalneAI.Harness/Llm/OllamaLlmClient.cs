@@ -172,6 +172,18 @@ namespace LokalneAI.Harness.Llm
                         writer.WriteStartObject();
                         writer.WriteString("role", m.Role);
                         writer.WriteString("content", m.Content);
+                        if (m.Images != null)
+                        {
+                            // Ollama: obrazy w base64 przy wiadomości; model bez obsługi obrazów (Bielik) ich nie dostaje — gospodarz pilnuje.
+                            writer.WriteStartArray("images");
+                            foreach (var image in m.Images)
+                            {
+                                writer.WriteStringValue(Convert.ToBase64String(image));
+                            }
+
+                            writer.WriteEndArray();
+                        }
+
                         writer.WriteEndObject();
                     }
 

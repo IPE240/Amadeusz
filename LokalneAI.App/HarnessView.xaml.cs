@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -62,9 +63,15 @@ public partial class HarnessView : UserControl
         Panel.SessionFactory = CreateSession;
         Panel.NewSessionText = "Nowa rozmowa";
         Panel.TurnEnded += (_, _) => SaveCurrent(newPrompt: true);
+        // Umiejętności wybrane przez model (wybierz_umiejetnosci) — dopiero po turze, sesja nie zmienia się w jej trakcie.
+        Panel.TurnEnded += (_, _) => ApplyPendingSkills();
+        // Po zgodzie na brakującą umiejętność (wlacz_umiejetnosci) — ponowienie polecenia; po ApplyPendingSkills, więc z nową sesją.
+        Panel.TurnEnded += (_, _) => RetryAfterSkillSwitch();
         // Rozmowa jest już zapisana po ostatnim poleceniu, a panel właśnie się wyczyścił — nie zapisujemy pustej.
         Panel.NewSessionClicked += (_, _) => StartNewConversation(_currentGroup, save: false);
         Panel.ImagePasted = OcrPastedImageAsync;
+        // Model, który widzi obrazy, dostaje wklejony obrazek razem z tekstem z OCR (OCR + interpretacja obrazu).
+        Panel.ImagesForModel = () => (_contextProvider?.Invoke() ?? _context).ModelSeesImages;
         ConversationTree.ItemsSource = _groups;
         // Lista umiejętności: kliknięcie w przycisk przy otwartej liście ma ją zamknąć, a nie otworzyć od nowa.
         SkillsPopup.Opened += (_, _) => SkillsButton.IsHitTestVisible = false;
@@ -115,6 +122,8 @@ public partial class HarnessView : UserControl
         var chosen = settings.HarnessProfiles ?? (settings.HarnessProfile is { } old ? [old] : []);
         _loading = true;
         StepsBox.IsChecked = settings.ShowSteps;
+        ContextBox.SelectedItem = ContextBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == settings.CodeContextLength.ToString(CultureInfo.InvariantCulture))
+                                  ?? ContextBox.Items[0];
         ProfilesPanel.Children.Clear();
         foreach (var name in ProfilesFolder.List(_context.ProfilesRoot))
         {
@@ -151,6 +160,7 @@ public partial class HarnessView : UserControl
         var last = _groups.FirstOrDefault(g => SameFolder(g.Folder, settings.CodeLastGroup)) ?? _groups[0];
         StartNewConversation(last, save: false);
         ApplyProfiles(syncKnowledge: true);
+        _skillsSeenForInternet = EffectiveProfiles; // zaznaczenie z ustawień przy starcie nie przestawia przełącznika internetu
         RefreshModelText();
     }
 
@@ -809,7 +819,7 @@ public partial class HarnessView : UserControl
         if (Panel.Session is not null && !Panel.IsBusy && _sessionModelKey != ModelKey())
         {
             RebuildSession();
-            Panel.AddInfo("Od teraz model: " + _context.ModelLabel + " (rozmowa trwa dalej).");
+            Panel.AddInfo("Od teraz model: " + _context.ModelLabel + (_context.Cloud is null ? ", kontekst " + _context.ContextLength : "") + " (rozmowa trwa dalej).");
         }
     }
 
@@ -829,10 +839,11 @@ public partial class HarnessView : UserControl
 
         var names = EffectiveProfiles;
         var blocked = names.Where(n => CloudViewModel.SafeSettings(Path.Combine(_context.ProfilesRoot, n))?.Internet != true).ToList();
+        // Przełącznik jest nadrzędny (2026-11-19): włączony = internet działa. Umiejętność bez zgody („internet” w profil.json) przy wyborze
+        // wyłącza przełącznik; gdy użytkownik włączył go z powrotem, nagłówek pokazuje, że to świadomy wyjątek.
         return names.Count == 0 ? "internet: —"
             : blocked.Count == 0 ? "internet: tak"
-            : names.Count == 1 ? "internet: nie w tej umiejętności"
-            : "internet: nie (" + string.Join(", ", blocked) + ")";
+            : "internet: tak — włączony mimo braku zgody umiejętności " + string.Join(", ", blocked);
     }
 
     /// <summary>
@@ -900,6 +911,7 @@ public partial class HarnessView : UserControl
 
         StartNewConversation(_groups[0], save: false);
         ApplyProfiles(syncKnowledge: false);
+        _skillsSeenForInternet = EffectiveProfiles; // umiejętności z --harness to punkt wyjścia, nie „nowo wybrane”
         if (resume && _groups[0].Conversations.FirstOrDefault() is { } last)
         {
             OpenConversation(last);
@@ -923,6 +935,10 @@ public partial class HarnessView : UserControl
         foreach (var command in commands)
         {
             await Panel.SendAsync(command);
+            while (_retryRun is { IsCompleted: false } retry)
+            {
+                await retry; // ponowienie po włączeniu umiejętności — kontrola czeka na jego wynik
+            }
         }
     }
 
@@ -979,7 +995,7 @@ public partial class HarnessView : UserControl
         _sessionModelKey = ModelKey();
         var history = _current.History.Select(m => new LlmMessage(m.Role, m.Content)).ToList();
         // Tokeny samych zasad i narzędzi (jedno krótkie zapytanie na sesję) — tylko gdy liczniki są widoczne.
-        return BuildSession(parts, profile, _llm, history, _context.Settings.ShowTokens, CreateSubAgentHost(names));
+        return BuildSession(parts, profile, _llm, history, _context.Settings.ShowTokens, CreateSubAgentHost(names), canSwitchSkills: true);
     }
 
     /// <summary>Profile umiejętności z dysku, z wiedzą z dysku (Źródła wiedzy) — do sesji głównej i sesji podagentów.</summary>
@@ -1077,19 +1093,30 @@ public partial class HarnessView : UserControl
     /// Sesja z gotowych profili i klienta modelu: wykonawcy według umiejętności (Tekla, SQL, pliki, Office, OCR, RFEM),
     /// notatki o sytuacji, internet gdy wolno. Dla sesji głównej z historią i gospodarzem podagentów; dla podagenta bez nich.
     /// </summary>
-    private HarnessSession BuildSession(List<HarnessProfile> parts, HarnessProfile profile, ILlmClient llm, IList<LlmMessage>? history, bool measureSystemPrompt, ISubAgentHost? subAgents)
+    private HarnessSession BuildSession(List<HarnessProfile> parts, HarnessProfile profile, ILlmClient llm, IList<LlmMessage>? history, bool measureSystemPrompt,
+        ISubAgentHost? subAgents, IToolExecutor? board = null, HarnessPanel? confirmPanel = null, bool canSwitchSkills = false)
     {
         var options = new SessionOptions
         {
-            ConfirmMutation = ConfirmAsync,
+            // Zgody pyta panel, w którym trwa rozmowa (Code albo tablica), według uprawnień z zakładki Code.
+            ConfirmMutation = confirmPanel is null ? ConfirmAsync : (call, ct) => ConfirmIn(confirmPanel, call, ct),
             History = history,
             MeasureSystemPrompt = measureSystemPrompt,
             SubAgents = subAgents,
+            // Strażnik bezpieczeństwa (docs\bezpieczenstwo.md) — ten sam dla sesji głównej i podagentów.
+            Safety = SafetyFor(),
         };
-        if (_context.Web is { } web && profile.Settings.Internet)
+        if (canSwitchSkills)
         {
-            // Internet odblokowany i wszystkie profile na niego pozwalają (cde — nie: dane z bazy nie mogą wyjść w zapytaniu do wyszukiwarki).
-            profile = profile.WithInternet();
+            // Sesja główna Code: zamiast „nie mam narzędzia” model szuka wśród niezaznaczonych umiejętności i prosi o włączenie.
+            options.SkillCatalog = CreateSkillCatalog(parts.Select(p => p.Name));
+        }
+
+        if (_context.Web is { } web)
+        {
+            // Przełącznik internetu jest nadrzędny (decyzja użytkownika z 2026-11-19): wybór umiejętności bez zgody („internet” w profil.json,
+            // np. cde) wyłącza go sam (InternetForSkills), a włączony z powrotem jest świadomym wyjątkiem — działa także z tą umiejętnością.
+            profile = profile.WithInternet(evenIfSkillsForbid: true);
             options.Web = web;
         }
 
@@ -1119,7 +1146,11 @@ public partial class HarnessView : UserControl
             }
 
             IToolExecutor executor;
-            if (part.Settings.SqlTools.Count > 0)
+            if (part.Name == WhiteboardView.SkillName && board is not null)
+            {
+                executor = board; // rysuj, wyczysc_rysunki — warstwa Amadeusza na tablicy
+            }
+            else if (part.Settings.SqlTools.Count > 0)
             {
                 // Połączenie z Ustawień → Menedżer poświadczeń (wpis PostgreSQL o nazwie z pola „poswiadczenie” profilu).
                 // Kontrola bez klikania może podać plik połączenia.
@@ -1190,6 +1221,12 @@ public partial class HarnessView : UserControl
                         ? " Folder bieżący na start (folder tej rozmowy): " + work + ". Dozwolone foldery: " + string.Join("; ", roots.Select(Environment.ExpandEnvironmentVariables)) + "."
                         : ""));
             }
+            else if (IsAmadeuszProfile(part.Name))
+            {
+                // Amadeusz o sobie: stan, ustawienia, umiejętności, dzienniki (odczyt); przełączanie umiejętności tylko w rozmowie zakładki Code.
+                // Musi być przed mostem Tekli — inaczej jego polecenia trafiłyby do folderu wymiany.
+                executor = new SelfExecutor(this, canSwitchSkills);
+            }
             else if (BridgeRadio.IsChecked == true)
             {
                 executor = new TeklaBridgeExecutor(new TeklaBridgeOptions { ExchangeFolder = ExchangeBox.Text.Trim(), ProfileFolder = part.Folder });
@@ -1212,6 +1249,51 @@ public partial class HarnessView : UserControl
         return new HarnessSession(llm, profile, router, options);
     }
 
+    /// <summary>
+    /// Ustawienia strażnika bezpieczeństwa: oprócz domyślnych folderów Amadeusza (ustawienia, dane, program) chroni folder umiejętności,
+    /// repozytorium albo folder programu, rozmowy Czatu i folder wymiany mostu Tekli (skrypt wrzucony tam wykonałaby Tekla);
+    /// każdą blokadę zapisuje w <c>%LOCALAPPDATA%\LokalneAI\bezpieczenstwo.log</c>.
+    /// </summary>
+    private SafetyOptions SafetyFor()
+    {
+        var safety = new SafetyOptions
+        {
+            WorkingFolder = FileRoots().Work,
+            Blocked = SafetyLog.Write,
+        };
+        var profiles = Path.GetFullPath(_context.ProfilesRoot);
+        safety.ProtectedFolders.Add(profiles);
+        var parent = Path.GetDirectoryName(profiles.TrimEnd('\\'));
+        if (parent is not null && (File.Exists(Path.Combine(parent, "LokalneAI.sln")) || File.Exists(Path.Combine(parent, "LokalneAI.exe"))
+                                   || File.Exists(Path.Combine(parent, "Amadeusz.exe"))))
+        {
+            safety.ProtectedFolders.Add(parent); // repozytorium Amadeusza albo folder zainstalowanego programu
+        }
+
+        // Rozmowy Czatu: chronione i prywatne — przy modelu Gemini albo GPT nie do czytania (rozmowy Code leżą w folderach .amadeusz).
+        safety.PrivateFolders.Add(ChatConversationStore.DefaultRoot);
+        if (!string.IsNullOrWhiteSpace(ExchangeBox.Text))
+        {
+            safety.ProtectedFolders.Add(ExchangeBox.Text.Trim());
+        }
+
+        // Wiedza z dysku (np. wspólny glosariusz biura): zapis do niej zostawiłby wstrzyknięcie w każdej następnej rozmowie.
+        foreach (var path in (_context.Settings.DiskKnowledge ?? new Dictionary<string, List<string>>()).Values.SelectMany(p => p ?? new List<string>()))
+        {
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                safety.ProtectedFolders.Add(path.Trim());
+            }
+        }
+
+        if (Environment.ProcessPath is { } process)
+        {
+            safety.SelfPrograms.Add(Path.GetFileNameWithoutExtension(process));
+        }
+
+        return safety;
+    }
+
     /// <summary>Dozwolone foldery z pola nad rozmową i folder bieżący (folder rozmowy, zawsze dozwolony) — dla profili plików i Office’a.</summary>
     private (List<string> Roots, string? Work) FileRoots()
     {
@@ -1226,27 +1308,72 @@ public partial class HarnessView : UserControl
     }
 
     /// <summary>Zgoda na polecenie zmieniające według wybranych uprawnień. Wołane z wątku w tle.</summary>
-    private Task<bool> ConfirmAsync(ToolCall call, CancellationToken cancellationToken)
+    private Task<bool> ConfirmAsync(ToolCall call, CancellationToken cancellationToken) => ConfirmIn(Panel, call, cancellationToken);
+
+    /// <summary>Zgoda według uprawnień zakładki Code; pytanie pokazuje podany panel (Code albo odpowiedzi przy tablicy).</summary>
+    private Task<bool> ConfirmIn(HarnessPanel panel, ToolCall call, CancellationToken cancellationToken)
     {
+        if (call.AccessFolder is not null)
+        {
+            // Dostęp do folderu spoza „Dozwolonych folderów” poszerza uprawnienia — pyta zawsze, w każdym trybie.
+            // Kontrola bez klikania odmawia: próby zostają w swoich folderach (--foldery).
+            return AutoConfirm ? Task.FromResult(false) : panel.ConfirmMutationAsync(call, cancellationToken);
+        }
+
         if (AutoConfirm)
         {
-            return Task.FromResult(true);
+            // Kontrola bez klikania zatwierdza zwykłe zmiany, ale nie „zawsze pytaj” strażnika (instalacje, rejestr, zamykanie programów):
+            // tego bez człowieka nie zatwierdza nikt. Świadome „Tak” w próbie daje #zgoda.
+            return Task.FromResult(!call.ConfirmationDangerous);
         }
 
         return _permission switch
         {
-            "czyta" => Task.FromResult(false),
+            // „Tylko czyta” nie odrzuca po cichu (model brał to za „nie da się”): pyta o wyjątek dla tego jednego polecenia.
+            "czyta" => panel.ConfirmMutationAsync(call, cancellationToken,
+                "Uprawnienia: „Tylko czyta”. To polecenie coś zmienia — zgoda dotyczy tylko jego; uprawnienia się nie zmieniają."),
             "bez" when !call.ConfirmationDangerous => Task.FromResult(true),
-            _ => Panel.ConfirmMutationAsync(call, cancellationToken),
+            _ => panel.ConfirmMutationAsync(call, cancellationToken),
         };
     }
+
+    /// <summary>
+    /// Sesja zakładki Whiteboard: umiejętność <c>whiteboard</c> (rysowanie na warstwie Amadeusza przez <paramref name="board"/>)
+    /// i — gdy <paramref name="withCodeSkills"/> — umiejętności zaznaczone w zakładce Code, z tymi samymi wykonawcami,
+    /// folderami i uprawnieniami; zgody pyta <paramref name="panel"/>. Model jak w nagłówku okna. Klienta modelu zamyka wołający.
+    /// </summary>
+    internal (HarnessSession Session, ILlmClient Llm) CreateBoardSession(IToolExecutor board, HarnessPanel panel, IList<LlmMessage>? history, bool withCodeSkills)
+    {
+        _context = _contextProvider?.Invoke() ?? _context;
+        var names = new List<string> { WhiteboardView.SkillName };
+        if (withCodeSkills)
+        {
+            names.AddRange(EffectiveProfiles.Where(n => n != WhiteboardView.SkillName));
+        }
+
+        var parts = LoadParts(names);
+        var profile = HarnessProfile.Combine(parts);
+        var llm = CreateLlm(profile);
+        try
+        {
+            return (BuildSession(parts, profile, llm, history, false, null, board, panel), llm);
+        }
+        catch
+        {
+            (llm as IDisposable)?.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>Umiejętności zaznaczone w zakładce Code (do opisu w zakładce Whiteboard).</summary>
+    internal IReadOnlyList<string> CodeSkills => EffectiveProfiles;
 
     private void Permission_Changed(object sender, SelectionChangedEventArgs e)
     {
         _permission = (PermissionBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "pytaj";
         if (_permission == "czyta")
         {
-            HintText.Text = "Tylko czyta: polecenia, które coś zmieniają, będą odrzucane bez pytania.";
+            HintText.Text = "Tylko czyta: przed poleceniem, które coś zmienia, program zapyta o wyjątek dla tego jednego polecenia (Nie = odrzucone).";
         }
         else if (_permission == "bez")
         {
@@ -1281,6 +1408,9 @@ public partial class HarnessView : UserControl
             Panel.ResetSession();
         }
 
+        var added = EffectiveProfiles.Except(_skillsSeenForInternet, StringComparer.Ordinal).ToList();
+        _skillsSeenForInternet = EffectiveProfiles;
+        InternetForSkills(added);
         _current.Profiles = EffectiveProfiles;
         if (_saveSettings)
         {
@@ -1291,6 +1421,35 @@ public partial class HarnessView : UserControl
         RefreshModelText();
     }
 
+    /// <summary>Umiejętności zaznaczone przy ostatnim sprawdzeniu internetu — przełącznik wyłącza tylko nowo wybrana umiejętność bez zgody.</summary>
+    private List<string> _skillsSeenForInternet = [];
+
+    /// <summary>
+    /// Przełącznik internetu jest nadrzędny (decyzja użytkownika z 2026-11-19), ale wybór umiejętności bez zgody na internet
+    /// (<c>"internet"</c> w profil.json, np. cde) wyłącza go sam. Włączenie z powrotem to świadomy wyjątek — działa także z tą umiejętnością
+    /// i nie jest cofane, dopóki użytkownik nie wybierze kolejnej umiejętności bez zgody.
+    /// </summary>
+    private void InternetForSkills(IReadOnlyCollection<string> added)
+    {
+        _context = _contextProvider?.Invoke() ?? _context;
+        if (added.Count == 0 || _context.Web is null || _context.SetInternetAccess is null)
+        {
+            return;
+        }
+
+        var forbidding = added.Where(n => !IsRuleOnly(n) && CloudViewModel.SafeSettings(Path.Combine(_context.ProfilesRoot, n))?.Internet != true).ToList();
+        if (forbidding.Count == 0)
+        {
+            return;
+        }
+
+        _context.SetInternetAccess(false);
+        var many = forbidding.Count > 1;
+        Panel.AddInfo("Wyłączyłem internet (przełącznik u góry okna): " + (many ? "umiejętności " : "umiejętność ") + string.Join(", ", forbidding)
+            + (many ? " nie mają" : " nie ma") + " zgody na internet. Możesz go świadomie włączyć z powrotem — wtedy działa także z "
+            + (many ? "nimi." : "tą umiejętnością."));
+    }
+
     /// <summary>Opcje i podpowiedzi dla zaznaczonych profili (Tekla, CDE, foldery), opis zasad przy kilku profilach.</summary>
     private void ApplyProfiles(bool syncKnowledge)
     {
@@ -1299,7 +1458,9 @@ public partial class HarnessView : UserControl
         SkillsSummary.Text = chosen.Count == 0 ? "wybierz…" : string.Join(", ", chosen);
         SkillsSummary.Foreground = (Brush)FindResource(chosen.Count == 0 ? "MutedBrush" : "TextBrush");
         SyncWorkProfile();
-        bool IsKnowledge(string n) => n != "cde" && !IsFilesProfile(n) && !IsOfficeProfile(n) && !IsOcrProfile(n) && !IsRfemProfile(n) && !IsRuleOnly(n) && !HarnessProfile.HasHostTools(Path.Combine(_context.ProfilesRoot, n));
+        // „amadeusz” ma polecenia (odczyt stanu, przełączanie umiejętności), ale to nie Tekla — w podpowiedziach liczy się jak wiedza.
+        bool IsKnowledge(string n) => IsAmadeuszProfile(n)
+            || (n != "cde" && !IsFilesProfile(n) && !IsOfficeProfile(n) && !IsOcrProfile(n) && !IsRfemProfile(n) && !IsRuleOnly(n) && !HarnessProfile.HasHostTools(Path.Combine(_context.ProfilesRoot, n)));
         var isCde = names.Contains("cde");
         var isOffice = names.Any(IsOfficeProfile);
         var isOcr = names.Any(IsOcrProfile);
@@ -1351,6 +1512,10 @@ public partial class HarnessView : UserControl
                 : name == "tlumaczenie"
                     ? "Wklej tekst po polsku — model odda tłumaczenie na angielski brytyjski (terminy konstrukcyjne bierze ze słownika umiejętności przez szukaj_wiedzy). "
                       + "Razem z umiejętnością office tłumaczy dokumenty: „przeczytaj opis.docx i zapisz tłumaczenie jako opis_EN.docx”. Najlepiej z qwen3.5:9b albo Bielikiem 11B."
+                : IsAmadeuszProfile(name)
+                    ? "Przykład: „na czym teraz liczę?”, „jaki port bramy mam ustawiony?”, „przełącz na teklę”, „pokaż ostatnie błędy”, „jak podpiąć skrypt w Pythonie?”. "
+                      + "Amadeusz czyta swój stan, ustawienia (bez danych logowania), umiejętności i dzienniki i przełącza umiejętności (za zgodą, od następnego polecenia); "
+                      + "ustawień i plików programu nie zmienia. Tylko modele lokalne i Claude — dane Amadeusza nie idą do Gemini ani GPT."
                 : IsKnowledge(name)
                     ? "Umiejętność oparta na wiedzy: model szuka w dokumentacji (szukaj_wiedzy) i odpowiada, nie wykonuje poleceń. "
                       + (name == "mkk"
@@ -1367,13 +1532,16 @@ public partial class HarnessView : UserControl
             var rules = new List<string>();
             if (settings.Any(s => !s.Internet))
             {
-                rules.Add("internet wyłączony (" + string.Join(", ", roleNames.Where((_, i) => !settings[i].Internet)) + ")");
+                var noInternet = roleNames.Where((_, i) => !settings[i].Internet).ToList();
+                rules.Add("bez zgody na internet: " + string.Join(", ", noInternet) + (noInternet.Count > 1
+                    ? " (ich wybór wyłącza przełącznik internetu u góry; włączony z powrotem działa też z nimi)"
+                    : " (jej wybór wyłącza przełącznik internetu u góry; włączony z powrotem działa też z nią)"));
             }
 
             var cloud = settings.Skip(1).Aggregate((IEnumerable<string>)settings[0].CloudProviders, (a, s) => a.Intersect(s.CloudProviders, StringComparer.OrdinalIgnoreCase)).ToList();
             rules.Add(cloud.Count == 0 ? "tylko modele lokalne" : "chmura: " + string.Join(", ", cloud.Select(c => CloudProvider.Find(c)?.Family ?? c)));
             HintText.Text = "Kilka umiejętności naraz: " + string.Join(" + ", roleNames) + ". Obowiązują najostrzejsze zasady: " + string.Join(", ", rules)
-                + ". Polecenie systemowe to suma umiejętności — przy trzech i więcej ustaw kontekst 32768 (Ustawienia → Czat); mały model gorzej wybiera spośród wielu narzędzi."
+                + ". Polecenie systemowe to suma umiejętności — przy trzech i więcej ustaw kontekst 32 768 (lista „Kontekst” nad rozmową); mały model gorzej wybiera spośród wielu narzędzi."
                 + (SelectedProfiles.Contains("pliki") && isComputer ? " Umiejętność pliki pominięta: komputer ma wszystkie jej polecenia." : "");
         }
 
@@ -1453,6 +1621,31 @@ public partial class HarnessView : UserControl
 
     /// <summary>Zmienił się przełącznik kroków nad rozmową (okno odświeża Ustawienia).</summary>
     public event EventHandler? ShowStepsChanged;
+
+    /// <summary>
+    /// Lista „Kontekst” nad rozmową: własny kontekst zakładki Code (<see cref="AppSettings.CodeContextLength"/>; 0 = jak w Czacie, min. 16 384).
+    /// Rozmowa trwa dalej — następne polecenie pójdzie z nowym kontekstem (<see cref="RefreshModelText"/> przebuduje sesję).
+    /// </summary>
+    private void Context_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || ContextBox.SelectedItem is not ComboBoxItem { Tag: string tag } || !int.TryParse(tag, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+        {
+            return;
+        }
+
+        if (_context.Settings.CodeContextLength == value)
+        {
+            return;
+        }
+
+        _context.Settings.CodeContextLength = value;
+        if (_saveSettings)
+        {
+            _context.Save?.Invoke();
+        }
+
+        RefreshModelText();
+    }
 
     /// <summary>Ustawienia → Czat → „Pokaż kroki modelu”: ten sam przełącznik, co nad rozmową; działa od razu, także na wpisy sprzed zmiany.</summary>
     public void ApplyShowSteps()
@@ -1905,8 +2098,14 @@ public sealed class HarnessContext
     /// <summary>Kolor dostawcy w chmurze; null = model lokalny.</summary>
     public Brush? ModelBrush { get; init; }
 
+    /// <summary>Czy wybrany model widzi obrazy (<see cref="ModelItem.SeesImages"/>): wklejony obrazek i obraz tablicy idą wtedy do modelu.</summary>
+    public bool ModelSeesImages { get; init; }
+
     /// <summary>Klucz API dostawcy (z programu albo zmiennej środowiskowej).</summary>
     public Func<CloudProvider, string?>? GetApiKey { get; init; }
+
+    /// <summary>Ustawia przełącznik „Odblokuj dostęp do internetu” w oknie (wybór umiejętności bez zgody na internet go wyłącza).</summary>
+    public Action<bool>? SetInternetAccess { get; init; }
 
     /// <summary>Wybór profilu: przełącz na pierwszy dostępny z preferowanych modeli (klucze, dozwoleni dostawcy chmury); null = żadnego nie ma.</summary>
     public Func<IEnumerable<string>, IReadOnlyCollection<string>, ModelItem?>? SelectPreferredModel { get; init; }
@@ -1966,8 +2165,15 @@ internal static class ProfilesFolder
         return Path.Combine(AppContext.BaseDirectory, "profile");
     }
 
+    /// <summary>
+    /// Umiejętności poza listami okna (Code, profile, źródła wiedzy, chmura): działają tylko w swojej zakładce —
+    /// <c>whiteboard</c> w zakładce Whiteboard.
+    /// </summary>
+    public static readonly IReadOnlyCollection<string> Hidden = [WhiteboardView.SkillName];
+
     public static IEnumerable<string> List(string root)
         => Directory.Exists(root)
-            ? Directory.GetDirectories(root).Where(d => File.Exists(Path.Combine(d, "profil.json"))).Select(d => Path.GetFileName(d)).OrderBy(n => n)
+            ? Directory.GetDirectories(root).Where(d => File.Exists(Path.Combine(d, "profil.json"))).Select(d => Path.GetFileName(d))
+                .Where(n => !Hidden.Contains(n, StringComparer.OrdinalIgnoreCase)).OrderBy(n => n)
             : Enumerable.Empty<string>();
 }

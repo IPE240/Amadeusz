@@ -51,6 +51,12 @@ namespace LokalneAI.Harness.Tools
         /// <summary>Polecenie może coś zniszczyć — okno pytania powinno domyślnie odmawiać.</summary>
         public bool ConfirmationDangerous { get; internal set; }
 
+        /// <summary>
+        /// Folder spoza dozwolonych, o który sesja pyta użytkownika (<see cref="ConfirmationMessage"/> to treść pytania); null = zwykła zgoda.
+        /// Gospodarz powinien zapytać zawsze, także w trybie „bez pytania”, bo zgoda poszerza dostęp (<see cref="FolderAccess"/>).
+        /// </summary>
+        public string AccessFolder { get; internal set; }
+
         /// <summary>Czy wywołanie coś zmienia (wymagało zgody). Ustala to sesja przed wykonaniem.</summary>
         public bool Mutating { get; internal set; }
 

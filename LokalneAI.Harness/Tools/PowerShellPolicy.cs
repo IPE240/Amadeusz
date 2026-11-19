@@ -567,6 +567,337 @@ namespace LokalneAI.Harness.Tools
             return normalizedRoots.Any(root => path.StartsWith(root, StringComparison.OrdinalIgnoreCase));
         }
 
+        // ---------------------------------------------------------------- fakty dla strażnika bezpieczeństwa
+
+        /// <summary>Argument wywołania: tekst i czy jest wyliczany w locie (zmienna, wyrażenie, tekst ze zmienną).</summary>
+        internal sealed class ScriptArgument
+        {
+            public ScriptArgument(string text, bool dynamic)
+            {
+                Text = text;
+                Dynamic = dynamic;
+            }
+
+            public string Text { get; }
+
+            public bool Dynamic { get; }
+
+            public override string ToString() => (Dynamic ? "~" : "") + Text;
+        }
+
+        /// <summary>Wywołanie w skrypcie: polecenie (program, plik) i jego argumenty do końca polecenia.</summary>
+        internal sealed class ScriptInvocation
+        {
+            public ScriptInvocation(string name, bool viaCallOperator)
+            {
+                Name = name;
+                ViaCallOperator = viaCallOperator;
+            }
+
+            /// <summary>Nazwa polecenia albo ścieżka programu (zmienne środowiskowe rozwinięte).</summary>
+            public string Name { get; }
+
+            /// <summary>Wywołane operatorem &amp; albo . (kropką), nie wprost.</summary>
+            public bool ViaCallOperator { get; }
+
+            public List<ScriptArgument> Arguments { get; } = new List<ScriptArgument>();
+
+            public override string ToString() => Name + " " + string.Join(" ", Arguments);
+        }
+
+        /// <summary>Co skrypt wywołuje — dla <see cref="SafetyRules"/>.</summary>
+        internal sealed class ScriptFacts
+        {
+            public List<ScriptInvocation> Invocations { get; } = new List<ScriptInvocation>();
+
+            /// <summary>Opis wywołania, którego celu nie da się odczytać z tekstu (&amp; $x, &amp; (…), . $x); null = brak.</summary>
+            public string Dynamic { get; set; }
+
+            /// <summary>Skryptu nie udało się podzielić na słowa.</summary>
+            public bool Unreadable { get; set; }
+        }
+
+        /// <summary>
+        /// Wywołania w skrypcie: polecenia w pozycji polecenia, cele operatorów &amp; i . oraz ich argumenty. Proste stałe
+        /// (<c>$exe = 'C:\…\7z.exe'; &amp; $exe</c>, jedno przypisanie tekstu) są podstawiane; inne wywołanie przez zmienną albo
+        /// wyrażenie to <see cref="ScriptFacts.Dynamic"/>.
+        /// </summary>
+        internal static ScriptFacts Inspect(string script)
+        {
+            var facts = new ScriptFacts();
+            List<Token> tokens;
+            try
+            {
+                tokens = Tokenize(script ?? "");
+            }
+            catch (FormatException)
+            {
+                facts.Unreadable = true;
+                return facts;
+            }
+
+            var constants = FindConstants(tokens);
+            if (Regex.IsMatch(script ?? "", @"\b(set-variable|new-variable|sv|nv)\b|\[ref\]", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            {
+                constants.Clear(); // zmienne zmieniane poleceniem — wartości z przypisań przestają być pewne
+            }
+
+            var expectCommand = true;
+            for (var i = 0; i < tokens.Count; i++)
+            {
+                var token = tokens[i];
+                if (token.Kind == TokenKind.String && token.Expandable && token.HasSubexpression)
+                {
+                    // "… $(Get-Content x) …" — polecenia w podwyrażeniu też się wykonują.
+                    foreach (var inner in Subexpressions(token.Text))
+                    {
+                        var nested = Inspect(inner);
+                        facts.Invocations.AddRange(nested.Invocations);
+                        facts.Dynamic = facts.Dynamic ?? nested.Dynamic;
+                    }
+                }
+
+                if (token.Kind == TokenKind.Operator)
+                {
+                    if (token.Text == "&")
+                    {
+                        i = ReadCallTarget(tokens, i + 1, constants, facts);
+                        expectCommand = false;
+                        continue;
+                    }
+
+                    expectCommand = token.StartsCommand;
+                    continue;
+                }
+
+                if (!expectCommand)
+                {
+                    continue;
+                }
+
+                expectCommand = false;
+                if (token.Kind == TokenKind.Word && token.Text == ".")
+                {
+                    i = ReadCallTarget(tokens, i + 1, constants, facts);
+                    continue;
+                }
+
+                if (token.Kind == TokenKind.String)
+                {
+                    continue; // tekst na początku polecenia to wartość (np. 'a' | Out-File), nie wywołanie
+                }
+
+                var word = token.Text;
+                if (word.StartsWith("$", StringComparison.Ordinal) || word.StartsWith("[", StringComparison.Ordinal)
+                    || word.StartsWith("-", StringComparison.Ordinal) || char.IsDigit(word[0]) || Keywords.Contains(word))
+                {
+                    if (Keywords.Contains(word))
+                    {
+                        expectCommand = true; // foreach (…) { polecenie }
+                    }
+
+                    continue;
+                }
+
+                var invocation = new ScriptInvocation(ExpandEnvironment(word.Trim('"', '\'')) ?? word, false);
+                ReadArguments(tokens, i + 1, invocation, constants);
+                facts.Invocations.Add(invocation);
+            }
+
+            return facts;
+        }
+
+        /// <summary>Cel operatora &amp; albo kropki zaczynający się na pozycji <paramref name="index"/>; zwraca indeks ostatniego zużytego tokenu.</summary>
+        private static int ReadCallTarget(List<Token> tokens, int index, Dictionary<string, string> constants, ScriptFacts facts)
+        {
+            if (index >= tokens.Count)
+            {
+                return index - 1;
+            }
+
+            var target = tokens[index];
+            string name = null;
+            if (target.Kind == TokenKind.String)
+            {
+                name = Literal(target, constants);
+            }
+            else if (target.Kind == TokenKind.Word)
+            {
+                name = target.Text.StartsWith("$", StringComparison.Ordinal)
+                    ? constants.TryGetValue(target.Text, out var constant) ? constant : null
+                    : ExpandEnvironment(target.Text);
+            }
+            else if (target.Text == "{")
+            {
+                return index - 1; // & { … } — blok w tekście skryptu, oceniany razem z resztą
+            }
+
+            if (name == null)
+            {
+                facts.Dynamic = facts.Dynamic ?? ("wywołanie przez zmienną albo wyrażenie: " + Text.Shorten(target.Text, 60));
+                return index;
+            }
+
+            var invocation = new ScriptInvocation(name, true);
+            ReadArguments(tokens, index + 1, invocation, constants);
+            facts.Invocations.Add(invocation);
+            return index;
+        }
+
+        private static void ReadArguments(List<Token> tokens, int start, ScriptInvocation invocation, Dictionary<string, string> constants)
+        {
+            var depth = 0;
+            for (var j = start; j < tokens.Count; j++)
+            {
+                var token = tokens[j];
+                if (token.Kind == TokenKind.Operator)
+                {
+                    if (depth == 0 && (token.Text == "\n" || token.Text == ";" || token.Text == "|" || token.Text == "||" || token.Text == "&&"
+                                       || token.Text == "}" || token.Text == ")"))
+                    {
+                        return;
+                    }
+
+                    if (token.Text == "(" || token.Text == "$(" || token.Text == "@(" || token.Text == "{" || token.Text == "@{")
+                    {
+                        if (depth == 0)
+                        {
+                            invocation.Arguments.Add(new ScriptArgument(token.Text, true));
+                        }
+
+                        depth++;
+                    }
+                    else if ((token.Text == ")" || token.Text == "}") && depth > 0)
+                    {
+                        depth--;
+                    }
+
+                    continue;
+                }
+
+                if (depth > 0)
+                {
+                    continue;
+                }
+
+                if (token.Kind == TokenKind.String)
+                {
+                    var literal = Literal(token, constants);
+                    invocation.Arguments.Add(new ScriptArgument(literal ?? token.Text, literal == null));
+                }
+                else if (token.Text.StartsWith("$", StringComparison.Ordinal))
+                {
+                    invocation.Arguments.Add(constants.TryGetValue(token.Text, out var constant)
+                        ? new ScriptArgument(constant, false)
+                        : new ScriptArgument(token.Text, !IsEnvironmentOnly(token.Text)));
+                }
+                else
+                {
+                    var expanded = ExpandEnvironment(token.Text);
+                    invocation.Arguments.Add(new ScriptArgument(expanded ?? token.Text, expanded == null));
+                }
+            }
+        }
+
+        /// <summary>Treść podwyrażeń <c>$( … )</c> w tekście (z zagnieżdżonymi nawiasami).</summary>
+        private static IEnumerable<string> Subexpressions(string text)
+        {
+            for (var start = text.IndexOf("$(", StringComparison.Ordinal); start >= 0; start = text.IndexOf("$(", start + 2, StringComparison.Ordinal))
+            {
+                // Niezamknięte podwyrażenie też oddajemy (do końca tekstu) — lepiej ocenić za dużo niż przeoczyć polecenie.
+                var end = SkipSubexpression(text, start + 1);
+                var length = end - start - 2 - (end <= text.Length && text[end - 1] == ')' ? 1 : 0);
+                if (length > 0)
+                {
+                    yield return text.Substring(start + 2, length);
+                }
+            }
+        }
+
+        /// <summary>Stałe: <c>$nazwa = 'tekst'</c> przypisane w skrypcie dokładnie raz (bez zmiennych w tekście).</summary>
+        private static Dictionary<string, string> FindConstants(List<Token> tokens)
+        {
+            var constants = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var assigned = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < tokens.Count; i++)
+            {
+                var token = tokens[i];
+                if (token.Kind == TokenKind.Word && token.Text.StartsWith("$", StringComparison.Ordinal))
+                {
+                    // $x += …, $x+=… — każde inne przypisanie niż „=” unieważnia stałą.
+                    var bare = token.Text.TrimEnd('+', '-', '*', '/', '%');
+                    var compound = bare != token.Text && i + 1 < tokens.Count && tokens[i + 1].Text == "="
+                                   || i + 2 < tokens.Count && tokens[i + 1].Kind == TokenKind.Word && "+-*/%".IndexOf(tokens[i + 1].Text, StringComparison.Ordinal) >= 0
+                                   && tokens[i + 1].Text.Length == 1 && tokens[i + 2].Text == "=";
+                    if (compound)
+                    {
+                        assigned[bare] = 2;
+                    }
+                }
+
+                if (token.Kind != TokenKind.Word || !token.Text.StartsWith("$", StringComparison.Ordinal)
+                    || i + 1 >= tokens.Count || tokens[i + 1].Kind != TokenKind.Operator || tokens[i + 1].Text != "=")
+                {
+                    continue;
+                }
+
+                assigned[token.Text] = assigned.TryGetValue(token.Text, out var count) ? count + 1 : 1;
+                if (assigned[token.Text] > 1)
+                {
+                    continue;
+                }
+                var value = i + 2 < tokens.Count ? tokens[i + 2] : null;
+                var after = i + 3 < tokens.Count ? tokens[i + 3] : null;
+                var single = after == null || after.Kind == TokenKind.Operator && (after.Text == "\n" || after.Text == ";" || after.Text == "}");
+                var literal = value != null && value.Kind == TokenKind.String && single ? Literal(value, constants) : null;
+                if (literal != null)
+                {
+                    constants[token.Text] = literal;
+                }
+            }
+
+            foreach (var twice in assigned.Where(a => a.Value > 1).Select(a => a.Key).ToList())
+            {
+                constants.Remove(twice);
+            }
+
+            return constants;
+        }
+
+        /// <summary>Wartość tekstu albo null, gdy zależy od zmiennych (poza środowiskowymi i stałymi).</summary>
+        private static string Literal(Token token, Dictionary<string, string> constants)
+        {
+            if (!token.Expandable)
+            {
+                return token.Text;
+            }
+
+            if (token.HasSubexpression)
+            {
+                return null;
+            }
+
+            var text = Regex.Replace(token.Text, @"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?", m =>
+                constants.TryGetValue("$" + m.Groups[1].Value, out var constant) ? constant : m.Value);
+            return ExpandEnvironment(text);
+        }
+
+        /// <summary>Rozwija <c>$env:NAZWA</c> i <c>%NAZWA%</c>; null, gdy zostały inne zmienne.</summary>
+        internal static string ExpandEnvironment(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text;
+            }
+
+            var expanded = EnvVariable.Replace(text, m => Environment.GetEnvironmentVariable(m.Groups[1].Value) ?? m.Value);
+            expanded = HomeVariable.Replace(expanded, Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+            expanded = Environment.ExpandEnvironmentVariables(expanded);
+            return expanded.IndexOf('$') >= 0 ? null : expanded;
+        }
+
+        private static bool IsEnvironmentOnly(string word) => ExpandEnvironment(word) != null;
+
         // ---------------------------------------------------------------- tokenizer
 
         private enum TokenKind
@@ -584,12 +915,73 @@ namespace LokalneAI.Harness.Tools
             public bool HasSubexpression;
             public bool IsHereString;
 
+            /// <summary>Tekst w cudzysłowie podwójnym (PowerShell podstawia w nim zmienne).</summary>
+            public bool Expandable;
+
             /// <summary>Po tym operatorze zaczyna się nowe polecenie.</summary>
             public bool StartsCommand => Kind == TokenKind.Operator
                 && (Text == "\n" || Text == ";" || Text == "|" || Text == "||" || Text == "&&" || Text == "{" || Text == "("
                     || Text == "$(" || Text == "@(" || Text == "=" || Text == "&");
 
             public override string ToString() => Kind + ":" + Text;
+        }
+
+        /// <summary>Indeks za nawiasem zamykającym podwyrażenie, które otwiera nawias na pozycji <paramref name="open"/> (z napisami w środku).</summary>
+        private static int SkipSubexpression(string script, int open)
+        {
+            var depth = 0;
+            for (var j = open; j < script.Length; j++)
+            {
+                var c = script[j];
+                if (c == '`')
+                {
+                    j++;
+                }
+                else if (c == '(')
+                {
+                    depth++;
+                }
+                else if (c == ')' && --depth == 0)
+                {
+                    return j + 1;
+                }
+                else if (IsDoubleQuote(c) || IsSingleQuote(c))
+                {
+                    j = SkipQuoted(script, j) - 1;
+                }
+            }
+
+            return script.Length;
+        }
+
+        /// <summary>Indeks za napisem zaczynającym się cudzysłowem na pozycji <paramref name="start"/>.</summary>
+        private static int SkipQuoted(string script, int start)
+        {
+            var isDouble = IsDoubleQuote(script[start]);
+            for (var k = start + 1; k < script.Length; k++)
+            {
+                var c = script[k];
+                if (isDouble && c == '`')
+                {
+                    k++;
+                }
+                else if (isDouble && c == '$' && k + 1 < script.Length && script[k + 1] == '(')
+                {
+                    k = SkipSubexpression(script, k + 1) - 1;
+                }
+                else if (isDouble ? IsDoubleQuote(c) : IsSingleQuote(c))
+                {
+                    if (k + 1 < script.Length && (isDouble ? IsDoubleQuote(script[k + 1]) : IsSingleQuote(script[k + 1])))
+                    {
+                        k++; // podwojony cudzysłów w napisie
+                        continue;
+                    }
+
+                    return k + 1;
+                }
+            }
+
+            return script.Length;
         }
 
         private static bool IsSingleQuote(char c) => c == '\'' || c == '‘' || c == '’' || c == '‚' || c == '‛';
@@ -647,6 +1039,7 @@ namespace LokalneAI.Harness.Tools
                     token.IsHereString = true;
                     token.Text = script.Substring(i + 2, Math.Max(0, (end < 0 ? script.Length : end) - (i + 2)));
                     token.HasSubexpression = IsDoubleQuote(script[i + 1]) && token.Text.Contains("$(");
+                    token.Expandable = IsDoubleQuote(script[i + 1]);
                     tokens.Add(token);
                     i = stop;
                     continue;
@@ -694,6 +1087,15 @@ namespace LokalneAI.Harness.Tools
                             continue;
                         }
 
+                        if (d == '$' && i + 1 < script.Length && script[i + 1] == '(')
+                        {
+                            // "…$(Get-Date -Format "yyyy")…" — cudzysłów w podwyrażeniu nie kończy napisu.
+                            var end = SkipSubexpression(script, i + 1);
+                            text.Append(script, i, end - i);
+                            i = end;
+                            continue;
+                        }
+
                         if (IsDoubleQuote(d))
                         {
                             if (i + 1 < script.Length && IsDoubleQuote(script[i + 1]))
@@ -714,6 +1116,7 @@ namespace LokalneAI.Harness.Tools
                     token.Kind = TokenKind.String;
                     token.Text = text.ToString();
                     token.HasSubexpression = token.Text.Contains("$(");
+                    token.Expandable = true;
                     tokens.Add(token);
                     continue;
                 }

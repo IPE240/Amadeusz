@@ -24,6 +24,7 @@ namespace LokalneAI.Harness.Wpf
     public partial class HarnessPanel : UserControl
     {
         private readonly ObservableCollection<PanelEntry> _entries = new ObservableCollection<PanelEntry>();
+        private readonly ObservableCollection<PendingImage> _pendingImages = new ObservableCollection<PendingImage>();
         private HarnessSession _session;
         private CancellationTokenSource _cts;
         private PanelEntry _thinking;
@@ -73,6 +74,8 @@ namespace LokalneAI.Harness.Wpf
             InitializeComponent();
             EntriesList.ItemsSource = _entries;
             AgentTiles.ItemsSource = _agentTiles;
+            PendingImagesList.ItemsSource = _pendingImages;
+            _pendingImages.CollectionChanged += (s, e) => PendingImagesList.Visibility = _pendingImages.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             _agentTiles.CollectionChanged += (s, e) =>
             {
                 AgentTiles.Visibility = _agentTiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -197,11 +200,22 @@ namespace LokalneAI.Harness.Wpf
         /// z ostrzeżeniami) albo z nazwą polecenia i argumentami, i z przyciskami Tak/Nie. Stop, Esc albo zamknięcie sesji = „Nie”.
         /// Gdy polecenie może coś zniszczyć (kasuje), wyróżniony jest przycisk „Nie”.
         /// </summary>
-        public Task<bool> ConfirmMutationAsync(ToolCall call, CancellationToken cancellationToken)
+        public Task<bool> ConfirmMutationAsync(ToolCall call, CancellationToken cancellationToken) => ConfirmMutationAsync(call, cancellationToken, null);
+
+        /// <summary>
+        /// Jak <see cref="ConfirmMutationAsync(ToolCall, CancellationToken)"/>, z <paramref name="note"/> — zdaniem gospodarza nad pytaniem
+        /// (np. „Uprawnienia: Tylko czyta — zgoda dotyczy tylko tego polecenia”); null = bez.
+        /// </summary>
+        public Task<bool> ConfirmMutationAsync(ToolCall call, CancellationToken cancellationToken, string note)
         {
             var message = !string.IsNullOrWhiteSpace(call.ConfirmationMessage)
                 ? call.ConfirmationMessage
                 : "Wykonać polecenie zmieniające model?\n\n" + call.Name + "\n" + DescribeArguments(call.ArgumentsJson);
+            if (!string.IsNullOrWhiteSpace(note))
+            {
+                message = note.Trim() + "\n\n" + message;
+            }
+
             return Dispatcher.InvokeAsync(() =>
             {
                 var entry = new PanelEntry(PanelEntryKind.Confirm, message.Trim()) { Dangerous = call.ConfirmationDangerous };
@@ -218,14 +232,54 @@ namespace LokalneAI.Harness.Wpf
             }).Task.Unwrap();
         }
 
+        /// <summary>
+        /// Pytanie z przyciskami w rozmowie (jak zgoda na polecenie), z własnymi napisami: np. „Włączyć umiejętność pliki
+        /// i ponowić polecenie?” → „Tak, włącz i ponów” / „Nie”. Zwraca odpowiedź; przerwanie tokenem = nie. Z dowolnego wątku.
+        /// </summary>
+        public Task<bool> AskAsync(string message, string yesText, string noText, CancellationToken cancellationToken)
+        {
+            return Dispatcher.InvokeAsync(() =>
+            {
+                var entry = new PanelEntry(PanelEntryKind.Confirm, (message ?? "").Trim())
+                {
+                    YesText = string.IsNullOrWhiteSpace(yesText) ? "Tak" : yesText,
+                    NoText = string.IsNullOrWhiteSpace(noText) ? "Nie" : noText,
+                };
+                var answer = entry.Ask();
+                Insert(entry);
+                _follow = true;
+                if (cancellationToken.CanBeCanceled)
+                {
+                    var registration = cancellationToken.Register(() => Dispatcher.BeginInvoke(new Action(() => entry.Resolve(false, "Przerwano — bez zgody."))));
+                    answer.ContinueWith(_ => registration.Dispose(), TaskScheduler.Default);
+                }
+
+                return answer;
+            }).Task.Unwrap();
+        }
+
         private void ConfirmYes_Click(object sender, RoutedEventArgs e)
-            => ((sender as FrameworkElement)?.DataContext as PanelEntry)?.Resolve(true, "Tak — wykonuję.");
+        {
+            var entry = (sender as FrameworkElement)?.DataContext as PanelEntry;
+            entry?.Resolve(true, entry.YesText == "Tak, wykonaj" ? "Tak — wykonuję." : "Tak — " + entry.YesText.ToLowerInvariant() + ".");
+        }
 
         private void ConfirmNo_Click(object sender, RoutedEventArgs e)
-            => ((sender as FrameworkElement)?.DataContext as PanelEntry)?.Resolve(false, "Nie — polecenie odrzucone.");
+        {
+            var entry = (sender as FrameworkElement)?.DataContext as PanelEntry;
+            entry?.Resolve(false, entry.YesText == "Tak, wykonaj" ? "Nie — polecenie odrzucone." : "Nie.");
+        }
 
         /// <summary>Wysyła polecenie (jak klik „Wyślij”).</summary>
-        public async Task<TurnResult> SendAsync(string text)
+        public Task<TurnResult> SendAsync(string text) => SendAsync(text, null);
+
+        /// <summary>
+        /// Wysyła polecenie z obrazami dla modelu (PNG albo JPEG; null = bez obrazów). Obrazy dostaje tylko model, który je
+        /// widzi — gospodarz decyduje o tym przed wywołaniem (<see cref="ImagesForModel"/>), a tekst z OCR daje w poleceniu.
+        /// <paramref name="shownText"/>: co pokazać we wpisie użytkownika, gdy model dostaje więcej (np. polecenie bez doklejonego
+        /// opisu tablicy); <paramref name="shownDetail"/>: szary dopisek pod nim. Null = pokazuje cały <paramref name="text"/>.
+        /// </summary>
+        public async Task<TurnResult> SendAsync(string text, System.Collections.Generic.IReadOnlyList<byte[]> images, string shownText = null, string shownDetail = null)
         {
             if (string.IsNullOrWhiteSpace(text) || _cts != null)
             {
@@ -239,9 +293,12 @@ namespace LokalneAI.Harness.Wpf
 
             var typing = _pendingTyping;
             _pendingTyping = null;
-            _turnUser = new PanelEntry(PanelEntryKind.User, text.Trim())
+            var imagesNote = images == null || images.Count == 0 ? null
+                : "Obrazy dla modelu: " + images.Count + " (model je widzi; tekst z OCR, jeśli był, jest w poleceniu).";
+            _turnUser = new PanelEntry(PanelEntryKind.User, (shownText ?? text).Trim())
             {
                 Metrics = typing.HasValue ? "pisanie pytania: " + TokenText.Time(typing.Value) : null,
+                Detail = shownDetail == null ? imagesNote : imagesNote == null ? shownDetail : shownDetail + "\n" + imagesNote,
             };
             _entries.Add(_turnUser);
             _pendingModel = null;
@@ -252,7 +309,7 @@ namespace LokalneAI.Harness.Wpf
             _cts = new CancellationTokenSource();
             try
             {
-                turn = await _session.SendAsync(text, _cts.Token);
+                turn = await _session.SendAsync(text, images, _cts.Token);
                 if (turn.Kind == TurnKind.Failed)
                 {
                     _entries.Add(new PanelEntry(PanelEntryKind.Error, turn.Text));
@@ -814,11 +871,26 @@ namespace LokalneAI.Harness.Wpf
 
             _pendingTyping = _typingStart.HasValue ? DateTime.UtcNow - _typingStart.Value : (TimeSpan?)null;
             InputBox.Clear();
-            await SendAsync(text);
+            var images = _pendingImages.Select(i => i.Png).ToList();
+            _pendingImages.Clear();
+            await SendAsync(text, images);
             InputBox.Focus();
         }
 
         private void Stop_Click(object sender, RoutedEventArgs e) => _cts?.Cancel();
+
+        /// <summary>Przerywa bieżące polecenie (jak „Stop”); nic nie robi, gdy panel nie pracuje.</summary>
+        public void Cancel() => _cts?.Cancel();
+
+        /// <summary>
+        /// Czy pole polecenia z przyciskami „Wyślij” i „Stop” jest widoczne (domyślnie tak). Gospodarz z własnym polem
+        /// (np. tablica z polem pod spodem) chowa je i woła <see cref="SendAsync(string, System.Collections.Generic.IReadOnlyList{byte[]}, string, string)"/> i <see cref="Cancel"/>.
+        /// </summary>
+        public bool ShowInput
+        {
+            get => InputArea.Visibility == Visibility.Visible;
+            set => InputArea.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+        }
 
         private void NewSession_Click(object sender, RoutedEventArgs e)
         {
@@ -828,40 +900,53 @@ namespace LokalneAI.Harness.Wpf
 
         /// <summary>
         /// Obrazek wklejony do pola polecenia (Ctrl+V ze schowka, np. zrzut ekranu albo fragment skanu): gospodarz dostaje
-        /// PNG i zwraca tekst do wstawienia w pole (np. wynik OCR z nagłówkiem). Null = wklejanie obrazków wyłączone
-        /// (zwykłe wklejanie tekstu działa zawsze). Wołane w wątku okna; może trwać kilka sekund — pole jest wtedy zablokowane.
+        /// PNG i zwraca tekst do wstawienia w pole (np. wynik OCR z nagłówkiem). Null = bez OCR (zwykłe wklejanie tekstu
+        /// działa zawsze). Wołane w wątku okna; może trwać kilka sekund — pole jest wtedy zablokowane.
         /// </summary>
         public Func<byte[], Task<string>> ImagePasted { get; set; }
 
+        /// <summary>
+        /// Czy wklejony obrazek ma pójść także do modelu (model widzi obrazy, np. <c>vision</c> w Ollamie, Claude, GPT).
+        /// Pytane przy każdym wklejeniu; true = miniatura nad polem i obraz wysłany z najbliższym poleceniem (zmniejszony do
+        /// <see cref="ClipboardImages.ModelMaxSide"/>). Null albo false = tylko <see cref="ImagePasted"/> (OCR).
+        /// </summary>
+        public Func<bool> ImagesForModel { get; set; }
+
+        /// <summary>Obrazki czekające na wysłanie z najbliższym poleceniem (miniatury nad polem).</summary>
+        public ObservableCollection<PendingImage> PendingImages => _pendingImages;
+
+        private void RemovePendingImage_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is PendingImage image)
+            {
+                _pendingImages.Remove(image);
+            }
+        }
+
         private async void Input_Pasting(object sender, DataObjectPastingEventArgs e)
         {
-            if (ImagePasted == null || !e.DataObject.GetDataPresent(DataFormats.Bitmap) || e.DataObject.GetDataPresent(DataFormats.UnicodeText))
+            var forModel = ImagesForModel?.Invoke() == true;
+            if ((ImagePasted == null && !forModel) || !ClipboardImages.IsImage(e.DataObject))
             {
                 return; // tekst (także tekst z obrazkiem, np. z Worda) wkleja się jak zwykle
             }
 
             e.CancelCommand();
-            byte[] png;
-            try
+            var png = ClipboardImages.ReadPng();
+            if (png == null)
             {
-                var image = Clipboard.GetImage();
-                if (image == null)
+                AddInfo("Nie udało się odczytać obrazka ze schowka.");
+                return;
+            }
+
+            if (forModel)
+            {
+                _pendingImages.Add(new PendingImage(ClipboardImages.Shrink(png), "obraz " + (_pendingImages.Count + 1)));
+                if (ImagePasted == null)
                 {
+                    AddInfo("Obrazek pójdzie do modelu z najbliższym poleceniem (model widzi obrazy) — dopisz, co z nim zrobić.");
                     return;
                 }
-
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(image));
-                using (var stream = new MemoryStream())
-                {
-                    encoder.Save(stream);
-                    png = stream.ToArray();
-                }
-            }
-            catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException || ex is NotSupportedException || ex is InvalidOperationException)
-            {
-                AddInfo("Nie udało się odczytać obrazka ze schowka: " + ex.Message);
-                return;
             }
 
             var caret = InputBox.CaretIndex;
@@ -870,17 +955,26 @@ namespace LokalneAI.Harness.Wpf
             try
             {
                 var text = await ImagePasted(png) ?? "";
+                if (text.Length == 0 && forModel)
+                {
+                    _entries.RemoveAt(_entries.Count - 1);
+                    AddInfo("Obrazek pójdzie do modelu z najbliższym poleceniem (model widzi obrazy; OCR wyłączony) — dopisz, co z nim zrobić.");
+                    return;
+                }
+
                 var before = InputBox.Text.Substring(0, Math.Min(caret, InputBox.Text.Length));
                 var after = InputBox.Text.Substring(Math.Min(caret, InputBox.Text.Length));
                 InputBox.Text = before + text + after;
                 InputBox.CaretIndex = before.Length + text.Length;
                 var firstLine = text.Split('\n').FirstOrDefault(l => l.Trim().Length > 0) ?? "";
                 _entries.RemoveAt(_entries.Count - 1);
-                AddInfo(firstLine.StartsWith("[", StringComparison.Ordinal) ? firstLine.Trim('[', ']') + " — tekst jest w polu polecenia, dopisz, co z nim zrobić." : "Obrazek rozpoznany — tekst jest w polu polecenia.");
+                var where = forModel ? " — tekst jest w polu polecenia, a obraz pójdzie do modelu (widzi obrazy); dopisz, co z nim zrobić."
+                    : " — tekst jest w polu polecenia, dopisz, co z nim zrobić.";
+                AddInfo(firstLine.StartsWith("[", StringComparison.Ordinal) ? firstLine.Trim('[', ']') + where : "Obrazek rozpoznany" + where);
             }
             catch (Exception ex) when (ex is IOException || ex is InvalidOperationException || ex is UnauthorizedAccessException)
             {
-                AddInfo("OCR wklejonego obrazka nie powiódł się: " + ex.Message);
+                AddInfo("OCR wklejonego obrazka nie powiódł się: " + ex.Message + (forModel ? " Obraz i tak pójdzie do modelu." : ""));
             }
             finally
             {

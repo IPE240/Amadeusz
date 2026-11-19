@@ -52,6 +52,74 @@ namespace LokalneAI.Harness.Session
         private readonly List<string> _addedParts = new List<string>();
         private List<ModelCallMetrics> _turnMetrics = new List<ModelCallMetrics>();
 
+        // Strażnik bezpieczeństwa: każde wywołanie narzędzia przechodzi przez niego przed zgodą i wykonaniem (docs\bezpieczenstwo.md).
+        private readonly SafetyGuard _guard;
+
+        // Foldery, do których użytkownik w tej rozmowie odmówił dostępu — nie pytamy drugi raz.
+        private readonly HashSet<string> _deniedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Program umie zapytać użytkownika o folder spoza dozwolonych i dodać go wykonawcy.</summary>
+        private bool CanAskForFolders => _executor is IFolderAccess && _options.ConfirmMutation != null;
+
+        /// <summary>
+        /// Polecenie odbite od dozwolonych folderów: pyta użytkownika o dostęp (raz na folder w rozmowie) i po zgodzie ponawia polecenie.
+        /// Strażnik bezpieczeństwa sprawdza ponowione polecenie od nowa — zgoda na folder nie otwiera folderów chronionych.
+        /// Bez okna zgody błąd dostaje dopisek, żeby model zapytał użytkownika zamiast się poddać.
+        /// </summary>
+        private async Task<ToolResult> WithFolderAccessAsync(ToolCall call, ToolResult result, CancellationToken cancellationToken)
+        {
+            if (result == null || result.Success || call.Definition.IsBuiltIn)
+            {
+                return result;
+            }
+
+            var folders = FolderAccess.MissingFolders(result.Text);
+            if (folders.Count == 0)
+            {
+                return result;
+            }
+
+            if (!CanAskForFolders)
+            {
+                return ToolResult.Error(result.Text + FolderAccess.AskUserHint);
+            }
+
+            foreach (var folder in folders)
+            {
+                if (_deniedFolders.Contains(folder))
+                {
+                    return ToolResult.Error(FolderAccess.Denied(folder));
+                }
+
+                call.AccessFolder = folder;
+                call.ConfirmationMessage = FolderAccess.Question(folder, call);
+                // Rozszerzenie uprawnień zawsze rozstrzyga człowiek: „ryzykowne” pyta także w trybie bez pytania i w kontroli bez klikania.
+                call.ConfirmationDangerous = true;
+                bool granted;
+                try
+                {
+                    granted = await _options.ConfirmMutation(call, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    call.AccessFolder = null;
+                    call.ConfirmationMessage = null;
+                    call.ConfirmationDangerous = false;
+                }
+
+                if (!granted || !((IFolderAccess)_executor).AllowFolder(folder))
+                {
+                    _deniedFolders.Add(folder);
+                    return ToolResult.Error(FolderAccess.Denied(folder));
+                }
+
+                Raise(new HarnessEvent(HarnessEventKind.Warning, "Dostęp do folderu " + folder + " — do końca tej rozmowy (na stałe: pole „Dozwolone foldery”)."));
+            }
+
+            var retry = await RunToolAsync(call, cancellationToken).ConfigureAwait(false);
+            return retry.Success || FolderAccess.MissingFolders(retry.Text).Count == 0 ? retry : ToolResult.Error(retry.Text + FolderAccess.AskUserHint);
+        }
+
         /// <summary>
         /// Tworzy sesję. <paramref name="executor"/> wykonuje narzędzia gospodarza; null tylko wtedy, gdy profil ma same narzędzia
         /// wbudowane. Polecenie systemowe składa się raz, tutaj: zmiana profilu albo <see cref="SessionOptions"/> wymaga nowej sesji.
@@ -69,15 +137,34 @@ namespace LokalneAI.Harness.Session
                 _profile = _profile.WithSubAgents();
             }
 
+            if (_options.SkillCatalog?.Skills != null && _options.SkillCatalog.Skills.Count > 0)
+            {
+                // Katalog umiejętności: zamiast „nie mam narzędzia” model szuka umiejętności i prosi o jej włączenie.
+                _profile = _profile.WithSkillSearch();
+            }
+
             _systemPrompt = PromptBuilder.BuildSystem(_profile, _options);
             _schema = StepSchema.Build(_profile.Tools, _profile.Settings.MaxCallsPerStep, _profile.Settings.Plan);
+            _guard = new SafetyGuard(_options.Safety, _profile.Parts.Select(p => p.Folder).Where(f => !string.IsNullOrWhiteSpace(f)))
+            {
+                // Model w chmurze Google albo OpenAI nie dostaje danych samego Amadeusza (ustawienia, dzienniki, rozmowy).
+                ModelCloud = (llm as Llm.ICloudAwareLlmClient)?.CloudProviderId,
+            };
             if (_options.History != null)
             {
                 // Wznowiona rozmowa: liczby z wcześniejszych wyników nadal „mają pokrycie” w odpowiedziach.
                 foreach (var message in _options.History.Where(m => m != null && (m.Role == "user" || m.Role == "assistant") && m.Content != null))
                 {
-                    _history.Add(new LlmMessage(message.Role, message.Content));
+                    _history.Add(new LlmMessage(message.Role, message.Content, message.Images));
                     _numberSources.Add(message.Content);
+                    if (message.Role == "assistant")
+                    {
+                        _guard.NoteModelText(message.Content);
+                    }
+                    else if (!message.Content.StartsWith("Wyniki wykonania", StringComparison.Ordinal) && !message.Content.StartsWith("Twoja odpowiedź", StringComparison.Ordinal))
+                    {
+                        _guard.RememberUrls(message.Content); // adresy z wcześniejszych poleceń użytkownika (dokładnie w tej postaci)
+                    }
                 }
 
                 if (_history.Count > 0)
@@ -138,7 +225,15 @@ namespace LokalneAI.Harness.Session
         public HarnessProfile Profile => _profile;
 
         /// <summary>Wykonuje jedno polecenie użytkownika do końca tury.</summary>
-        public async Task<TurnResult> SendAsync(string userText, CancellationToken cancellationToken = default(CancellationToken))
+        public Task<TurnResult> SendAsync(string userText, CancellationToken cancellationToken = default(CancellationToken))
+            => SendAsync(userText, null, cancellationToken);
+
+        /// <summary>
+        /// Wykonuje polecenie z obrazami (PNG albo JPEG, np. wklejony zrzut albo tablica) dla modelu, który widzi obrazy.
+        /// Obrazy zostają przy tym poleceniu w historii (model widzi je w każdym kroku i w dalszej rozmowie, aż do skrócenia
+        /// historii). Model bez obsługi obrazów ich nie dostanie — wtedy tekst z OCR musi być w <paramref name="userText"/>.
+        /// </summary>
+        public async Task<TurnResult> SendAsync(string userText, IReadOnlyList<byte[]> images, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (_disposed)
             {
@@ -157,7 +252,7 @@ namespace LokalneAI.Harness.Session
 
             try
             {
-                return await RunTurnAsync(userText.Trim(), cancellationToken).ConfigureAwait(false);
+                return await RunTurnAsync(userText.Trim(), images, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -229,7 +324,7 @@ namespace LokalneAI.Harness.Session
             }
         }
 
-        private async Task<TurnResult> RunTurnAsync(string userText, CancellationToken cancellationToken)
+        private async Task<TurnResult> RunTurnAsync(string userText, IReadOnlyList<byte[]> images, CancellationToken cancellationToken)
         {
             var clock = Stopwatch.StartNew();
             var calls = new List<ExecutedCall>();
@@ -253,6 +348,8 @@ namespace LokalneAI.Harness.Session
 
             var correction = earlierAnswer && TurnIntent.AsksForCorrection(userText);
             var webNudged = false;
+            var skillNudged = false;
+            var giveUp = new GiveUpGuard.Turn();
             var hints = new List<string>();
             if (correction)
             {
@@ -265,10 +362,11 @@ namespace LokalneAI.Harness.Session
             }
 
             var userMessage = WithGlossary(userText);
-            AddHistory(new LlmMessage("user", hints.Count == 0 ? userMessage : userMessage + "\n\n" + string.Join("\n", hints)));
+            AddHistory(new LlmMessage("user", hints.Count == 0 ? userMessage : userMessage + "\n\n" + string.Join("\n", hints), images));
             _addedParts.Add("pytanie");
             _turnMetrics = new List<ModelCallMetrics>();
             _numberSources.Add(userText);
+            _guard.RememberUserText(userText);
 
             // Przy prośbie o poprawkę trochę wyższa temperatura — przy 0,1 to samo pytanie daje prawie tę samą odpowiedź.
             var temperature = correction ? Math.Max(_profile.Settings.Temperature ?? 0.1, 0.5) : _profile.Settings.Temperature;
@@ -300,6 +398,7 @@ namespace LokalneAI.Harness.Session
                 var raw = (response.Content ?? "").Trim();
                 steps.Add(raw);
                 Raise(new HarnessEvent(HarnessEventKind.ModelStep, raw) { Step = step });
+                _guard.NoteModelText(raw); // adresy, które napisał model, nie „pierą się” przez wyniki narzędzi
 
                 var parsed = TryParseStep(raw, out var kind, out var root, out var parseError);
                 RaiseModelCall(response, wall.Elapsed, estimated, modelCalls, step, parsed ? kind : "bledny_krok");
@@ -316,6 +415,54 @@ namespace LokalneAI.Harness.Session
                 {
                     var stepJson = root.RootElement;
                     AddHistory(new LlmMessage("assistant", Text.Compact(stepJson)));
+
+                    if ((kind == StepSchema.Question || kind == StepSchema.Answer) && _profile.Tools.Any(t => t.Name == BuiltInTools.FindSkillName)
+                        && !calls.Any(c => c.Tool == BuiltInTools.EnableSkillsName) && SkillCatalog.LooksLikeMissingTool(ReadText(stepJson))
+                        && !calls.Any(c => !c.Success && FolderAccess.IsAccessProblem(c.Result)))   // „nie mam dostępu do folderu” to nie brak narzędzia
+                    {
+                        // „Nie mam narzędzia” (w odpowiedzi albo w pytaniu „wklej mi to”): program sam szuka w katalogu (bez ścieżek z polecenia).
+                        // Najpierw to, czego według modelu brakuje („przeglądanie folderów”), potem polecenie — nazwa folderu „…Rfem” w poleceniu
+                        // nie może przelicytować umiejętności, która naprawdę ma brakujące polecenie.
+                        var skills = _options.SkillCatalog.Skills;
+                        var hits = SkillCatalog.Search(skills, SkillCatalog.WithoutPaths(ReadText(stepJson)))
+                            .Concat(SkillCatalog.Search(skills, SkillCatalog.WithoutPaths(userText)))
+                            .Distinct().Take(SkillCatalog.MaxHits).ToList();
+                        if (hits.Count > 0 && !skillNudged)
+                        {
+                            // Pierwszy raz: model dostaje znalezione umiejętności i ma poprosić o włączenie.
+                            skillNudged = true;
+                            warnings.Add("Model odpowiedział, że nie ma narzędzia — program znalazł umiejętność " + string.Join(", ", hits.Select(h => h.Name)) + " i każe poprosić o jej włączenie.");
+                            Raise(new HarnessEvent(HarnessEventKind.Warning, warnings.Last()));
+                            AddHistory(new LlmMessage("user", SkillCatalog.NudgeFor(hits)));
+                            _addedParts.Add("uwagi programu");
+                            continue;
+                        }
+
+                        if (hits.Count > 0)
+                        {
+                            // Drugi raz bez prośby: program sam pyta użytkownika o najlepiej pasującą umiejętność (słabe modele same nie wołają).
+                            var top = hits[0];
+                            warnings.Add("Model znowu odpowiedział bez narzędzia — program sam proponuje włączenie umiejętności " + top.Name + ".");
+                            Raise(new HarnessEvent(HarnessEventKind.Warning, warnings.Last()));
+                            var approved = await AskSkillsAsync(new[] { top.Name }, "Model nie ma polecenia do tego zadania; pasuje umiejętność " + top.Name + ".", cancellationToken).ConfigureAwait(false);
+                            calls.Add(new ExecutedCall
+                            {
+                                Tool = BuiltInTools.EnableSkillsName,
+                                ArgumentsJson = "{\"umiejetnosci\":" + JsonSerializer.Serialize(top.Name, Text.Relaxed) + "}",
+                                Success = approved,
+                                Result = approved ? "Włączam umiejętność " + top.Name + " i ponawiam polecenie." : "Użytkownik nie zgodził się na włączenie: " + top.Name + ".",
+                                Step = step,
+                                BuiltIn = true,
+                            });
+                            if (approved)
+                            {
+                                var enabledText = calls[calls.Count - 1].Result;
+                                AddHistory(new LlmMessage("assistant", "{\"krok\":\"odpowiedz\",\"tekst\":" + JsonSerializer.Serialize(enabledText, Text.Relaxed) + "}"));
+                                Raise(new HarnessEvent(HarnessEventKind.Answer, enabledText));
+                                return Finish(TurnKind.Answer, enabledText, calls, warnings, steps, modelCalls, clock, true);
+                            }
+                        }
+                    }
 
                     if (kind == StepSchema.Question)
                     {
@@ -339,6 +486,17 @@ namespace LokalneAI.Harness.Session
                             _addedParts.Add("uwagi programu");
                             continue;
                         }
+                        // „Nie znalazłem / nie mam dostępu” za wcześnie — cofamy: szukaj innymi słowami albo spróbuj, program zapyta o dostęp.
+                        var giveUpRetry = giveUp.Check(answer, calls, hasWeb, wantsWeb, CanAskForFolders);
+                        if (giveUpRetry != null)
+                        {
+                            warnings.Add("Model za szybko się poddał — program każe mu spróbować jeszcze raz.");
+                            Raise(new HarnessEvent(HarnessEventKind.Warning, warnings.Last()));
+                            AddHistory(new LlmMessage("user", giveUpRetry));
+                            _addedParts.Add("uwagi programu");
+                            continue;
+                        }
+
                         if (_profile.Settings.CheckNumbers)
                         {
                             var unsupported = NumberGuard.FindUnsupported(answer, _numberSources);
@@ -378,6 +536,21 @@ namespace LokalneAI.Harness.Session
                     foreach (var call in executed.Where(c => c.Success))
                     {
                         _numberSources.Add(call.Result);
+                        if (BuiltInTools.IsWeb(call.Tool) || call.Tool == BuiltInTools.KnowledgeName)
+                        {
+                            // Adresy z wyników wyszukiwania, przeczytanych stron i wiedzy wolno otworzyć dokładnie w tej postaci. Wyniki narzędzi
+                            // gospodarza (pliki, PowerShell) i podagentów — nie: model mógłby je sam przygotować.
+                            _guard.RememberUrls(call.Result);
+                        }
+                    }
+
+                    var enabled = executed.FirstOrDefault(c => c.Tool == BuiltInTools.EnableSkillsName && c.Success);
+                    if (enabled != null)
+                    {
+                        // Zgoda na włączenie umiejętności: koniec tury bez kolejnego wywołania modelu — gospodarz włącza je i ponawia polecenie.
+                        AddHistory(new LlmMessage("assistant", "{\"krok\":\"odpowiedz\",\"tekst\":" + JsonSerializer.Serialize(enabled.Result, Text.Relaxed) + "}"));
+                        Raise(new HarnessEvent(HarnessEventKind.Answer, enabled.Result));
+                        return Finish(TurnKind.Answer, enabled.Result, calls, warnings, steps, modelCalls, clock, true);
                     }
 
                     var finishNow = _profile.Settings.Finish == FinishMode.Auto
@@ -465,6 +638,7 @@ namespace LokalneAI.Harness.Session
                 }
 
                 var result = await RunToolAsync(call, cancellationToken).ConfigureAwait(false);
+                result = await WithFolderAccessAsync(call, result, cancellationToken).ConfigureAwait(false);
                 record.Duration = toolClock.Elapsed;
                 if (!definition.IsBuiltIn && _executor != null)
                 {
@@ -533,6 +707,27 @@ namespace LokalneAI.Harness.Session
                     + (known.Count == 0 ? "żadne (zostaw pole puste)" : string.Join(", ", known.Select(k => k.Name))) + ".");
             }
 
+            // Adresy i domeny w zleceniu przechodzą tę samą kontrolę pochodzenia co czytaj_strone: podagent uznałby je za podane
+            // „przez użytkownika” (jego polecenie pisze model).
+            var order = task + "\n" + call.GetString("kontekst");
+            foreach (var url in SafetyGuard.UrlsIn(order))
+            {
+                if (!_guard.IsKnownUrl(url))
+                {
+                    return Blocked(SafetyVerdict.Block(SafetyRules.Leak, "zlecenie zawiera adres " + Text.Shorten(url, 80)
+                        + ", którego nie ma w rozmowie — podagent nie może otwierać adresów złożonych przez model."), call);
+                }
+            }
+
+            foreach (var domain in SafetyGuard.DomainsIn(SafetyGuard.UrlsIn(order).Aggregate(order, (text, url) => text.Replace(url, " "))))
+            {
+                if (!_guard.IsUserDomain(domain))
+                {
+                    return Blocked(SafetyVerdict.Block(SafetyRules.Leak, "zlecenie zawiera domenę " + domain
+                        + ", której nie podał użytkownik — podagent nie może otwierać stron spoza rozmowy."), call);
+                }
+            }
+
             var number = Interlocked.Increment(ref _agentCounter);
             var request = new SubAgentRequest
             {
@@ -562,6 +757,21 @@ namespace LokalneAI.Harness.Session
         {
             if (call.Definition.IsBuiltIn && BuiltInTools.IsWeb(call.Name))
             {
+                SafetyVerdict web;
+                try
+                {
+                    web = _guard.CheckWeb(call);
+                }
+                catch (Exception e) when (!(e is OperationCanceledException))
+                {
+                    web = SafetyVerdict.Block(SafetyRules.Leak, "nie udało się sprawdzić adresu (" + e.Message + ").");
+                }
+
+                if (web.Kind == SafetyVerdictKind.Block)
+                {
+                    return Blocked(web, call);
+                }
+
                 try
                 {
                     return await BuiltInTools.ExecuteWebAsync(call.Name, call.Arguments, _options.Web, cancellationToken).ConfigureAwait(false);
@@ -570,6 +780,11 @@ namespace LokalneAI.Harness.Session
                 {
                     return ToolResult.Error("BŁĄD narzędzia " + call.Name + ": " + e.Message);
                 }
+            }
+
+            if (call.Definition.IsBuiltIn && BuiltInTools.IsSkillTool(call.Name))
+            {
+                return await RunSkillToolAsync(call, cancellationToken).ConfigureAwait(false);
             }
 
             if (call.Definition.IsBuiltIn)
@@ -591,6 +806,26 @@ namespace LokalneAI.Harness.Session
                 return ToolResult.Error("Gospodarz nie podłączył wykonawcy poleceń.");
             }
 
+            // Strażnik bezpieczeństwa przed zgodą użytkownika: blokady nie da się „zatwierdzić”, a „zawsze pytaj” pyta też w trybie bez pytania.
+            // Narzędzia SQL ma własnego strażnika (SqlGuard, transakcja tylko do odczytu).
+            var safety = SafetyVerdict.Allowed;
+            if (!_profile.Settings.SqlTools.Contains(call.Name))
+            {
+                try
+                {
+                    safety = _guard.Check(call, (_executor as IWorkingFolderProvider)?.WorkingFolderFor(call), _options.Web != null);
+                }
+                catch (Exception e) when (!(e is OperationCanceledException))
+                {
+                    safety = SafetyVerdict.Block(SafetyRules.RemoteCode, "nie udało się sprawdzić polecenia (" + e.Message + ").");
+                }
+
+                if (safety.Kind == SafetyVerdictKind.Block)
+                {
+                    return Blocked(safety, call);
+                }
+            }
+
             ConfirmationDecision decision = null;
             if (_executor is IConfirmingExecutor confirming)
             {
@@ -608,6 +843,20 @@ namespace LokalneAI.Harness.Session
             if (decision != null && decision.Kind == ConfirmationKind.Reject)
             {
                 return ToolResult.Error(string.IsNullOrWhiteSpace(decision.Message) ? "ODRZUCONE przez program." : decision.Message);
+            }
+
+            if (safety.Kind == SafetyVerdictKind.AlwaysAsk)
+            {
+                if (_options.ConfirmMutation == null)
+                {
+                    // „Zawsze pytaj” bez okna zgody nie może przejść po cichu (ConfirmMutation = null znaczy „zgoda bez pytania”).
+                    return ToolResult.Error("ODRZUCONE — to polecenie wymaga zgody użytkownika (" + safety.Reason + "), a program nie ma okna zgody.");
+                }
+
+                var question = decision != null && decision.Kind == ConfirmationKind.Ask && !string.IsNullOrWhiteSpace(decision.Message)
+                    ? decision.Message
+                    : "Wykonać polecenie?\n\n" + call;
+                decision = ConfirmationDecision.Ask(question + "\n\nUWAGA — bezpieczeństwo: " + safety.Reason, dangerous: true);
             }
 
             call.Mutating = decision != null ? decision.Kind == ConfirmationKind.Ask : call.Definition.Mutates;
@@ -632,6 +881,18 @@ namespace LokalneAI.Harness.Session
                 // Błąd gospodarza wraca do modelu jako wynik — model może poprawić wywołanie albo zapytać.
                 return ToolResult.Error(e.GetType().Name + ": " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// Wywołanie zablokowane przez strażnika: ostrzeżenie w oknie, wpis w dzienniku gospodarza i wynik dla modelu, który każe
+        /// nie ponawiać i nie obchodzić blokady, tylko powiedzieć użytkownikowi, jak zrobi to sam.
+        /// </summary>
+        private ToolResult Blocked(SafetyVerdict verdict, ToolCall call)
+        {
+            _guard.ReportBlocked(verdict, call);
+            Raise(new HarnessEvent(HarnessEventKind.Warning, "Program zablokował polecenie modelu (" + call.Name + "): " + verdict.Reason));
+            return ToolResult.Error("ZABLOKOWANE ze względów bezpieczeństwa: " + verdict.Reason
+                + " Tego Amadeusz nie robi sam, także za zgodą. Nie ponawiaj i nie próbuj innym sposobem — jeśli to potrzebne, powiedz użytkownikowi, jak zrobi to sam.");
         }
 
         /// <summary>Sprawdza argumenty, podstawia zmienne sesji i odwołania „id = 0”; zwraca opis błędu albo null.</summary>
@@ -871,6 +1132,64 @@ namespace LokalneAI.Harness.Session
             Context = new ContextUsage((int)(EstimateAll() * _tokensPerEstimate), _llm.ContextLength, true);
             Raise(new HarnessEvent(HarnessEventKind.Warning, warning));
             Raise(new HarnessEvent(HarnessEventKind.ContextChanged, Context.ToString(), null, Context));
+        }
+
+        /// <summary>
+        /// Narzędzia katalogu umiejętności: <c>znajdz_umiejetnosc</c> przeszukuje katalog gospodarza, <c>wlacz_umiejetnosci</c>
+        /// sprawdza nazwy i pyta użytkownika przez gospodarza (przycisk). Bez kliknięcia nic się nie włącza — wynik wyszukiwania
+        /// i powód od modelu to dane, nie zgoda.
+        /// </summary>
+        private async Task<ToolResult> RunSkillToolAsync(ToolCall call, CancellationToken cancellationToken)
+        {
+            var catalog = _options.SkillCatalog;
+            var skills = catalog?.Skills ?? new SkillCatalogEntry[0];
+            if (call.Name == BuiltInTools.FindSkillName)
+            {
+                var hits = SkillCatalog.Search(skills, call.GetString("zadanie"));
+                return ToolResult.Ok(SkillCatalog.Describe(hits, skills));
+            }
+
+            var names = SubAgentRunner.ParseSkills(call.GetString("umiejetnosci"));
+            if (catalog == null || names.Count == 0)
+            {
+                return ToolResult.Error("Podaj w „umiejetnosci” nazwy z wyniku " + BuiltInTools.FindSkillName + ".");
+            }
+
+            var chosen = new List<string>();
+            foreach (var name in names)
+            {
+                var match = skills.FirstOrDefault(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
+                if (match == null)
+                {
+                    return ToolResult.Error("Nie ma do włączenia umiejętności „" + name + "”. Do włączenia: " + string.Join(", ", skills.Select(s => s.Name)) + ".");
+                }
+
+                chosen.Add(match.Name);
+            }
+
+            var approved = await AskSkillsAsync(chosen, call.GetString("powod") ?? "", cancellationToken).ConfigureAwait(false);
+            var list = string.Join(", ", chosen);
+            return approved
+                ? ToolResult.Ok("Włączam umiejętność " + list + " i ponawiam polecenie.")
+                : ToolResult.Error("Użytkownik nie zgodził się na włączenie: " + list + ". Odpowiedz krótko, czego brakuje do zadania, i nie proś o to samo drugi raz.");
+        }
+
+        /// <summary>Pytanie gospodarza o włączenie umiejętności; błąd gospodarza = brak zgody (nic się nie włącza).</summary>
+        private async Task<bool> AskSkillsAsync(IReadOnlyList<string> skills, string reason, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return _options.SkillCatalog != null && await _options.SkillCatalog.RequestAsync(skills, reason, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                Raise(new HarnessEvent(HarnessEventKind.Warning, "Nie udało się zapytać o włączenie umiejętności: " + e.Message));
+                return false;
+            }
         }
 
         private TurnResult Finish(TurnKind kind, string text, List<ExecutedCall> calls, List<string> warnings, List<string> steps,

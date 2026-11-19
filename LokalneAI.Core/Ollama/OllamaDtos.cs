@@ -22,6 +22,9 @@ public sealed class ChatMessage
 
     /// <summary>Tok rozumowania modeli z trybem „myślenia”; Bielik go nie zwraca.</summary>
     public string? Thinking { get; set; }
+
+    /// <summary>Obrazy w base64 (PNG, JPEG) dla modelu, który widzi obrazy (<c>vision</c>); null = bez obrazów.</summary>
+    public List<string>? Images { get; set; }
 }
 
 /// <summary>Parametry generowania przekazywane modelowi.</summary>

@@ -63,6 +63,22 @@ public class OllamaClientTests
         Assert.Equal("Ile to 2+2?", root.GetProperty("messages")[1].GetProperty("content").GetString());
         Assert.False(root.TryGetProperty("keep_alive", out _), "puste pola nie idą do Ollamy");
         Assert.False(root.GetProperty("messages")[0].TryGetProperty("thinking", out _));
+        Assert.False(root.GetProperty("messages")[1].TryGetProperty("images", out _), "pytanie bez obrazów nie ma pola images");
+    }
+
+    [Fact]
+    public async Task ChatStream_ObrazyWPoluImages()
+    {
+        var handler = new FakeHandler(_ => FakeHandler.NdJson("""{"done":true}"""));
+        using var client = new OllamaClient(handler: handler);
+        var request = new ChatRequest { Model = "gemma4:12b", Messages = [new("user", "Co jest na obrazku?") { Images = ["iVBORw0KGgo="] }] };
+
+        await foreach (var _ in client.ChatStreamAsync(request))
+        {
+        }
+
+        using var json = JsonDocument.Parse(Assert.Single(handler.Requests).Body!);
+        Assert.Equal("iVBORw0KGgo=", json.RootElement.GetProperty("messages")[0].GetProperty("images")[0].GetString());
     }
 
     [Fact]

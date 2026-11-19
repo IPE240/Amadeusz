@@ -1,9 +1,9 @@
 ﻿# Buduje paczkę instalacyjną Amadeusza: dist\Amadeusz-<wersja>.zip
-#   powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 [-Wersja 0.7.0] [-ZDokumentacjaZRepozytoriow]
+#   powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 [-Wersja 0.8.0] [-ZDokumentacjaZRepozytoriow]
 # Program jest publikowany jako self-contained (win-x64): na komputerach biura nie trzeba instalować .NET.
 # Pliki pobrane z repozytoriów (profile\*\wiedza\zrodla) domyślnie NIE trafiają do paczki — bywają z prywatnych
 # repozytoriów; na każdym komputerze program pobierze je sam, jeśli jego użytkownik ma dostęp.
-param([string]$Wersja = "0.7.0", [switch]$ZDokumentacjaZRepozytoriow)
+param([string]$Wersja = "0.8.0", [switch]$ZDokumentacjaZRepozytoriow)
 
 $ErrorActionPreference = "Stop"
 $repo = Split-Path $PSScriptRoot -Parent
@@ -36,7 +36,7 @@ if (-not $ZDokumentacjaZRepozytoriow) {
     }
 }
 New-Item -ItemType Directory -Force (Join-Path $folder "docs") | Out-Null
-Copy-Item docs\osadzanie.md, docs\serwer-modelu.md, docs\profile.md, README.md -Destination (Join-Path $folder "docs")
+Copy-Item docs\osadzanie.md, docs\serwer-modelu.md, docs\profile.md, docs\sterowanie.md, docs\porty.md, docs\siec.md, README.md -Destination (Join-Path $folder "docs")
 if (Test-Path docs\wybor-modelu.md) { Copy-Item docs\wybor-modelu.md (Join-Path $folder "docs") }
 Copy-Item instalator\instaluj.bat, instalator\CZYTAJ.txt -Destination $folder
 foreach ($skrypt in @("instaluj.ps1", "odinstaluj.ps1")) {

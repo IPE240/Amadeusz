@@ -9,3 +9,4 @@ profile/*/wiedza/zrodla/
 *.local.json
 /Amadeusz.exe
 /Amadeusz.stary.exe
+*_wpftmp.csproj

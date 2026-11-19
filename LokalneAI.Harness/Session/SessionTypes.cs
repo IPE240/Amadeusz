@@ -60,6 +60,20 @@ namespace LokalneAI.Harness.Session
 
         /// <summary>Najwięcej znaków wyniku podagenta, które wracają do modelu agenta głównego (reszta ucięta z dopiskiem); 0 = bez limitu.</summary>
         public int SubAgentResultLimit { get; set; } = 6000;
+
+        /// <summary>
+        /// Katalog niewłączonych umiejętności gospodarza (<see cref="ISkillCatalog"/>): gdy ma wpisy, sesja dostaje narzędzia
+        /// <c>znajdz_umiejetnosc</c> i <c>wlacz_umiejetnosci</c> oraz sekcję „Brakujące polecenia”, a odpowiedź „nie mam narzędzia”
+        /// bez szukania raz cofa. Po zgodzie użytkownika tura kończy się, a gospodarz włącza umiejętności i ponawia polecenie.
+        /// Null = bez katalogu (podagenci, tablica, programy osadzające bibliotekę).
+        /// </summary>
+        public ISkillCatalog SkillCatalog { get; set; }
+
+        /// <summary>
+        /// Ustawienia strażnika bezpieczeństwa (<see cref="Tools.SafetyGuard"/>): dodatkowe foldery chronione, sekrety, dziennik blokad.
+        /// Strażnik działa zawsze — null znaczy tylko „domyślne foldery”. Sesję podagenta buduj z tymi samymi ustawieniami.
+        /// </summary>
+        public Tools.SafetyOptions Safety { get; set; }
     }
 
     /// <summary>Zajętość kontekstu modelu — do licznika w oknie gospodarza.</summary>

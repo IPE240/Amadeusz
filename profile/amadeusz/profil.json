@@ -1,0 +1,11 @@
+{
+  "nazwa": "amadeusz",
+  "opis": "Sam Amadeusz (LokalneAI): obsługa okna i ustawień, porty i zapora, brama HTTP (API Ollamy i OpenAI), podpinanie innych programów i skryptów, liczenie na innym komputerze, kontrola bez klikania (--autotest), pliki ustawień, umiejętności i instalacja. Model szuka w wiedzy, czyta stan, ustawienia (bez danych logowania), listę umiejętności i dzienniki Amadeusza i przełącza umiejętności albo profil (za zgodą). Ustawień, plików ani programu nie zmienia. Dane Amadeusza nie idą do Gemini ani GPT: tylko modele lokalne i Claude.",
+  "chmura": ["anthropic"],
+  "internet": false,
+  "zakonczenie": "model",
+  "narzedzia_wbudowane": ["szukaj_wiedzy"],
+  "max_krokow": 8,
+  "max_wywolan_w_kroku": 3,
+  "temperatura": 0.1
+}

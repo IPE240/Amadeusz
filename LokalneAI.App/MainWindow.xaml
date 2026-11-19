@@ -32,7 +32,7 @@
             <RowDefinition Height="26" />
         </Grid.RowDefinitions>
 
-        <!-- Pasek tytułu: nazwa, karty (Czat, Code, Ustawienia) i przyciski okna -->
+        <!-- Pasek tytułu: nazwa, karty (Czat, Code, Whiteboard, Ustawienia) i przyciski okna -->
         <DockPanel x:Name="TitleBar" Background="{StaticResource AccentDarkBrush}">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" Click="Minimize_Click" ToolTip="Minimalizuj" />
@@ -46,6 +46,7 @@
                      SelectedIndex="{Binding SelectedIndex, ElementName=Tabs, Mode=TwoWay}">
                 <ListBoxItem Content="Czat" ToolTip="Rozmowa z modelem" />
                 <ListBoxItem Content="Code" ToolTip="Asystent, który wykonuje polecenia: Tekla, baza CDE, pliki, PowerShell" />
+                <ListBoxItem Content="Whiteboard" ToolTip="Tablica: rysuj, pisz, wklejaj zrzuty (Capture) i pytaj — Amadeusz odpowiada i rysuje na swojej warstwie" />
                 <ListBoxItem Content="Ustawienia" ToolTip="Gdzie liczyć, udostępnianie w sieci, kolejka, parametry czatu" />
             </ListBox>
             <!-- Temperatura karty komputera, który liczy: ostatnie 2 minuty i bieżąca wartość (bez kliknięć — pasek dalej przesuwa okno). -->
@@ -185,6 +186,18 @@
                                                         <StackPanel>
                                                             <TextBlock Text="Ty" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AccentDarkBrush}" />
                                                             <TextBox Text="{Binding Question, Mode=OneWay}" Style="{StaticResource ReadOnlyText}" />
+                                                            <TextBlock Text="{Binding ImagesNote}" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0"
+                                                                       ToolTip="Wklejone obrazy poszły do modelu razem z pytaniem (model widzi obrazy)">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding ImagesNote}" Value="{x:Null}">
+                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
                                                         </StackPanel>
                                                     </Border>
                                                     <Border Background="{StaticResource TileBrush}" BorderBrush="{StaticResource RowLineBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,8,0,0">
@@ -225,7 +238,40 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <!-- Obrazki wklejone do pytania, które pójdą do modelu (model widzi obrazy): miniatura i „×”. -->
+                            <ItemsControl ItemsSource="{Binding PendingImages}" Grid.ColumnSpan="2" Margin="0,0,0,6">
+                                <ItemsControl.Style>
+                                    <Style TargetType="ItemsControl">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding PendingImages.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ItemsControl.Style>
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type hw:PendingImage}">
+                                        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="4" Margin="0,0,6,0"
+                                                ToolTip="Ten obraz pójdzie do modelu razem z pytaniem (model widzi obrazy); tekst z OCR jest w polu.">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Image Source="{Binding Thumbnail}" MaxHeight="44" MaxWidth="80" Stretch="Uniform" />
+                                                <TextBlock Text="{Binding Name}" Margin="6,0,4,0" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource MutedBrush}" />
+                                                <Button Content="×" Padding="5,0" VerticalAlignment="Center" Click="RemovePendingImage_Click" ToolTip="Nie wysyłaj tego obrazu" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Grid Grid.Row="1">
                                 <TextBox x:Name="QuestionBox" Text="{Binding Question, UpdateSourceTrigger=PropertyChanged}"
                                          AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" MaxHeight="220"
                                          VerticalScrollBarVisibility="Auto"
@@ -244,7 +290,7 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                             </Grid>
-                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                            <StackPanel Grid.Column="1" Grid.Row="1" Margin="10,0,0,0">
                                 <Button Content="Wyślij" Command="{Binding SendCommand}" Style="{StaticResource PrimaryButton}"
                                         Width="120" Height="36" />
                                 <Button Content="Stop" Command="{Binding StopCommand}" Width="120" Margin="0,8,0,0"
@@ -266,6 +312,11 @@
                 <!-- ===== Code: asystent wykonujący polecenia ===== -->
                 <TabItem x:Name="CodeTab" Header="Code">
                     <local:HarnessView x:Name="CodeView" />
+                </TabItem>
+
+                <!-- ===== Whiteboard: tablica z poleceniem pod spodem i odpowiedziami jak w Code ===== -->
+                <TabItem x:Name="WhiteboardTab" Header="Whiteboard">
+                    <local:WhiteboardView x:Name="Whiteboard" />
                 </TabItem>
 
                 <!-- ===== Ustawienia ===== -->

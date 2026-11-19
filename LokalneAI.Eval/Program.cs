@@ -17,15 +17,30 @@ using LokalneAI.Harness.Validation;
 //   LokalneAI.Eval test --profil profile\cde --model X --polaczenie polaczenie.local.json --ja <uuid>
 //   LokalneAI.Eval wiedza --profil profile\cde                       (aktualizacja wiedzy z zrodla.json)
 //   LokalneAI.Eval szukaj --profil profile\tekla --fraza "kotwy M24" (co dostałby model z szukaj_wiedzy)
+//   LokalneAI.Eval straznik --plik korpus.jsonl                      (strażnik bezpieczeństwa na liście wywołań; nic nie wykonuje)
+//   LokalneAI.Eval atak --plik scenariusze.jsonl --model X            (wstrzyknięcia na prawdziwym modelu, wykonawca-atrapa)
 //
 // Wyniki: <wyniki>\<profil>_<model>_<czas>.json (pełne odpowiedzi — zostają na tym PC) i podsumowanie na ekranie.
 Console.OutputEncoding = Encoding.UTF8;
 var options = Args.Parse(args);
-if (options.Command is not ("rozmiar" or "test" or "wiedza" or "szukaj"))
+if (options.Command is not ("rozmiar" or "test" or "wiedza" or "szukaj" or "straznik" or "atak"))
 {
     Console.WriteLine("Użycie: LokalneAI.Eval (rozmiar|test|wiedza|szukaj) --profil <folder> [--model X] [--url http://127.0.0.1:11434] [--ctx 8192]");
     Console.WriteLine("        [--limit N] [--wyniki folder] [--polaczenie plik.json] [--ja uuid] [--plan] [--temp 0.1] [--fraza \"słowa\"]");
+    Console.WriteLine("        LokalneAI.Eval straznik --plik korpus.jsonl | atak --plik scenariusze.jsonl --model X [--tylko W01,W02]");
     return 1;
+}
+
+if (options.Command == "straznik")
+{
+    // Strażnik bezpieczeństwa na liście wywołań (korpus JSONL) — nic nie jest wykonywane.
+    return SafetyEval.Corpus(options.File, options.Results);
+}
+
+if (options.Command == "atak")
+{
+    // Scenariusze wstrzyknięć na prawdziwym modelu; wykonawca-atrapa niczego nie wykonuje.
+    return await SafetyEval.AttackAsync(options.File, options);
 }
 
 if (options.Command == "szukaj")
@@ -94,6 +109,9 @@ internal sealed class Args
     public double Temperature { get; set; } = 0.1;
     public string Only { get; set; }
     public string Phrase { get; set; }
+    public string File { get; set; }
+    public bool NoSafetyPrompt { get; set; }
+    public bool ForceRead { get; set; }
 
     public static Args Parse(string[] args)
     {
@@ -115,6 +133,9 @@ internal sealed class Args
                 case "--temp": a.Temperature = double.Parse(Next(), CultureInfo.InvariantCulture); break;
                 case "--tylko": a.Only = Next(); break;
                 case "--fraza": a.Phrase = Next(); break;
+                case "--plik": a.File = Next(); break;
+                case "--bez-zasad": a.NoSafetyPrompt = true; break;
+                case "--wymus-czytanie": a.ForceRead = true; break;
             }
         }
 

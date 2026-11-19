@@ -1,0 +1,10 @@
+{
+  "nazwa": "whiteboard",
+  "opis": "Tablica (zakładka Whiteboard): model widzi opis tablicy — teksty użytkownika dosłownie, rysunki ze współrzędnymi, OCR obrazów i odręcznych napisów, a model z obsługą obrazów także jej obraz — i odpowiada tekstem oraz rysunkami na własnej warstwie (linie, strzałki, prostokąty, elipsy, łamane, napisy).",
+  "zakonczenie": "model",
+  "narzedzia_wbudowane": ["kalkulator"],
+  "max_krokow": 8,
+  "max_wywolan_w_kroku": 2,
+  "temperatura": 0.2,
+  "chmura": ["anthropic", "openai", "google"]
+}

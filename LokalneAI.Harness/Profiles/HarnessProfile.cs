@@ -74,7 +74,9 @@ namespace LokalneAI.Harness.Profiles
 
         /// <summary>
         /// Czy profil pozwala na internet (<c>internet</c> w <c>profil.json</c>), gdy użytkownik go włączy. Brak pola = nie:
-        /// np. w profilu z bazą danych model mógłby wysłać dane w zapytaniu do wyszukiwarki.
+        /// np. w profilu z bazą danych model mógłby wysłać dane w zapytaniu do wyszukiwarki. To ustawienie domyślne — gospodarz może
+        /// świadomie włączyć internet mimo braku zgody (<see cref="HarnessProfile.WithInternet"/> z <c>evenIfSkillsForbid</c>); okno
+        /// Amadeusza robi to, gdy użytkownik włączy przełącznik z powrotem po tym, jak wybór takiej umiejętności go wyłączył.
         /// </summary>
         public bool Internet { get; set; }
 
@@ -167,11 +169,13 @@ namespace LokalneAI.Harness.Profiles
 
         /// <summary>
         /// Ten sam profil z narzędziami <c>szukaj_w_internecie</c> i <c>czytaj_strone</c> — gdy pozwala na internet
-        /// (<see cref="ProfileSettings.Internet"/>); inaczej ten sam obiekt. Sesja potrzebuje jeszcze <see cref="Session.SessionOptions.Web"/>.
+        /// (<see cref="ProfileSettings.Internet"/>) albo gdy gospodarz włącza go świadomie mimo braku zgody umiejętności
+        /// (<paramref name="evenIfSkillsForbid"/>; okno Amadeusza: przełącznik internetu jest nadrzędny, decyzja użytkownika z 2026-11-19);
+        /// inaczej ten sam obiekt. Sesja potrzebuje jeszcze <see cref="Session.SessionOptions.Web"/>.
         /// </summary>
-        public HarnessProfile WithInternet()
+        public HarnessProfile WithInternet(bool evenIfSkillsForbid = false)
         {
-            if (!Settings.Internet || Tools.Any(t => t.Name == BuiltInTools.WebSearchName))
+            if (!Settings.Internet && !evenIfSkillsForbid || Tools.Any(t => t.Name == BuiltInTools.WebSearchName))
             {
                 return this;
             }
@@ -198,6 +202,23 @@ namespace LokalneAI.Harness.Profiles
             return new HarnessProfile(Name, SystemText, tools, Settings, CardText, Examples, Knowledge, Folder, Glossary) { Description = Description, _parts = _parts };
         }
 
+        /// <summary>
+        /// Ten sam profil z narzędziami katalogu umiejętności (<see cref="BuiltInTools.FindSkillName"/>,
+        /// <see cref="BuiltInTools.EnableSkillsName"/>); dokłada je sesja, gdy gospodarz poda <see cref="Session.SessionOptions.SkillCatalog"/>.
+        /// </summary>
+        public HarnessProfile WithSkillSearch()
+        {
+            if (Tools.Any(t => t.Name == BuiltInTools.FindSkillName))
+            {
+                return this;
+            }
+
+            var tools = Tools.ToList();
+            tools.Add(BuiltInTools.Get(BuiltInTools.FindSkillName));
+            tools.Add(BuiltInTools.Get(BuiltInTools.EnableSkillsName));
+            return new HarnessProfile(Name, SystemText, tools, Settings, CardText, Examples, Knowledge, Folder, Glossary) { Description = Description, _parts = _parts };
+        }
+
         private IReadOnlyList<HarnessProfile> _parts;
 
         /// <summary>Profile, z których złożono ten (<see cref="Combine"/>); dla zwykłego profilu — on sam.</summary>
@@ -209,7 +230,8 @@ namespace LokalneAI.Harness.Profiles
         /// <item>Polecenie systemowe i karta: części kolejnych profili z nagłówkiem roli. Narzędzia: suma (przy tej samej nazwie
         /// wygrywa pierwszy profil). Przykłady: wszystkie. Wiedza: jeden indeks, źródła z przedrostkiem nazwy profilu.</item>
         /// <item>Zasady bezpieczeństwa — najostrzejsze: chmura tylko u dostawców dozwolonych we <b>wszystkich</b> profilach,
-        /// internet tylko gdy pozwalają <b>wszystkie</b> (np. <c>cde</c> wyłącza go całej sesji), reguły i zakazy SQL — suma.</item>
+        /// zgoda na internet tylko gdy pozwalają <b>wszystkie</b> (np. <c>cde</c> nie pozwala; gospodarz może świadomie włączyć mimo to —
+        /// <see cref="WithInternet"/>), reguły i zakazy SQL — suma.</item>
         /// <item>Zakończenie tury: wspólne, gdy wszystkie mają takie samo; inaczej <see cref="FinishMode.Mixed"/>
         /// (koniec po zmianach, po samym czytaniu model decyduje dalej). Kroki i wywołania w kroku: największe.</item>
         /// </list>

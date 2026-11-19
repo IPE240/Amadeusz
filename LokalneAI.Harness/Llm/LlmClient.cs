@@ -15,11 +15,28 @@ namespace LokalneAI.Harness.Llm
             Content = content;
         }
 
+        /// <summary>
+        /// Tworzy wiadomość z obrazami (PNG albo JPEG) dla modelu, który widzi obrazy (Ollama: <c>images</c>, Claude i GPT:
+        /// bloki obrazów). Model bez obsługi obrazów dostaje samą treść — gospodarz powinien wtedy dać tekst z OCR.
+        /// </summary>
+        public LlmMessage(string role, string content, IReadOnlyList<byte[]> images)
+            : this(role, content)
+        {
+            Images = images == null || images.Count == 0 ? null : images;
+        }
+
         /// <summary>Rola: <c>system</c>, <c>user</c> albo <c>assistant</c>.</summary>
         public string Role { get; }
 
         /// <summary>Treść wiadomości.</summary>
         public string Content { get; }
+
+        /// <summary>Obrazy dołączone do wiadomości (bajty PNG albo JPEG); null = bez obrazów.</summary>
+        public IReadOnlyList<byte[]> Images { get; }
+
+        /// <summary>Typ MIME obrazu po pierwszych bajtach: <c>image/jpeg</c> albo <c>image/png</c> (domyślnie).</summary>
+        public static string MediaType(byte[] image)
+            => image != null && image.Length > 2 && image[0] == 0xFF && image[1] == 0xD8 ? "image/jpeg" : "image/png";
     }
 
     /// <summary>Zapytanie do modelu: wiadomości i schemat JSON, którego odpowiedź musi się trzymać.</summary>

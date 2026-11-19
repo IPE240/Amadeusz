@@ -50,8 +50,14 @@ namespace LokalneAI.Harness.Tools
     /// (<see cref="FileSystemOptions.AllowedRoots"/>); kopiowanie i przenoszenie niczego nie nadpisują.
     /// O zgodę pyta sesja według <see cref="Decide"/>: polecenia, które tylko czytają, idą bez pytania.
     /// </summary>
-    public sealed class FileSystemExecutor : IToolExecutor, IConfirmingExecutor
+    public sealed class FileSystemExecutor : IToolExecutor, IConfirmingExecutor, IWorkingFolderProvider, IFolderAccess
     {
+        /// <summary>Dodaje folder do dozwolonych (po zgodzie użytkownika w rozmowie, patrz <see cref="IFolderAccess"/>).</summary>
+        public bool AllowFolder(string folder) => FolderAccess.AddTo(_options.AllowedRoots, folder);
+
+        /// <summary>Folder ścieżek względnych (zmienia go <c>przejdz_do_folderu</c> i <c>cd</c>) — dla strażnika bezpieczeństwa.</summary>
+        public string WorkingFolderFor(ToolCall call) => WorkingFolderOrRoot;
+
         private static readonly HashSet<string> ExecutableExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             ".exe", ".com", ".bat", ".cmd", ".ps1", ".vbs", ".vbe", ".js", ".jse", ".wsf", ".msi", ".msp", ".lnk", ".scr", ".jar",

@@ -28,6 +28,12 @@ public sealed class AppSettings
 
     public int ContextLength { get; set; } = DefaultContextLength;
 
+    /// <summary>
+    /// Kontekst zapytań w zakładce Code (lista „Kontekst” nad rozmową); 0 = jak w Czacie, ale co najmniej 16 384. Przy liczeniu na innym
+    /// komputerze i tak nie więcej, niż on przyjmuje („kontekst do” w jego Ustawieniach → Udostępnianie).
+    /// </summary>
+    public int CodeContextLength { get; set; }
+
     /// <summary>Wysyłać modelowi wcześniejsze pytania i odpowiedzi.</summary>
     public bool RememberConversation { get; set; }
 
@@ -148,6 +154,12 @@ public sealed class AppSettings
     /// <summary>Zakładka Code: pokazuj wpisy „Krok N” (co model zwrócił w każdym kroku). Przełącznik nad rozmową i w Ustawieniach → Czat.</summary>
     public bool ShowSteps { get; set; }
 
+    /// <summary>
+    /// Zakładka Whiteboard: sesja tablicy dostaje też umiejętności zaznaczone w zakładce Code (domyślnie nie — sama tablica,
+    /// krótszy prompt i mniej pomyłek małych modeli).
+    /// </summary>
+    public bool WhiteboardCodeSkills { get; set; }
+
     /// <summary>Pozwalaj na przeliczanie zapytań z innych komputerów tej samej podsieci.</summary>
     public bool ShareOnLan { get; set; }
 
@@ -223,6 +235,11 @@ public sealed class AppSettings
         if (!ContextChoices.Contains(ContextLength))
         {
             ContextLength = DefaultContextLength;
+        }
+
+        if (CodeContextLength != 0 && !ContextChoices.Contains(CodeContextLength))
+        {
+            CodeContextLength = 0; // jak w Czacie
         }
 
         if (GatewayPort is < 1024 or > 65535)

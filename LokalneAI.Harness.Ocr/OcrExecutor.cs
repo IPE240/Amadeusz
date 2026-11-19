@@ -18,11 +18,17 @@ namespace LokalneAI.Harness.Ocr
     /// scalanie i obracanie — PDFsharp. Ścieżki tylko w dozwolonych folderach; czytanie bez pytania, każdy nowy plik z pytaniem,
     /// istniejących plików nie nadpisuje.
     /// </summary>
-    public sealed class OcrExecutor : IToolExecutor, IConfirmingExecutor
+    public sealed class OcrExecutor : IToolExecutor, IConfirmingExecutor, IWorkingFolderProvider, IFolderAccess
     {
+        /// <summary>Dodaje folder do dozwolonych (po zgodzie użytkownika w rozmowie, patrz <see cref="IFolderAccess"/>).</summary>
+        public bool AllowFolder(string folder) => FolderAccess.AddTo(_options.AllowedRoots, folder);
+
         private readonly OcrOptions _options;
         private readonly OcrEngine _engine;
         private readonly FileSystemExecutor _files;
+
+        /// <summary>Folder ścieżek względnych — dla strażnika bezpieczeństwa.</summary>
+        public string WorkingFolderFor(ToolCall call) => _options.WorkingFolder;
 
         /// <summary>Tworzy wykonawcę. Pusta lista <see cref="OcrOptions.AllowedRoots"/> = żadne polecenie na plikach nie przejdzie.</summary>
         public OcrExecutor(OcrOptions options)

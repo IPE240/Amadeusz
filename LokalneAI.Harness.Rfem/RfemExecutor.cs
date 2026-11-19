@@ -43,10 +43,16 @@ namespace LokalneAI.Harness.Rfem
     /// Polecenia <c>rfem_otwarty*</c> i <c>rfem_wskaz</c> (<see cref="LiveTools"/>) czytają zamiast pliku model otwarty w uruchomionym
     /// RFEM 5 przez RF-COM (<see cref="RfemLive"/>): też tylko do odczytu, licencja RF-COM zajmowana na czas jednego polecenia.
     /// </summary>
-    public sealed class RfemExecutor : IToolExecutor, IConfirmingExecutor, IDisposable
+    public sealed class RfemExecutor : IToolExecutor, IConfirmingExecutor, IWorkingFolderProvider, IFolderAccess, IDisposable
     {
+        /// <summary>Dodaje folder do dozwolonych (po zgodzie użytkownika w rozmowie, patrz <see cref="IFolderAccess"/>).</summary>
+        public bool AllowFolder(string folder) => FolderAccess.AddTo(_options.AllowedRoots, folder);
+
         private readonly RfemOptions _options;
         private readonly FileSystemExecutor _files;
+
+        /// <summary>Folder ścieżek względnych — dla strażnika bezpieczeństwa.</summary>
+        public string WorkingFolderFor(ToolCall call) => _options.WorkingFolder;
         private readonly Dictionary<string, Rf5Document> _cache = new Dictionary<string, Rf5Document>(StringComparer.OrdinalIgnoreCase);
         private readonly object _lock = new object();
 

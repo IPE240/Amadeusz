@@ -37,6 +37,7 @@ pokazuje modele tamtego komputera.
 
 Port to **11435** (TCP), a wyszukiwanie używa **11436** (UDP). Port jest ten sam na wszystkich komputerach.
 Zmienia się go w Ustawieniach tylko wtedy, gdy 11435 jest zajęty, i wtedy przy łączeniu trzeba podać `IP:port`.
+Wszystkie porty, reguły zapory i połączenia wychodzące: [porty.md](porty.md).
 
 ## Komputery dla podagentów
 
@@ -116,7 +117,9 @@ var llm = new OllamaLlmClient(new OllamaOptions
 Program, który łączy się przez bramę, liczy tam, gdzie użytkownik wybrał w oknie, i czeka w tej samej kolejce
 co czat. Gdy okno nie działa, `ChooseUrl()` zwraca `http://127.0.0.1:11434` i program łączy się wprost z Ollamą,
 tak jak dotąd. Inne języki (Python i inne) wysyłają zwykłe zapytania API Ollamy na `http://127.0.0.1:11435`
-z nagłówkiem `X-LokalneAI-Program`.
+albo API OpenAI na `http://127.0.0.1:11435/v1`, z nagłówkiem `X-LokalneAI-Program`. Trasy, nagłówki, kody błędów,
+sprawdzone przykłady (PowerShell, curl, Python, OpenAI SDK) i ustawienia gotowych narzędzi (Open WebUI, Continue,
+LangChain): [sterowanie.md](sterowanie.md).
 
 Opis bramy: `GET http://<komputer>:11435/lokalneai/info` zwraca nazwę, kartę, długość kolejki i limit kontekstu.
 

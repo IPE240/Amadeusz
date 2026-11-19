@@ -1,0 +1,57 @@
+{
+  "narzedzia": [
+    {
+      "nazwa": "rysuj",
+      "opis": "Rysuje na tablicy, na warstwie Amadeusza (osobno od rysunków użytkownika): linie, strzałki, prostokąty, elipsy, łamane i krótkie napisy. Współrzędne w pikselach tablicy: (0, 0) = lewy górny róg, x w prawo, y w dół.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "elementy": {
+            "type": "array",
+            "description": "kształty, np. [{\"typ\":\"strzalka\",\"x\":400,\"y\":120,\"x2\":310,\"y2\":200,\"kolor\":\"fioletowy\"},{\"typ\":\"tekst\",\"x\":405,\"y\":95,\"tekst\":\"tu podpora\"}]",
+            "items": {
+              "type": "object",
+              "properties": {
+                "typ": {
+                  "type": "string",
+                  "enum": ["linia", "strzalka", "prostokat", "elipsa", "lamana", "tekst"]
+                },
+                "x": { "type": "number", "description": "początek, lewy górny róg albo miejsce tekstu" },
+                "y": { "type": "number" },
+                "x2": { "type": "number", "description": "koniec linii lub strzałki (grot), prawy dolny róg prostokąta lub elipsy" },
+                "y2": { "type": "number" },
+                "punkty": {
+                  "type": "array",
+                  "description": "łamana: x1, y1, x2, y2, …",
+                  "items": { "type": "number" }
+                },
+                "tekst": { "type": "string", "description": "napis (typ tekst), krótko" },
+                "kolor": {
+                  "type": "string",
+                  "enum": ["fioletowy", "niebieski", "czerwony", "zielony", "pomaranczowy", "czarny"]
+                },
+                "rozmiar": { "type": "number", "description": "wielkość napisu w px, domyślnie 18" }
+              },
+              "required": ["typ"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["elementy"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "wyczysc_rysunki",
+      "opis": "Kasuje wszystkie wcześniejsze rysunki Amadeusza z tablicy (rysunki użytkownika zostają). Tylko gdy użytkownik o to prosi albo przed narysowaniem nowej wersji własnego rysunku.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

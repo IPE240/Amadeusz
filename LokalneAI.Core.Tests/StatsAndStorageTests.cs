@@ -155,6 +155,15 @@ public sealed class StorageTests : IDisposable
         Assert.Equal("http://127.0.0.1:11434", settings.OllamaUrl);
     }
 
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(16384, 16384)]
+    [InlineData(32768, 32768)]
+    [InlineData(12345, 0)]
+    [InlineData(-1, 0)]
+    public void Settings_KontekstZakladkiCode_ZListyAlbo0JakWCzacie(int stored, int expected)
+        => Assert.Equal(expected, new AppSettings { CodeContextLength = stored }.Normalize().CodeContextLength);
+
     [Fact]
     public void History_DopisujeLinieJsonZCzytelnymiZnakami()
     {

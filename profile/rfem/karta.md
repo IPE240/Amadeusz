@@ -21,7 +21,7 @@
 - powierzchni, podpór, przegubów, zwolnień, mimośrodów, wartości obciążeń, wyników z modułów (RF-STEEL, RF-STABILITY), reakcji podporowych — tylko RFEM.
 - wyników w pliku zapisanym przed obliczeniem albo bez wyników („Wyniki: brak”).
 - plików RFEM 6 (.rf6) — inna budowa, nie czytamy.
-- Numery prętów mają luki (np. 28, 29, 40…): „nie ma pręta 4” bywa poprawną odpowiedzią, `rfem_szukaj_pretow` pokaże, które są. Ale gdy użytkownik widzi pręt w RFEM, nie upieraj się — odczyt pliku bywa niepełny (zapis rekordu nieznany programowi): sprawdź `rfem_otwarty_pret`, a bez otwartego RFEM-a powiedz, że odczyt mógł pominąć pręt, i podaj liczbę prętów i zakres numerów z `rfem_info`.
+- Numery prętów mają luki (np. 28, 29, 40…): „nie ma pręta 4” bywa poprawne (`rfem_szukaj_pretow` pokaże, które są), ale gdy użytkownik widzi pręt w RFEM — odczyt bywa niepełny: `rfem_otwarty_pret`.
 
 Teczki projektów mają nazwy `NNNN_SKRÓT_Nazwa` (np. `1095_WSP`); modele .rf5 leżą zwykle w podfolderze `RFEM` albo `Obliczenia`.
 

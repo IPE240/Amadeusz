@@ -23,6 +23,15 @@ namespace LokalneAI.Harness.Tools
         /// <summary>Zlecenie podagentowi (dokładane, gdy sesja ma <see cref="Session.SessionOptions.SubAgents"/>).</summary>
         public const string DelegateName = "zlec_podagentowi";
 
+        /// <summary>Szukanie umiejętności z brakującymi poleceniami (dokładane, gdy sesja ma <see cref="Session.SessionOptions.SkillCatalog"/>).</summary>
+        public const string FindSkillName = "znajdz_umiejetnosc";
+
+        /// <summary>Prośba o włączenie umiejętności (przycisk zgody w rozmowie; po zgodzie gospodarz włącza ją i ponawia polecenie).</summary>
+        public const string EnableSkillsName = "wlacz_umiejetnosci";
+
+        /// <summary>Czy to narzędzie katalogu umiejętności (wykonywane przez <see cref="Session.ISkillCatalog"/> z opcji sesji).</summary>
+        public static bool IsSkillTool(string name) => name == FindSkillName || name == EnableSkillsName;
+
         /// <summary>Czy to narzędzie internetowe (wykonywane przez <see cref="WebAccess"/> z opcji sesji).</summary>
         public static bool IsWeb(string name) => name == WebSearchName || name == WebFetchName;
 
@@ -63,6 +72,22 @@ namespace LokalneAI.Harness.Tools
                         WebFetchName,
                         "Czyta stronę internetową jako tekst (adres z wyników wyszukiwania albo od użytkownika). Długie strony w częściach: od_znaku.",
                         "{\"type\":\"object\",\"properties\":{\"adres\":{\"type\":\"string\",\"description\":\"pełny adres https://…\"},\"od_znaku\":{\"type\":\"integer\",\"description\":\"od którego znaku czytać (domyślnie 0)\"}},\"required\":[\"adres\"],\"additionalProperties\":false}")
+                    {
+                        IsBuiltIn = true,
+                    };
+                case FindSkillName:
+                    return new ToolDefinition(
+                        FindSkillName,
+                        "Szuka wśród niewłączonych umiejętności Amadeusza takiej, która ma polecenia do zadania (gdy Twoje polecenia tego nie robią). Zwraca pasujące umiejętności z ich poleceniami.",
+                        "{\"type\":\"object\",\"properties\":{\"zadanie\":{\"type\":\"string\",\"description\":\"czego brakuje, kilka słów, np. lista plików w folderze, odczyt modelu RFEM, mail w Outlooku\"}},\"required\":[\"zadanie\"],\"additionalProperties\":false}")
+                    {
+                        IsBuiltIn = true,
+                    };
+                case EnableSkillsName:
+                    return new ToolDefinition(
+                        EnableSkillsName,
+                        "Prosi użytkownika (przycisk w rozmowie) o włączenie umiejętności znalezionych przez znajdz_umiejetnosc. Po zgodzie program je włącza i sam ponawia polecenie użytkownika.",
+                        "{\"type\":\"object\",\"properties\":{\"umiejetnosci\":{\"type\":\"string\",\"description\":\"nazwy po przecinku, dokładnie z wyniku znajdz_umiejetnosc\"},\"powod\":{\"type\":\"string\",\"description\":\"jedno zdanie dla użytkownika: czego brakuje i co ta umiejętność da\"}},\"required\":[\"umiejetnosci\",\"powod\"],\"additionalProperties\":false}")
                     {
                         IsBuiltIn = true,
                     };

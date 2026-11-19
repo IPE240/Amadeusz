@@ -1,0 +1,92 @@
+{
+  "narzedzia": [
+    {
+      "nazwa": "stan_amadeusza",
+      "opis": "Stan Amadeusza teraz: wersja, model i gdzie liczy, brama (port, udostępnianie w sieci), internet, zaznaczone umiejętności i profil, uprawnienia zakładki Code, dozwolone foldery i folder bieżący, komputery dla podagentów, modele na liście. Tylko odczyt.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "ustawienia_amadeusza",
+      "opis": "Ustawienia Amadeusza (pola z ustawienia.json, bez danych logowania), wszystkie albo wybrane. Tylko odczyt — zmienia je użytkownik w oknie Ustawień.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "pola": {
+            "type": "string",
+            "description": "nazwy pól po przecinku, np. gatewayPort, shareOnLan, computeOn; puste = wszystkie"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "umiejetnosci_amadeusza",
+      "opis": "Bez nazwy: lista umiejętności (opis, czy zaznaczona, czy ma polecenia, internet, chmura) i profili (zestawów umiejętności). Z nazwą: szczegóły jednej umiejętności — opis, polecenia, zasady. Tylko odczyt.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "nazwa": {
+            "type": "string",
+            "description": "nazwa umiejętności, np. tekla; puste = lista wszystkich"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "dziennik_amadeusza",
+      "opis": "Ostatnie linie dziennika Amadeusza: bledy (błędy programu) albo bezpieczenstwo (blokady strażnika). Tylko odczyt.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "dziennik": {
+            "type": "string",
+            "enum": ["bledy", "bezpieczenstwo"]
+          },
+          "linie": {
+            "type": "integer",
+            "description": "ile ostatnich linii, 1–100; domyślnie 20"
+          }
+        },
+        "required": ["dziennik"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "wybierz_umiejetnosci",
+      "opis": "Przełącza umiejętności w zakładce Code (jak zaznaczenie na liście nad rozmową) albo wybiera profil (zestaw umiejętności). Zmiana działa od następnego polecenia użytkownika; rozmowa trwa dalej.",
+      "zmienia_model": true,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "umiejetnosci": {
+            "type": "string",
+            "description": "nazwy po przecinku, np. tekla, pliki"
+          },
+          "tryb": {
+            "type": "string",
+            "enum": ["ustaw", "dodaj", "usun"],
+            "description": "ustaw = dokładnie te (domyślnie), dodaj = dołącz do zaznaczonych, usun = odznacz"
+          },
+          "profil": {
+            "type": "string",
+            "description": "nazwa profilu z listy, np. Biuro — zamiast umiejętności"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

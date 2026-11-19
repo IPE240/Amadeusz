@@ -37,7 +37,8 @@ Są dwie części:
    - **ocr**: „zrób OCR pliku skan.jpg”, „przeczytaj protokol.pdf (skan)”, „zrób OCR wszystkich skanów w folderze skany”, „czy raport.pdf
      to skan czy dokument?”. Tekst ze skanów, zdjęć i PDF-ów bez warstwy tekstowej rozpoznaje Tesseract 5 skryptem (bez modelu),
      z ustawieniami z Ustawienia → OCR (języki, obrót, układ tabel, próg pewności, reguły ignorowania, dpi). Obrazek wklejony do pola
-     rozmowy (Ctrl+V w Code albo w Czacie) jest rozpoznawany od razu, a tekst trafia do pola. Umiejętność `office` ma też polecenia PDF:
+     rozmowy (Ctrl+V w Code albo w Czacie) jest rozpoznawany od razu, a tekst trafia do pola; model, który widzi obrazy, dostaje
+     też sam obraz (niżej: „Wklejony obrazek”). Umiejętność `office` ma też polecenia PDF:
      `pdf_czytaj`, `pdf_info`, `pdf_polacz`, `pdf_wytnij`, `pdf_obroc` ([profile/ocr/README.md](profile/ocr/README.md)).
    - **rfem**: „co jest w modelu hala.rf5?”, „jaki przekrój i długość ma pręt 28?”, „jaka jest siła w pręcie 28?”, „siły w pręcie 29 od KO5”,
      „które pręty mają HEA 160?”, „jakie są kombinacje?”. Plik RFEM 5 (.rf5) jest czytany z dysku bez programu Dlubal
@@ -56,24 +57,35 @@ Są dwie części:
      GetActiveObject działa dla Robota?”. Siedem umiejętności samej wiedzy z repozytorium `CS-cheak_structures` (ponad 1000
      plików Markdown podzielonych tematycznie, każdy plik w jednej umiejętności); dokumentacja RFEM z tego repozytorium
      doszła do `rfem`. Profil domyślny „Check Structures” ([profile/cs_program/README.md](profile/cs_program/README.md)).
+   - **amadeusz**: „na czym teraz liczę?”, „jaki port bramy mam ustawiony?”, „przełącz na teklę”, „pokaż ostatnie błędy”,
+     „jak podpiąć skrypt w Pythonie?”, „jaki base_url dla biblioteki openai?”. Sam Amadeusz: wiedza o oknie, portach, bramie,
+     podpinaniu programów i kontroli `--autotest`, a do tego odczyt stanu, ustawień (bez danych logowania), umiejętności
+     i dzienników oraz przełączanie umiejętności (za zgodą). Niczego w sobie nie zmienia; tylko modele lokalne i Claude
+     ([profile/amadeusz/README.md](profile/amadeusz/README.md)).
 
    Dokumentację dla modelu wkleja się do `profile\<nazwa>\wiedza\`. Repozytoria z dokumentacją dodaje się przyciskiem
    **Źródła wiedzy…** w oknie asystenta; pliki aktualizują się same ([docs/profile.md](docs/profile.md)).
 
    Jak osadzić: [docs/osadzanie.md](docs/osadzanie.md). Serwer modelu w biurze: [docs/serwer-modelu.md](docs/serwer-modelu.md).
-   Kolejka i liczenie na innym komputerze: [docs/siec.md](docs/siec.md).
+   Kolejka i liczenie na innym komputerze: [docs/siec.md](docs/siec.md). **Sterowanie Amadeuszem i podpinanie innych
+   programów** (brama HTTP, API Ollamy i OpenAI, `--autotest`, pliki ustawień): [docs/sterowanie.md](docs/sterowanie.md).
+   Porty i zapora: [docs/porty.md](docs/porty.md). **Bezpieczeństwo** — czego Amadeusz nie robi sam (także za zgodą)
+   i co zawsze pyta: [docs/bezpieczenstwo.md](docs/bezpieczenstwo.md).
    Format profilu: [docs/profile.md](docs/profile.md). Wybór modelu: [docs/wybor-modelu.md](docs/wybor-modelu.md).
 
    **Opisy dla AI:**
    - agenci kodujący (Claude, Cursor) czytają [AGENTS.md](AGENTS.md) i [docs/biblioteki-dla-agentow.md](docs/biblioteki-dla-agentow.md);
+   - agent, który ma **użyć** Amadeusza (zadać pytanie modelowi, podpiąć program, uruchomić umiejętność bez klikania),
+     czyta [docs/sterowanie.md](docs/sterowanie.md);
    - gdzie wkładać dokumentację dla lokalnych modeli i jak ją pisać: [docs/wiedza-dla-modeli.md](docs/wiedza-dla-modeli.md);
    - zasady dla programistów: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md);
    - szablony profilu i plików dla repozytoriów programów: [szablony](szablony).
 2. **Okno** (`LokalneAI.App`) wygląda jak TransmittalMaster (kolory i style w `LokalneAI.App\Theme.xaml`).
    Karty są w granatowym pasku tytułu:
    - **Czat**: rozmowa z modelem i statystyki „gdzie liczył”.
-   - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`, `office`, `ocr`, `rfem`) albo odpowiadający z dokumentacji (`mkk`, `tlumaczenie`, `tablice`), `cs_*` albo odpowiadający z dokumentacji
-     (`mkk`). Profile zaznacza się jak listę wyboru — kilka naraz (niżej). Ma trzy poziomy uprawnień:
+   - **Code**: asystent wykonujący polecenia (umiejętności `tekla`, `cde`, `pliki`, `komputer`, `office`, `ocr`, `rfem`)
+     albo odpowiadający z dokumentacji (`mkk`, `tlumaczenie`, `tablice`, `cs_*`, `amadeusz`). Umiejętności zaznacza się
+     jak listę wyboru — kilka naraz (niżej). Ma trzy poziomy uprawnień:
      *Tylko czyta*, *Pyta o każdą zmianę* i *Bez pytania (poza kasowaniem)*. Z lewej **panel rozmów** (niżej).
    - **Ustawienia**: gdzie liczyć (ten komputer albo mocniejszy komputer w biurze), modele w chmurze (test),
      udostępnianie tego komputera innym z tej samej podsieci, podgląd kolejki i parametry czatu.
@@ -83,9 +95,11 @@ Są dwie części:
    na górze listy. Zasady: [docs/plan-modele-w-chmurze.md](docs/plan-modele-w-chmurze.md); w profilu `cde` wolno
    tylko modele lokalne i Claude.
 
-   W oknie działa **brama** (`LokalneAI.Gateway`, port 11435). Zapytania czatu, zakładki Code, innych programów
-   na tym PC i innych komputerów czekają przez nią w jednej kolejce, a zapytania z tego komputera mają pierwszeństwo.
-   Opis: [docs/siec.md](docs/siec.md). Co mają inne aplikacje i co dalej:
+   W oknie działa **brama** (`LokalneAI.Gateway`, `http://127.0.0.1:11435`, API Ollamy i API zgodne z OpenAI). Zapytania
+   czatu, zakładki Code, innych programów na tym PC i innych komputerów czekają przez nią w jednej kolejce, a zapytania
+   z tego komputera mają pierwszeństwo. Inny program podpina się, zmieniając adres Ollamy z portu 11434 na 11435.
+   Opis: [docs/siec.md](docs/siec.md), [docs/sterowanie.md](docs/sterowanie.md), porty: [docs/porty.md](docs/porty.md).
+   Co mają inne aplikacje i co dalej:
    [docs/badania/funkcje-aplikacji.md](docs/badania/funkcje-aplikacji.md).
 
 ## Wymagania
@@ -122,6 +136,12 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
 - **Zwolnij pamięć GPU** wyrzuca model z karty tego komputera od razu, np. przed pracą w Tekli. Bez tego Ollama
   zwalnia pamięć sama po 5 minutach bezczynności.
 - **Pamiętaj rozmowę** (pod czatem) jest domyślnie wyłączone, więc każde pytanie liczy się od zera.
+- **Bezpieczeństwo** ([docs/bezpieczenstwo.md](docs/bezpieczenstwo.md)): strażnik w kodzie sprawdza każde polecenie modelu,
+  zanim okno zapyta o zgodę. Nigdy, także po kliknięciu „Tak”, model nie zmieni samego Amadeusza (program, ustawienia,
+  umiejętności, rozmowy), nie uruchomi go, nie otworzy zapory, portów ani pulpitu zdalnego, nie przeczyta haseł i kluczy, nie doda
+  autostartu, nie wyłączy Defendera, nie wyśle danych z komputera i nie sięgnie do innych komputerów — wynik „ZABLOKOWANE”
+  i ostrzeżenie w oknie, wpis w `%LOCALAPPDATA%\LokalneAI\bezpieczenstwo.log`. Instalacje, uruchamianie skryptów z plików,
+  rejestr, usługi i zamykanie programów pytają zawsze, także w trybie „Bez pytania”.
 - **Odblokuj dostęp do internetu** (przełącznik obok listy modeli, zapamiętany): czat i zakładka Code mogą szukać
   w internecie (DuckDuckGo, bez klucza) i czytać strony, a w odpowiedzi podają źródła. Czat z internetem odpowiada
   od razu całym tekstem i działa z każdym modelem. W zakładce Code — tylko w profilach z `"internet": true`
@@ -170,12 +190,37 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
   wyniki, aż do odpowiedzi albo limitu kroków (`max_krokow` w profilu, domyślnie 12; „Model pracuje (krok 3 z 12)…”).
   Z włączonym przełącznikiem każdy krok widać w rozmowie jako wpis „Krok N: wywołania → …” (surowy JSON w szczegółach),
   także w przebiegu podagentów. Wpisy zapisują się zawsze — przełącznik to tylko widok, działa też na starsze rozmowy.
+- **Brakujące umiejętności** (Code): gdy do polecenia nie ma narzędzia w zaznaczonych umiejętnościach, Amadeusz nie odpowiada
+  „nie potrafię”, tylko przeszukuje pozostałe umiejętności (`znajdz_umiejetnosc`: nazwy, opisy, polecenia, karta) i prosi
+  o włączenie pasującej — w rozmowie pojawia się pytanie z przyciskami **Tak, włącz i ponów** / **Nie**. Po zgodzie umiejętność
+  dochodzi do zaznaczonych, a polecenie idzie jeszcze raz samo, z całą rozmową (najwyżej dwa ponowienia z rzędu). Katalog
+  pomija umiejętności ukryte, bez poświadczenia i te, których wybrany model w chmurze nie może liczyć. Gdy model mimo to
+  odpowie „nie mam narzędzia”, program sam przeszukuje umiejętności i podsuwa mu wynik, a za drugim razem sam pokazuje
+  przycisk zgody na najlepiej pasującą.
 - **Podagenci** (Code): model może zlecić części pracy osobnym asystentom (`zlec_podagentowi`): każdy ma własną sesję
   i model, nie widzi rozmowy (dostaje tylko zadanie i dane), a kilka zleceń z jednego kroku liczy się równolegle na
   komputerach z Ustawień → Gdzie liczyć → Komputery dla podagentów (także „Ten komputer”). Program sam dobiera model do
   karty każdego komputera. W trakcie każdy podagent to kafelek nad polem polecenia (komputer, model, krok, sekundy,
   przycisk **Przerwij**); po skończeniu — rozwijany wpis w rozmowie z całym przebiegiem (drzewo: polecenie, kroki,
   wywołania, odpowiedź), zapisywany z rozmową. Stop przerywa wszystkich. Szczegóły: [docs/siec.md](docs/siec.md).
+- **Wklejony obrazek** (Ctrl+V w polu Code albo Czatu): OCR wstawia rozpoznany tekst do pola, a gdy wybrany model widzi
+  obrazy (Ollama zgłasza `vision`: gemma4, qwen3.5, ministral; modele w chmurze — tak; Bielik — nie), obraz idzie też do
+  modelu, zmniejszony do 1568 px — miniatura nad polem, „×” go usuwa. Model dostaje wtedy tekst z OCR i obraz (odczyt
+  i interpretacja); model bez obsługi obrazów — sam tekst.
+- **Whiteboard** (zakładka między Code a Ustawieniami): tablica z narzędziami jak w Lightshocie — Zaznacz (V), Pióro (P),
+  Linia (L), Strzałka (A), Prostokąt (R), Marker (M), Tekst (T), Gumka (E), kolory, grubość, Cofnij/Ponów (Ctrl+Z/Ctrl+Y),
+  Delete usuwa zaznaczenie. Teksty to małe pola jednej czcionki bez formatowania (dwuklik w trybie Zaznacz je edytuje).
+  Ctrl+V (albo „Wklej”) kładzie obrazek; rozmiar zmienia Zaznacz, zawsze proporcjonalnie. **Capture** chowa okno, a w miejscu
+  tablicy zostaje przezroczysta ramka tego samego rozmiaru z przyciskami Zatwierdź i Zaniechaj — ramkę można przesuwać
+  i zmieniać; Zatwierdź robi zrzut jej wnętrza na tablicę, po obu przyciskach okno wraca jak było. Pod tablicą pole polecenia
+  i **Zatwierdź** (Enter). Model dostaje opis tablicy: teksty użytkownika **dosłownie** (nie spłaszczone do obrazu, więc bez
+  OCR), linie, strzałki i prostokąty ze współrzędnymi, pióro i marker jako obszary, obrazy z OCR (raz po wklejeniu) i OCR
+  odręcznych napisów (same pociągnięcia pióra; tylko przy rozsądnej pewności). Model, który widzi obrazy, dostaje też obraz
+  całej tablicy. Odpowiedź jest z prawej jak w Code (kroki, wywołania), a rysunki Amadeusza (linie, strzałki, prostokąty,
+  elipsy, łamane, napisy) leżą wektorowo na osobnej warstwie — „Rysunki Amadeusza” ją chowa, „Wyczyść rysunki Amadeusza”
+  kasuje. Umiejętność `whiteboard` ([profile/whiteboard/README.md](profile/whiteboard/README.md)) nie pokazuje się w Code;
+  „z umiejętnościami z Code” pod tablicą dokłada umiejętności zaznaczone w Code (te same uprawnienia). Tablica nie zapisuje
+  się na dysk — po zamknięciu programu jest pusta.
 - **Rozmowy w Czacie** (panel z lewej, jak w Code): `Dokumenty\Amadeusz\Czat\`, grupa = podfolder (`+ Nowa grupa…`),
   rozmowa zapisuje się po każdej odpowiedzi, kliknięcie ją wczytuje (z „Pamiętaj rozmowę” model zna jej wcześniejsze
   pytania). „Nowa rozmowa” czyści okno — poprzednia zostaje w panelu. × i „Usuń” → `Czat\kosz\` na 7 dni; usunięcie
@@ -207,11 +252,14 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
   W napisach okna „umiejętność” = folder z `profile\` (nazwa folderu i klas w kodzie jeszcze stara).
 - **Kilka umiejętności naraz** (np. `tekla` + `komputer`): model dostaje polecenia systemowe, karty, narzędzia i przykłady
   wszystkich, a `szukaj_wiedzy` szuka w wiedzy każdego z nich. Obowiązują **najostrzejsze** zasady: chmura tylko
-  u dostawcy dozwolonego we wszystkich (z `cde` — tylko Claude, z `mkk` — tylko modele lokalne), internet tylko gdy
-  pozwalają wszystkie (`cde` wyłącza go całej rozmowie). `pliki` przy `komputer` wypadają (`komputer` ma wszystkie
-  ich polecenia). Polecenie systemowe to suma profili (np. `tekla` ~8 tys. tokenów, `cde` ~4 tys.), a zakładka Code
-  i tak liczy z kontekstem co najmniej 16384 (gdy liczy inny komputer — najwyżej tyle, ile on przyjmuje, jego Ustawienia → Udostępnianie); przy trzech i więcej profilach ustaw 32768 (Ustawienia → Czat), a mały
-  model gorzej wybiera narzędzie spośród wielu.
+  u dostawcy dozwolonego we wszystkich (z `cde` — tylko Claude, z `mkk` — tylko modele lokalne), internet — przełącznik
+  u góry jest nadrzędny: wybór umiejętności bez zgody na internet (np. `cde`) sam go wyłącza, a świadomie włączony z powrotem
+  działa także z nią. `pliki` przy `komputer` wypadają (`komputer` ma wszystkie
+  ich polecenia). Polecenie systemowe to suma profili (np. `tekla` ~8 tys. tokenów, `cde` ~4 tys.). Kontekst zakładki Code
+  ustawia lista **„Kontekst”** nad rozmową (obok „Uprawnień”): „jak w Czacie” (kontekst z Ustawienia → Czat, ale co najmniej
+  16384), 8192, 16384 albo 32768 — zapisuje się w `codeContextLength`; nagłówek pokazuje, z jakim kontekstem naprawdę liczy.
+  Gdy liczy inny komputer — najwyżej tyle, ile on przyjmuje (jego Ustawienia → Udostępnianie). Przy trzech i więcej profilach
+  ustaw 32768, a mały model gorzej wybiera narzędzie spośród wielu.
 - Pasek na dole pokazuje, który komputer liczy (albo chmurę dostawcy, w jego kolorze), i stan kolejki.
 - Model w chmurze w czacie odpowiada od razu całym tekstem (bez pisania na bieżąco). W zakładce Code pasek pod
   nagłówkiem mówi, dokąd idą dane, a gdy profil nie pozwala na wybrany model — ostrzega na czerwono.
@@ -224,12 +272,15 @@ Odpowiedź jest pokazywana dokładnie tak, jak zwrócił ją model, łącznie ze
 
 | Plik | Zawartość |
 |---|---|
-| `%APPDATA%\LokalneAI\ustawienia.json` | ustawienia okna |
+| `%APPDATA%\LokalneAI\ustawienia.json` | ustawienia okna (zmieniać ręcznie tylko przy wyłączonym programie; pola: [docs/sterowanie.md](docs/sterowanie.md#pliki-i-ustawienia)) |
+| `%APPDATA%\LokalneAI\tokeny.json` | liczniki tokenów bramy (Ustawienia → Kolejka) |
+| `%APPDATA%\LokalneAI\klucze.json` | klucze API modeli w chmurze, zaszyfrowane kontem Windows |
 | `<folder grupy>\.amadeusz\*.json` | rozmowy zakładki Code (grupa „Niezgrupowane”: `Dokumenty\Amadeusz`); kosz w `.amadeusz\kosz\` |
 | `Dokumenty\Amadeusz\Czat\[<grupa>\]*.json` | rozmowy zakładki Czat; kosz w `Czat\kosz\` (kasowany po 7 dniach) |
 | `%LOCALAPPDATA%\LokalneAI\wiedza_z_dysku\` | kopie plików wiedzy z dysku (np. wspólnego glosariusza) na czas, gdy dysk jest niedostępny |
 | `%LOCALAPPDATA%\LokalneAI\historia.jsonl` | pytania i odpowiedzi ze statystykami, jeden JSON w linii; tylko na tym PC, zapis można wyłączyć |
 | `%LOCALAPPDATA%\LokalneAI\bledy.log` | nieoczekiwane błędy programu |
+| `%LOCALAPPDATA%\LokalneAI\bezpieczenstwo.log` | polecenia modelu zablokowane przez strażnika bezpieczeństwa (JSON w linii) |
 
 ## Testy
 
@@ -251,9 +302,10 @@ Nie zmienia przy tym ustawień ani historii. Dodatkowe przełączniki:
 - `--autotest -`: sam zrzut okna po starcie, bez pytania;
 - `--url <adres>`: inny adres Ollamy;
 - `--model <nazwa>`: inny model;
-- `--zakladka czat|code|ustawienia`: zakładka na zrzucie (`--rozwin` = Ustawienia);
-- `--harness <profil>`: kontrola zakładki Code, polecenia w `--autotest` rozdziela `||`; zapisuje `harness.png`
-  i `harness.json`. Zmiany zatwierdza sama, dlatego profile `pliki` i `komputer` pracują w folderze z `--foldery`
+- `--zakladka czat|code|ustawienia|kolejka`: zakładka na zrzucie (`--rozwin` = Ustawienia, `kolejka` = Ustawienia
+  z rozwiniętą kolejką i licznikami tokenów);
+- `--harness <umiejętność>[+<umiejętność>…]`: kontrola zakładki Code, polecenia w `--autotest` rozdziela `||`; zapisuje
+  `harness.png` i `harness.json`. Zwykłe zmiany zatwierdza sama („zawsze pytaj” strażnika odrzuca), dlatego profile `pliki` i `komputer` pracują w folderze z `--foldery`
   albo, bez niego, w pustym folderze tymczasowym (`%TEMP%\LokalneAI_kontrola`);
 - `--cel <komputer>`: licz na innym komputerze (tylko w tym uruchomieniu);
 - `--udostepnij`: brama przyjmuje zapytania „innych komputerów” tylko z 127.0.0.1 (próba bez otwierania portu w sieci);
@@ -261,7 +313,8 @@ Nie zmienia przy tym ustawień ani historii. Dodatkowe przełączniki:
 - `--ustawienia <plik>`, `--klucze <plik>`: ustawienia i klucze API z innych plików (np. próba listy z modelami
   w chmurze bez ruszania ustawień użytkownika). Kontrola zapisuje też `lista.png`: rozwiniętą listę modeli.
 
-Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
+Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek. Pełna lista przełączników, polecenia `#tokeny`,
+`#profil:`, `#wznow`, `#zgoda` i pola plików wyników: [docs/sterowanie.md](docs/sterowanie.md#kontrola-bez-klikania---autotest).
 
 ## Układ
 
@@ -278,15 +331,15 @@ Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie w WinForms (.NET Framework 4.8) | |
 | `LokalneAI.Gateway` | brama: kolejka, liczenie na innym komputerze, udostępnianie w podsieci | .NET 10, ASP.NET Core (Kestrel) |
 | `LokalneAI.Core`, `LokalneAI.App`, `LokalneAI.Core.Tests` | okno, jego klient Ollamy i testy (także bramy) | .NET 10 |
-| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk`, `office`, `tlumaczenie`, `ocr`, `rfem`, `tablice`, `cs_program`, `cs_ifc`, `cs_konstrukcja`, `cs_polaczenia`, `cs_statyka`, `cs_rysunki`, `cs_robot` | wiedza, polecenia, przykłady i testy profili | |
+| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk`, `office`, `tlumaczenie`, `ocr`, `rfem`, `tablice`, `cs_program`, `cs_ifc`, `cs_konstrukcja`, `cs_polaczenia`, `cs_statyka`, `cs_rysunki`, `cs_robot`, `amadeusz`, `formatowanie` | wiedza, polecenia, przykłady i testy profili | |
 | `szablony\` | szablon profilu i plików `AGENTS`, `CLAUDE`, `lokalne-ai\` dla repozytoriów programów | |
 | `narzedzia\sprawdz_przyklady` | kompiluje i uruchamia przykłady z `docs\biblioteki-dla-agentow.md` | .NET 10 i .NET Framework 4.8, C# 7.3 |
-| `docs\` | osadzanie, opisy dla AI, wiedza dla modeli, serwer modelu, format profilu, wybór modelu, raporty z badań | |
+| `docs\` | sterowanie i podpinanie, porty, osadzanie, opisy dla AI, wiedza dla modeli, serwer modelu, format profilu, wybór modelu, raporty z badań | |
 
 ## Instalator
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 -Wersja 0.4.0
+powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 -Wersja 0.7.0
 ```
 
 Skrypt najpierw uruchamia testy, potem buduje `dist\Amadeusz-<wersja>.zip` (ok. 60 MB, program self-contained, więc
@@ -325,5 +378,5 @@ Pełne odpowiedzi lądują w `wyniki\`, który jest poza gitem (są tam godziny 
 - Próba bramy między dwoma komputerami w biurze (na jednym PC sprawdzona przez `127.0.0.1`).
 - Pierwsza prawdziwa próba modeli w chmurze z kluczem użytkownika (Claude, GPT, Gemini) i odpowiedź na bieżąco
   w czacie — [docs/plan-modele-w-chmurze.md](docs/plan-modele-w-chmurze.md).
-- Ikona w zasobniku i start z Windows dla komputerów, które udostępniają model; dalsze pomysły
+- Start z Windows i tryb bez okna (`--serwer`) dla komputerów, które udostępniają model; dalsze pomysły
   w [docs/badania/funkcje-aplikacji.md](docs/badania/funkcje-aplikacji.md).

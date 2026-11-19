@@ -29,7 +29,7 @@ public partial class MainWindow : Window
     {
         _tray ??= new TrayIcon(
             () => new TrayState(
-                _viewModel.IsBusy || CodeView.Panel.IsBusy || _viewModel.Network.QueueRunning > 0,
+                _viewModel.IsBusy || CodeView.Panel.IsBusy || Whiteboard.Answers.IsBusy || _viewModel.Network.QueueRunning > 0,
                 _viewModel.Temperature.Current,
                 _viewModel.Network.QueueWaiting),
             ShowFromTray,
@@ -72,16 +72,22 @@ public partial class MainWindow : Window
         {
             // Najpierw zakładka Code (kontrola bez klikania czeka tylko na InitializeAsync), potem Ollama i brama.
             CodeView.Attach(_viewModel.CreateHarnessContext);
+            Whiteboard.Attach(_viewModel.CreateHarnessContext, CodeView);
             _viewModel.TemperatureUpdated += (_, _) => TemperatureGraph.Show(_viewModel.Temperature);
             _viewModel.StartTemperature();
             await _viewModel.InitializeAsync();
             CodeView.RefreshModelText();
+            Whiteboard.RefreshStatus();
             if (IsActive)
             {
                 QuestionBox.Focus();
             }
         };
-        _viewModel.ComputeTargetChanged += (_, _) => CodeView.RefreshModelText();
+        _viewModel.ComputeTargetChanged += (_, _) =>
+        {
+            CodeView.RefreshModelText();
+            Whiteboard.RefreshStatus();
+        };
         ChatSidebar.Attach(_viewModel);
         _viewModel.Credentials.Changed += (_, _) =>
         {
@@ -118,6 +124,10 @@ public partial class MainWindow : Window
             {
                 CodeView.RefreshModelText();
             }
+            else if (e.OriginalSource == Tabs && Tabs.SelectedItem == WhiteboardTab && IsLoaded)
+            {
+                Whiteboard.RefreshStatus(); // model i umiejętności z Code mogły się zmienić
+            }
         };
         Closing += (_, e) =>
         {
@@ -138,6 +148,7 @@ public partial class MainWindow : Window
 
             CodeView.SaveChoices();
             CodeView.Shutdown();
+            Whiteboard.Shutdown();
             _viewModel.OnClosing();
             _tray?.Dispose();
             _tray = null;
@@ -218,12 +229,13 @@ public partial class MainWindow : Window
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
-    /// <summary>Wybiera zakładkę: „czat”, „code” albo „ustawienia” (kontrola bez klikania).</summary>
+    /// <summary>Wybiera zakładkę: „czat”, „code”, „whiteboard” albo „ustawienia” (kontrola bez klikania).</summary>
     internal void SelectTab(string? name)
     {
         Tabs.SelectedItem = (name ?? "").ToLowerInvariant() switch
         {
             "code" => CodeTab,
+            "whiteboard" or "tablica" => WhiteboardTab,
             "ustawienia" or "kolejka" => SettingsTab,
             _ => ChatTab,
         };
@@ -276,31 +288,30 @@ public partial class MainWindow : Window
     /// </summary>
     private async void QuestionBox_Pasting(object sender, DataObjectPastingEventArgs e)
     {
-        if (!_viewModel.Ocr.OnPaste || !e.DataObject.GetDataPresent(DataFormats.Bitmap) || e.DataObject.GetDataPresent(DataFormats.UnicodeText))
+        // Model, który widzi obrazy, dostaje obrazek razem z pytaniem (OCR + interpretacja obrazu); inny — sam tekst z OCR.
+        var forModel = _viewModel.SelectedModel?.SeesImages == true;
+        if ((!_viewModel.Ocr.OnPaste && !forModel) || !LokalneAI.Harness.Wpf.ClipboardImages.IsImage(e.DataObject))
         {
             return;
         }
 
         e.CancelCommand();
-        byte[] png;
-        try
+        var png = LokalneAI.Harness.Wpf.ClipboardImages.ReadPng();
+        if (png == null)
         {
-            var image = Clipboard.GetImage();
-            if (image == null)
+            _viewModel.ShowStatus("Nie udało się odczytać obrazka ze schowka.");
+            return;
+        }
+
+        if (forModel)
+        {
+            _viewModel.PendingImages.Add(new LokalneAI.Harness.Wpf.PendingImage(
+                LokalneAI.Harness.Wpf.ClipboardImages.Shrink(png), "obraz " + (_viewModel.PendingImages.Count + 1)));
+            if (!_viewModel.Ocr.OnPaste)
             {
+                _viewModel.ShowStatus("Obrazek pójdzie do modelu z pytaniem (model widzi obrazy) — dopisz, o co chodzi.");
                 return;
             }
-
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(image));
-            using var stream = new MemoryStream();
-            encoder.Save(stream);
-            png = stream.ToArray();
-        }
-        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException || ex is NotSupportedException || ex is InvalidOperationException)
-        {
-            _viewModel.ShowStatus("Nie udało się odczytać obrazka ze schowka: " + ex.Message);
-            return;
         }
 
         var caret = QuestionBox.CaretIndex;
@@ -314,12 +325,22 @@ public partial class MainWindow : Window
             _viewModel.Question = current.Substring(0, caret) + text + current.Substring(caret);
             QuestionBox.CaretIndex = caret + text.Length;
             var firstLine = text.Split('\n').FirstOrDefault(l => l.Trim().Length > 0) ?? "";
-            _viewModel.ShowStatus(firstLine.Trim('[', ']') + " — tekst jest w polu pytania, dopisz, o co chodzi.");
+            _viewModel.ShowStatus(firstLine.Trim('[', ']') + (forModel
+                ? " — tekst jest w polu pytania, a obraz pójdzie do modelu (widzi obrazy); dopisz, o co chodzi."
+                : " — tekst jest w polu pytania, dopisz, o co chodzi."));
         }
         finally
         {
             QuestionBox.IsEnabled = true;
             QuestionBox.Focus();
+        }
+    }
+
+    private void RemovePendingImage_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is LokalneAI.Harness.Wpf.PendingImage image)
+        {
+            _viewModel.PendingImages.Remove(image);
         }
     }
 

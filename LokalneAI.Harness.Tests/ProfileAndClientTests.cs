@@ -28,6 +28,7 @@ public class ProfileFilesTests
     [InlineData("cs_statyka", 0)]
     [InlineData("cs_rysunki", 0)]
     [InlineData("cs_robot", 0)]
+    [InlineData("amadeusz", 5)]
     public void Profil_WczytujeSieZFolderu(string name, int hostTools)
     {
         var profile = HarnessProfile.Load(Paths.Profile(name));

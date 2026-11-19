@@ -104,6 +104,9 @@ namespace LokalneAI.Harness.Ocr
     {
         private readonly OcrOptions _options;
 
+        // Przed pierwszym użyciem Tesseracta: folder jego bibliotek natywnych (program jednoplikowy rozpakowuje je do %TEMP%).
+        static OcrEngine() => NativeLibraries.Prepare();
+
         /// <summary>Tworzy silnik z ustawieniami (języki, obrót, układ, filtry).</summary>
         public OcrEngine(OcrOptions options)
         {
@@ -120,7 +123,7 @@ namespace LokalneAI.Harness.Ocr
                     return pix.Width == 8;
                 }
             }
-            catch (Exception e) when (e is DllNotFoundException || e is TypeInitializationException || e is BadImageFormatException || e is TesseractException)
+            catch (Exception e) when (NativeLibraries.IsLoadFailure(e) || e is TesseractException)
             {
                 return false;
             }
@@ -174,6 +177,11 @@ namespace LokalneAI.Harness.Ocr
                 throw new OcrException("BŁĄD: nie udało się wczytać obrazu " + imagePath + " (" + e.Message + "). Obsługiwane: PNG, JPG, TIFF, BMP, GIF, WebP.", e);
             }
 
+            catch (Exception e) when (NativeLibraries.IsLoadFailure(e))
+            {
+                throw NativeLibraries.LoadError(e);
+            }
+
             using (pix)
             {
                 return Recognize(pix, languages, layout);
@@ -183,7 +191,21 @@ namespace LokalneAI.Harness.Ocr
         /// <summary>OCR obrazu PNG z pamięci (np. zrzut ze schowka albo strona PDF).</summary>
         public OcrResult RecognizePng(byte[] png, string languages = null, OcrLayout? layout = null)
         {
-            using (var pix = Pix.LoadFromMemory(png))
+            Pix pix;
+            try
+            {
+                pix = Pix.LoadFromMemory(png);
+            }
+            catch (Exception e) when (NativeLibraries.IsLoadFailure(e))
+            {
+                throw NativeLibraries.LoadError(e);
+            }
+            catch (Exception e) when (e is IOException || e is TesseractException || e is ArgumentException)
+            {
+                throw new OcrException("BŁĄD: nie udało się wczytać obrazu (" + e.Message + ").", e);
+            }
+
+            using (pix)
             {
                 return Recognize(pix, languages, layout);
             }
@@ -294,7 +316,7 @@ namespace LokalneAI.Harness.Ocr
             {
                 engine = new TesseractEngine(_options.TessdataPath, languages, EngineMode.LstmOnly);
             }
-            catch (Exception e) when (e is TesseractException || e is DllNotFoundException || e is TypeInitializationException || e is BadImageFormatException)
+            catch (Exception e) when (e is TesseractException || NativeLibraries.IsLoadFailure(e))
             {
                 throw new OcrException("BŁĄD: nie udało się uruchomić Tesseracta (języki " + languages + ", dane " + _options.TessdataPath + "): " + e.Message, e);
             }

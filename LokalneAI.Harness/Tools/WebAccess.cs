@@ -79,7 +79,8 @@ namespace LokalneAI.Harness.Tools
             var results = ParseDuckDuckGoLite(page.Body).Take(_options.MaxResults).ToList();
             if (results.Count == 0)
             {
-                return ToolResult.Ok("Nic nie znaleziono dla: " + phrase + ". Spróbuj innych słów (także po angielsku).");
+                return ToolResult.Ok("Nic nie znaleziono dla: " + phrase + ". To jeszcze nie znaczy, że tego nie ma: szukaj dalej innymi słowami "
+                    + "(synonimy, po angielsku, krótsza fraza, nazwa producenta, normy albo programu).");
             }
 
             var text = new StringBuilder("Wyniki dla „" + phrase + "”:");

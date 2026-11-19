@@ -1,0 +1,188 @@
+<UserControl x:Class="LokalneAI.App.WhiteboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:LokalneAI.App"
+             xmlns:wpf="clr-namespace:LokalneAI.Harness.Wpf;assembly=LokalneAI.Harness.Wpf">
+    <UserControl.Resources>
+        <!-- Narzędzie tablicy: przycisk, który zostaje wciśnięty (jak w Lightshocie). -->
+        <Style x:Key="BoardTool" TargetType="RadioButton">
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="MinWidth" Value="32" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="GroupName" Value="Tools" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Box" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource LineBrush}"
+                                BorderThickness="1" CornerRadius="4" Padding="7,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="{StaticResource HoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="{StaticResource SelectedBrush}" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Kolor: kwadracik, zaznaczony ma grubą ramkę. -->
+        <Style x:Key="ColorSwatch" TargetType="RadioButton">
+            <Setter Property="Margin" Value="0,0,3,0" />
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="GroupName" Value="Colors" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Box" Background="{TemplateBinding Background}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="3" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource TextBrush}" />
+                                <Setter TargetName="Box" Property="BorderThickness" Value="3" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Separator" TargetType="Border">
+            <Setter Property="Width" Value="1" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="6,0,8,0" />
+            <Setter Property="Background" Value="{StaticResource LineBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MinWidth="420" />
+            <ColumnDefinition Width="8" />
+            <ColumnDefinition x:Name="AnswersColumn" Width="400" MinWidth="280" MaxWidth="800" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Narzędzia: jak w Lightshocie (pióro, linia, strzałka, prostokąt, marker, tekst, kolor) + zaznaczanie i gumka. -->
+            <WrapPanel x:Name="Toolbar" Margin="0,0,0,6">
+                <RadioButton x:Name="ToolSelect" Style="{StaticResource BoardTool}" Checked="Tool_Checked" Tag="select"
+                             ToolTip="Zaznacz (V): kliknij albo obrysuj elementy, potem przesuwaj i zmieniaj rozmiar (obraz — proporcjonalnie). Delete usuwa, dwuklik na tekście go edytuje.">
+                    <TextBlock Text="&#xE8B0;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+                </RadioButton>
+                <RadioButton x:Name="ToolPen" Style="{StaticResource BoardTool}" Checked="Tool_Checked" Tag="pen" IsChecked="True"
+                             ToolTip="Pióro (P): rysowanie odręczne (także rysikiem)">
+                    <TextBlock Text="&#xED63;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+                </RadioButton>
+                <RadioButton x:Name="ToolLine" Style="{StaticResource BoardTool}" Checked="Tool_Checked" Tag="line" ToolTip="Linia (L); z Shift — co 45°">
+                    <Line X1="2" Y1="14" X2="16" Y2="2" Stroke="{StaticResource TextBrush}" StrokeThickness="2" />
+                </RadioButton>
+                <RadioButton x:Name="ToolArrow" Style="{StaticResource BoardTool}" Checked="Tool_Checked" Tag="arrow" ToolTip="Strzałka (A); z Shift — co 45°">
+                    <Path Data="M2,14 L15,3 M15,3 L9,4 M15,3 L14,9" Stroke="{StaticResource TextBrush}" StrokeThickness="2" />
+                </RadioButton>
+                <RadioButton x:Name="ToolRect" Style="{StaticResource BoardTool}" Checked="Tool_Checked" Tag="rect" ToolTip="Prostokąt (R); z Shift — kwadrat">
+                    <Rectangle Width="15" Height="11" Stroke="{StaticResource TextBrush}" StrokeThickness="2" />
+                </RadioButton>
+                <RadioButton x:Name="ToolMarker" Style="{StaticResource BoardTool}" Checked="Tool_Checked" Tag="marker"
+                             ToolTip="Marker (M): półprzezroczyste zaznaczenie, domyślnie żółte">
+                    <Rectangle Width="16" Height="8" Fill="#FACC15" Opacity="0.7" />
+                </RadioButton>
+                <RadioButton x:Name="ToolText" Style="{StaticResource BoardTool}" Checked="Tool_Checked" Tag="text"
+                             ToolTip="Tekst (T): kliknij na tablicy i pisz — jedna czcionka, bez formatowania. Model dostaje tekst dosłownie.">
+                    <TextBlock Text="T" FontWeight="Bold" FontSize="14" />
+                </RadioButton>
+                <RadioButton x:Name="ToolEraser" Style="{StaticResource BoardTool}" Checked="Tool_Checked" Tag="eraser"
+                             ToolTip="Gumka (E): kasuje całe pociągnięcia i kształty, przez które przejdziesz">
+                    <TextBlock Text="&#xE75C;" FontFamily="Segoe MDL2 Assets" FontSize="14" />
+                </RadioButton>
+
+                <Border Style="{StaticResource Separator}" />
+                <StackPanel x:Name="ColorsPanel" Orientation="Horizontal" VerticalAlignment="Center" />
+                <ComboBox x:Name="WidthBox" Width="86" Margin="6,0,0,0" VerticalAlignment="Center" SelectionChanged="Width_Changed"
+                          ToolTip="Grubość pióra, linii, strzałek i prostokątów">
+                    <ComboBoxItem Content="cienka" Tag="2" />
+                    <ComboBoxItem Content="średnia" Tag="4" IsSelected="True" />
+                    <ComboBoxItem Content="gruba" Tag="8" />
+                </ComboBox>
+
+                <Border Style="{StaticResource Separator}" />
+                <Button Content="&#xE7A7;" FontFamily="Segoe MDL2 Assets" Width="32" Margin="0,0,4,0" Click="Undo_Click" ToolTip="Cofnij (Ctrl+Z)" />
+                <Button Content="&#xE7A6;" FontFamily="Segoe MDL2 Assets" Width="32" Margin="0,0,4,0" Click="Redo_Click" ToolTip="Ponów (Ctrl+Y)" />
+                <Button Content="Wklej" Margin="0,0,4,0" Click="Paste_Click" ToolTip="Wkleja obrazek ze schowka (Ctrl+V); rozmiar zmienia narzędzie Zaznacz — proporcjonalnie" />
+                <Button Content="Capture" Margin="0,0,4,0" Click="Capture_Click"
+                        ToolTip="Zrzut fragmentu ekranu na tablicę: okno chowa się do przezroczystej ramki, którą przesuwasz i zmieniasz; Zatwierdź robi zrzut, Zaniechaj wraca" />
+                <Button Content="Wyczyść tablicę" Margin="0,0,4,0" Click="ClearBoard_Click" ToolTip="Kasuje rysunki, teksty i obrazy użytkownika (Ctrl+Z cofa)" />
+
+                <Border Style="{StaticResource Separator}" />
+                <CheckBox x:Name="ShowAiBox" Content="Rysunki Amadeusza" IsChecked="True" VerticalAlignment="Center" Margin="0,0,8,0"
+                          Checked="ShowAi_Changed" Unchecked="ShowAi_Changed"
+                          ToolTip="Pokazuje albo chowa warstwę, na której rysuje Amadeusz (wektorowo, osobno od Twoich rysunków)" />
+                <Button Content="Wyczyść rysunki Amadeusza" Click="ClearAi_Click" ToolTip="Kasuje rysunki Amadeusza; Twoje zostają" />
+            </WrapPanel>
+
+            <!-- Tablica: warstwa użytkownika (InkCanvas: pióro, kształty, teksty, obrazy) i nad nią warstwa Amadeusza (kształty wektorowe). -->
+            <Border x:Name="BoardFrame" Grid.Row="1" Background="White" BorderBrush="{StaticResource LineBrush}" BorderThickness="1" ClipToBounds="True">
+                <Grid x:Name="Board" Background="White">
+                    <InkCanvas x:Name="Ink" Background="White" ClipToBounds="True" />
+                    <Canvas x:Name="AiLayer" IsHitTestVisible="False" ClipToBounds="True" />
+                    <TextBlock x:Name="EmptyHint" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" IsHitTestVisible="False"
+                               Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" MaxWidth="520" FontSize="14"
+                               Text="Rysuj, pisz (narzędzie T) albo wklej obrazek (Ctrl+V, Capture). Pod tablicą wpisz polecenie i kliknij Zatwierdź — Amadeusz odpowie z prawej i może dorysować coś na swojej warstwie." />
+                </Grid>
+            </Border>
+
+            <DockPanel Grid.Row="2" Margin="2,4,0,0">
+                <CheckBox x:Name="CodeSkillsBox" DockPanel.Dock="Right" VerticalAlignment="Center" FontSize="11" Margin="8,0,0,0"
+                          Checked="CodeSkills_Changed" Unchecked="CodeSkills_Changed"
+                          ToolTip="Sesja tablicy dostaje też umiejętności zaznaczone w zakładce Code (np. tablice, pliki, ocr) — z tymi samymi uprawnieniami. Wyłączone: sama tablica (krótszy prompt)." />
+                <TextBlock x:Name="BoardStatus" FontSize="11" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </DockPanel>
+
+            <!-- Polecenie pod tablicą -->
+            <Grid Grid.Row="3" Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid>
+                    <TextBox x:Name="PromptBox" MinHeight="56" MaxHeight="160" AcceptsReturn="True" TextWrapping="Wrap" Padding="6,4"
+                             VerticalScrollBarVisibility="Auto" PreviewKeyDown="Prompt_PreviewKeyDown" />
+                    <TextBlock Text="Polecenie do tablicy, np. „sprawdź, czy schemat jest dobrze podparty”, „zaznacz, gdzie jest błąd”…  (Enter zatwierdza, Shift+Enter — nowa linia)"
+                               Margin="9,6,0,0" Foreground="{StaticResource MutedBrush}" IsHitTestVisible="False" TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=PromptBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                    <Button x:Name="SubmitButton" Content="Zatwierdź" Style="{StaticResource PrimaryButton}" Width="110" Height="32" Click="Submit_Click"
+                            ToolTip="Wysyła polecenie z tablicą: teksty dosłownie, rysunki ze współrzędnymi, OCR obrazów i odręcznych napisów; model z obsługą obrazów dostaje też obraz tablicy" />
+                    <Button x:Name="StopButton" Content="Stop" Width="110" Margin="0,6,0,0" Click="Stop_Click" IsEnabled="False" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent" />
+
+        <!-- Odpowiedzi jak w zakładce Code (wywołania, kroki, odpowiedź); pole polecenia jest pod tablicą. -->
+        <wpf:HarnessPanel x:Name="Answers" Grid.Column="2" Title="Amadeusz przy tablicy" />
+    </Grid>
+</UserControl>

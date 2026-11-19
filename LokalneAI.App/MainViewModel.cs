@@ -257,7 +257,8 @@ public sealed class MainViewModel : ObservableObject
             _settings.InternetAccess = value;
             OnPropertyChanged();
             StatusText = value
-                ? "Internet odblokowany: czat i zakładka Code (poza umiejętnością cde) mogą szukać w sieci i czytać strony. Zapytania wyszukiwania idą do DuckDuckGo."
+                ? "Internet odblokowany: czat i zakładka Code mogą szukać w sieci i czytać strony — także z umiejętnością bez zgody na internet (np. cde), "
+                  + "bo przełącznik jest nadrzędny. Zapytania wyszukiwania idą do DuckDuckGo."
                 : "Internet zablokowany.";
             InternetChanged?.Invoke(this, EventArgs.Empty);
             SaveSettings();
@@ -399,6 +400,18 @@ public sealed class MainViewModel : ObservableObject
             _ = UpdateRunningStatusAsync();
         }
     }
+
+    /// <summary>
+    /// Obrazki wklejone do pytania, które pójdą do modelu (model widzi obrazy): miniatury nad polem, „×” usuwa.
+    /// Tekst z OCR i tak trafia do pola pytania.
+    /// </summary>
+    public ObservableCollection<LokalneAI.Harness.Wpf.PendingImage> PendingImages { get; } = [];
+
+    /// <summary>Obrazy bieżącego pytania (zabrane z <see cref="PendingImages"/> przy wysyłaniu); pusta lista = bez obrazów.</summary>
+    private List<byte[]> _sendImages = [];
+
+    /// <summary>Podpis pod pytaniem: ile obrazów poszło do modelu; null = żaden.</summary>
+    private string? ImagesNote => _sendImages.Count == 0 ? null : "Obrazy dla modelu: " + _sendImages.Count;
 
     public string Question
     {
@@ -768,6 +781,14 @@ public sealed class MainViewModel : ObservableObject
             temperature = Math.Max(temperature, 0.5);
         }
 
+        // Wklejone obrazki idą tylko do modelu, który widzi obrazy (inny model dostaje sam tekst z OCR z pola pytania).
+        _sendImages = selected.SeesImages ? PendingImages.Select(i => i.Png).ToList() : [];
+        if (PendingImages.Count > 0 && !selected.SeesImages)
+        {
+            StatusText = "Model " + selected.Label + " nie widzi obrazów — dostaje tylko tekst z OCR.";
+        }
+
+        PendingImages.Clear();
         if (InternetAccess)
         {
             await SendWithInternetAsync(selected, question, temperature);
@@ -787,7 +808,7 @@ public sealed class MainViewModel : ObservableObject
 
         var model = selected.Name;
         var messages = BuildMessages(question);
-        var exchange = new ExchangeViewModel(question, model, Network.IsRemote ? Network.ComputerName : null);
+        var exchange = new ExchangeViewModel(question, model, Network.IsRemote ? Network.ComputerName : null) { ImagesNote = ImagesNote };
         Exchanges.Add(exchange);
         Question = "";
         IsBusy = true;
@@ -922,13 +943,15 @@ public sealed class MainViewModel : ObservableObject
             ModelLabel = selected?.Label ?? ModelItem.ShortName(_settings.Model),
             Cloud = selected?.Cloud,
             ModelBrush = selected?.NameBrush,
+            ModelSeesImages = selected?.SeesImages == true,
             GetApiKey = provider => CloudViewModel.ResolveKey(_keys, provider),
             SelectPreferredModel = SelectPreferredModel,
             CurrentModelKey = SelectedModel?.Key,
             ModelChoices = Models.Select(m => new ModelChoice(m.Key, m.IsCloud ? m.Display + " (" + m.Cloud!.Name + ")" : m.Name)).ToList(),
             GetPostgres = Credentials.GetPostgres,
             Web = InternetAccess ? _web : null,
-            ContextLength = HarnessContextLength(),
+            SetInternetAccess = on => InternetAccess = on,
+            ContextLength = HarnessContextLength(code: true),
             Temperature = temperature,
             LocalOllamaUrl = _local.BaseUrl,
             LocalGpuGb = _gpuGb,
@@ -941,12 +964,13 @@ public sealed class MainViewModel : ObservableObject
 
     /// <summary>
     /// Kontekst dla Code i czatu z internetem. Prompt umiejętności (karta, narzędzia, przykłady, wiedza) zajmuje 2–8 tys. tokenów,
-    /// więc co najmniej 16 384 — ale nie więcej, niż przyjmuje komputer, który liczy (jego Ustawienia → Udostępnianie,
-    /// „kontekst do”); większe zapytanie brama tamtego komputera odrzuca.
+    /// więc domyślnie kontekst Czatu, ale co najmniej 16 384; zakładka Code (<paramref name="code"/>) może mieć własny
+    /// (<see cref="AppSettings.CodeContextLength"/>, lista „Kontekst” nad rozmową). Nigdy więcej, niż przyjmuje komputer, który liczy
+    /// (jego Ustawienia → Udostępnianie, „kontekst do”) — większe zapytanie brama tamtego komputera odrzuca.
     /// </summary>
-    internal int HarnessContextLength()
+    internal int HarnessContextLength(bool code = false)
     {
-        var wanted = Math.Max(16384, ContextLength);
+        var wanted = code && _settings.CodeContextLength > 0 ? _settings.CodeContextLength : Math.Max(16384, ContextLength);
         return Network.IsRemote && Network.RemoteMaxContext is int max && wanted > max ? max : wanted;
     }
 
@@ -978,6 +1002,7 @@ public sealed class MainViewModel : ObservableObject
         var exchange = new ExchangeViewModel(question, selected.Name, null, selected)
         {
             Stats = $"Czekam na odpowiedź z chmury {provider.Name}…",
+            ImagesNote = ImagesNote,
         };
         Exchanges.Add(exchange);
         Question = "";
@@ -993,7 +1018,7 @@ public sealed class MainViewModel : ObservableObject
         {
             llm = CloudLlm.Create(provider, key, selected.Name, temperature);
             var response = await llm.CompleteAsync(
-                new LlmRequest { Messages = messages.Select(m => new LlmMessage(m.Role, m.Content)).ToList() }, cts.Token);
+                new LlmRequest { Messages = messages.Select(m => new LlmMessage(m.Role, m.Content, m.Images?.Select(Convert.FromBase64String).ToList())).ToList() }, cts.Token);
             clock.Stop();
             exchange.Answer = string.IsNullOrWhiteSpace(response.Content) ? "(model nie zwrócił tekstu)" : response.Content;
             exchange.StatsData = new ChatStats(
@@ -1056,6 +1081,7 @@ public sealed class MainViewModel : ObservableObject
             ? new ExchangeViewModel(question, selected.Name, Network.IsRemote ? Network.ComputerName : null)
             : new ExchangeViewModel(question, selected.Name, null, selected);
         exchange.Stats = "Model myśli (z dostępem do internetu)…";
+        exchange.ImagesNote = ImagesNote;
         Exchanges.Add(exchange);
         Question = "";
         IsBusy = true;
@@ -1084,6 +1110,7 @@ public sealed class MainViewModel : ObservableObject
             {
                 Web = _web,
                 ContextNote = InternetChatNote(question),
+                Safety = new SafetyOptions { Blocked = SafetyLog.Write }, // adresy spoza rozmowy — wpis w bezpieczenstwo.log
             });
             session.Progress += (_, e) =>
             {
@@ -1093,7 +1120,7 @@ public sealed class MainViewModel : ObservableObject
                     Application.Current?.Dispatcher.InvokeAsync(() => exchange.Stats = text + "…");
                 }
             };
-            var result = await session.SendAsync(question, cts.Token);
+            var result = await session.SendAsync(question, _sendImages, cts.Token);
             clock.Stop();
             var web = result.Calls.Where(c => BuiltInTools.IsWeb(c.Tool)).ToList();
             exchange.Answer = string.IsNullOrWhiteSpace(result.Text) ? "(model nie zwrócił tekstu)" : result.Text.Trim();
@@ -1350,7 +1377,10 @@ public sealed class MainViewModel : ObservableObject
             hints.Add(TurnIntent.NoWebHint); // ta droga to czat bez internetu (z internetem idzie przez sesję harnessu)
         }
 
-        messages.Add(new ChatMessage("user", hints.Count == 0 ? question : question + "\n\n" + string.Join("\n", hints)));
+        messages.Add(new ChatMessage("user", hints.Count == 0 ? question : question + "\n\n" + string.Join("\n", hints))
+        {
+            Images = _sendImages.Count == 0 ? null : _sendImages.Select(Convert.ToBase64String).ToList(),
+        });
         return messages;
     }
 

@@ -45,8 +45,14 @@ namespace LokalneAI.Harness.Office
     /// folderach (<see cref="OfficeOptions.AllowedRoots"/>). Czytanie idzie bez pytania, każda zmiana z pytaniem (<see cref="Decide"/>);
     /// szkic w Outlooku nigdy nie jest wysyłany.
     /// </summary>
-    public sealed class OfficeExecutor : IToolExecutor, IConfirmingExecutor
+    public sealed class OfficeExecutor : IToolExecutor, IConfirmingExecutor, IWorkingFolderProvider, IFolderAccess
     {
+        /// <summary>Dodaje folder do dozwolonych (po zgodzie użytkownika w rozmowie, patrz <see cref="IFolderAccess"/>).</summary>
+        public bool AllowFolder(string folder) => FolderAccess.AddTo(_options.AllowedRoots, folder);
+
+        /// <summary>Folder ścieżek względnych — dla strażnika bezpieczeństwa.</summary>
+        public string WorkingFolderFor(ToolCall call) => _options.WorkingFolder;
+
         private static readonly HashSet<string> SaveAsExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             ".pdf", ".docx", ".doc", ".rtf", ".txt", ".odt", ".xlsx", ".xlsm", ".xls", ".csv", ".ods", ".pptx", ".ppt", ".odp",

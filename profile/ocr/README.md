@@ -4,7 +4,7 @@ OCR robi skrypt, nie model: Tesseract 5 (Apache 2.0, dane tessdata_fast) rozpozn
 a model dostaje gotowy tekst z pewnością rozpoznania. Ustawienia (języki, obrót, układ, próg pewności, reguły ignorowania,
 rozdzielczość, folder danych języków) są w oknie: Ustawienia → OCR. Obrazek wklejony do pola rozmowy (Ctrl+V w Code albo
 w Czacie) jest rozpoznawany od razu — tekst z nagłówkiem `[obraz wklejony: … — OCR 93%, 48 słów]` trafia do pola, użytkownik
-dopisuje polecenie i wysyła. Model dostaje tekst, nie obraz.
+dopisuje polecenie i wysyła. Model dostaje tekst; model, który widzi obrazy (gemma4, qwen3.5, Claude, GPT), także sam obraz.
 
 ## Polecenia
 

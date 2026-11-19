@@ -197,7 +197,31 @@ namespace LokalneAI.Harness.Llm
 
                         writer.WriteStartObject();
                         writer.WriteString("role", m.Role);
-                        writer.WriteString("content", content);
+                        if (m.Images == null)
+                        {
+                            writer.WriteString("content", content);
+                        }
+                        else
+                        {
+                            // Obrazy jako części treści (image_url z adresem data:) — tak przyjmują je GPT i Gemini.
+                            writer.WriteStartArray("content");
+                            writer.WriteStartObject();
+                            writer.WriteString("type", "text");
+                            writer.WriteString("text", content);
+                            writer.WriteEndObject();
+                            foreach (var image in m.Images)
+                            {
+                                writer.WriteStartObject();
+                                writer.WriteString("type", "image_url");
+                                writer.WriteStartObject("image_url");
+                                writer.WriteString("url", "data:" + LlmMessage.MediaType(image) + ";base64," + Convert.ToBase64String(image));
+                                writer.WriteEndObject();
+                                writer.WriteEndObject();
+                            }
+
+                            writer.WriteEndArray();
+                        }
+
                         writer.WriteEndObject();
                     }
 

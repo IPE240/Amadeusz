@@ -28,6 +28,8 @@
     <InternalsVisibleTo Include="LokalneAI.Harness.Office" />
     <InternalsVisibleTo Include="LokalneAI.Harness.Ocr" />
     <InternalsVisibleTo Include="LokalneAI.Harness.Rfem" />
+    <!-- Próby strażnika bezpieczeństwa: LokalneAI.Eval atak z przełącznikiem bez-zasad (PromptBuilder.IncludeSafetySection). -->
+    <InternalsVisibleTo Include="LokalneAI.Eval" />
   </ItemGroup>
 
 </Project>

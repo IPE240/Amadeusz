@@ -118,6 +118,12 @@ namespace LokalneAI.Harness.Wpf
         /// <summary>Polecenie może coś zniszczyć (kasuje) — przycisk „Nie” jest wyróżniony.</summary>
         public bool Dangerous { get; set; }
 
+        /// <summary>Napis przycisku zgody (domyślnie „Tak, wykonaj”).</summary>
+        public string YesText { get; set; } = "Tak, wykonaj";
+
+        /// <summary>Napis przycisku odmowy (domyślnie „Nie”).</summary>
+        public string NoText { get; set; } = "Nie";
+
         private System.Collections.ObjectModel.ObservableCollection<PanelEntry> _children;
         private bool _isExpanded;
 

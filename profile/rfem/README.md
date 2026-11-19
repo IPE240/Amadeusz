@@ -23,7 +23,7 @@ Bez `sciezka` polecenia biorą jedyny plik .rf5 z folderu bieżącego (folderu r
 ## Pliki
 | Plik | Co to |
 |---|---|
-| `profil.json` | `zakonczenie: model` (wszystko czyta, model odpowiada), `szukaj_wiedzy` i `kalkulator`, bez `chmura`, bez internetu |
+| `profil.json` | `zakonczenie: model` (wszystko czyta, model odpowiada), `szukaj_wiedzy` i `kalkulator`, bez `chmura` (tylko modele lokalne), internet tak, gdy w oknie włączony przełącznik (od 2026-11-19 — wcześniej bez internetu blokował go też innym umiejętnościom zaznaczonym razem z rfem) |
 | `system.md` | rola i 14 zasad: 1–10 plik (najpierw narzędzie, pełna nazwa pliku = od razu polecenie, siła bez kombinacji = ekstrema, jednostki, PO/KO/KW, czego nie ma w odczycie, pręt widoczny w RFEM a nieobecny w odczycie = nie upierać się), 11 wiedza o RFEM 6 i RF-COM z CS, 12–14 otwarty RFEM |
 | `karta.md` | ściąga: które narzędzie, jak czytać wynik (jednostki, znaki, x), czego nie ma |
 | `narzedzia.json` | 16 poleceń: 9 na pliku .rf5 (z szukaj_plikow i pokaz_zawartosc) i 7 na otwartym RFEM 5 (`rfem_otwarty*`, `rfem_wskaz`) |

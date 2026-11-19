@@ -25,8 +25,27 @@ namespace LokalneAI.Harness.Tools
     }
 
     /// <summary>Kieruje wywołania do różnych wykonawców według nazwy narzędzia.</summary>
-    public sealed class RoutingExecutor : IToolExecutor, IConfirmingExecutor
+    public sealed class RoutingExecutor : IToolExecutor, IConfirmingExecutor, IWorkingFolderProvider, IFolderAccess
     {
+        /// <summary>Dodaje folder do dozwolonych we wszystkich wykonawcach, które to umieją (każdy ma własną listę folderów).</summary>
+        public bool AllowFolder(string folder)
+        {
+            var any = false;
+            foreach (var target in _routes.Values.Concat(new[] { _fallback }).Where(t => t != null).Distinct().OfType<IFolderAccess>())
+            {
+                any |= target.AllowFolder(folder);
+            }
+
+            return any;
+        }
+
+        /// <summary>Folder ścieżek względnych wykonawcy, do którego trafi polecenie (null, gdy go nie podaje).</summary>
+        public string WorkingFolderFor(ToolCall call)
+        {
+            var target = call != null && _routes.TryGetValue(call.Name, out var executor) ? executor : _fallback;
+            return (target as IWorkingFolderProvider)?.WorkingFolderFor(call);
+        }
+
         private readonly Dictionary<string, IToolExecutor> _routes = new Dictionary<string, IToolExecutor>(StringComparer.Ordinal);
         private readonly IToolExecutor _fallback;
 

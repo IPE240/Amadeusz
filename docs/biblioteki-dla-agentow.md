@@ -4,6 +4,8 @@ Czytelnik: agent AI, który pisze kod (Claude Fable, Claude Opus, Cursor i inni)
 biura, który ma dostać asystenta. Dokument jest kompletny: po jego lekturze nie trzeba zgadywać. Gdy czegoś brakuje,
 zajrzyj do komentarzy `///` w kodzie (ma je każdy publiczny element) i do testów w `LokalneAI.Harness.Tests`,
 a potem uzupełnij ten plik. Tło dla ludzi: [osadzanie.md](osadzanie.md), format profilu: [profile.md](profile.md).
+Agent, który nie pisze kodu .NET, tylko korzysta z działającego Amadeusza (zapytania HTTP do bramy z dowolnego języka,
+podpinanie gotowych narzędzi, `--autotest`), czyta [sterowanie.md](sterowanie.md); porty: [porty.md](porty.md).
 
 Kod z przepisów niżej jest skopiowany do projektu [narzedzia/sprawdz_przyklady](../narzedzia/sprawdz_przyklady),
 który kompiluje go na .NET 10 i .NET Framework 4.8 w C# 7.3 (domyślny język projektów na .NET Framework 4.8)
@@ -41,10 +43,15 @@ Model niczego nie wykonuje sam. Wybiera tylko narzędzie z listy i podaje argume
 ## 2. Zasady, których nie wolno łamać
 
 1. **Każda akcja to narzędzie z `narzedzia.json` i kod w wykonawcy.** Nie dodawaj narzędzi typu „wykonaj kod”,
-   „dowolny SQL” czy „dowolne polecenie” bez strażnika. Wzór strażnika: `SqlGuard` i `PowerShellPolicy`.
+   „dowolny SQL” czy „dowolne polecenie” bez strażnika. Wzór strażnika: `SqlGuard` i `PowerShellPolicy`. Każde wywołanie
+   przechodzi też przez `SafetyGuard` (zawsze, nie da się go wyłączyć): narzędzie, które zapisuje pliki, nazywa ścieżki
+   parametrami `sciezka`, `nowa_sciezka`, `zrodlo`, `cel`, `wynik`, `pliki`, `zalaczniki`, `folder`, `plik`, `katalog` (strażnik
+   je sprawdza), a jego wykonawca implementuje `IWorkingFolderProvider`. Gospodarz dopisuje swoje foldery w `SessionOptions.Safety`
+   ([bezpieczenstwo.md](bezpieczenstwo.md)).
 2. **`SessionOptions.ConfirmMutation = null` oznacza zgodę bez pytania.** Gdy profil ma polecenia zmieniające dane
    (`"zmienia_model": true` albo wykonawca z `IConfirmingExecutor`), zawsze podłącz pytanie: `panel.ConfirmMutationAsync`
-   albo własne okno.
+   albo własne okno. Polecenia „zawsze pytaj” strażnika bezpieczeństwa (`ToolCall.ConfirmationDangerous`) bez okna zgody są
+   odrzucane, a własne „zgadzam się na wszystko” powinno je też odrzucać (`return Task.FromResult(!call.ConfirmationDangerous)`).
 3. **Jeden `ILlmClient` na program.** Sesja służy jednej mini-rozmowie („wstaw słup”, „zmień go…”). `Dispose` kasuje
    jej historię.
 4. **Wykonawca jest wołany z wątku w tle.** Jeśli API gospodarza wymaga wątku okna, przełącz się sam
@@ -90,6 +97,9 @@ Model niczego nie wykonuje sam. Wybiera tylko narzędzie z listy i podaje argume
 | modelu w chmurze (Claude, GPT, Gemini), gdy profil pozwala | `CloudLlm.Create` | `LokalneAI.Harness` |
 | aktualizacji wiedzy z repozytoriów | `KnowledgeSync.SyncAsync` | `LokalneAI.Harness` |
 | podagentów (model dzieli pracę na równoległe zlecenia dla osobnych sesji, zwykle na innych komputerach) | własny `ISubAgentHost` w `SessionOptions.SubAgents`; przebieg jednego podagenta prowadzi `SubAgentRunner.RunAsync` | `LokalneAI.Harness` |
+| szukania brakujących umiejętności (model zamiast „nie mam narzędzia” prosi o włączenie innej umiejętności) | własny `ISkillCatalog` w `SessionOptions.SkillCatalog`; po `true` z `RequestAsync` włącz umiejętności i wyślij polecenie jeszcze raz (nowa sesja z `History`) | `LokalneAI.Harness` |
+| obrazów dla modelu, który je widzi (wklejony zrzut, skan, tablica) | `HarnessSession.SendAsync(tekst, obrazy, ct)` albo `LlmMessage.Images`; w panelu `HarnessPanel.ImagesForModel`; obraz ze schowka: `ClipboardImages` | `LokalneAI.Harness`, `LokalneAI.Harness.Wpf` |
+| tablicy, na której model rysuje (linie, strzałki, napisy na osobnej warstwie) | umiejętność `whiteboard`, `WhiteboardExecutor` z własnym `IWhiteboardSurface`, opis tablicy dla modelu z `BoardSnapshot.Describe()` | `LokalneAI.Harness` |
 
 ## 4. Podłączenie do projektu
 
@@ -290,7 +300,7 @@ Kontrakt wykonawcy:
 - **Użytkownik odmówi:** model dostaje błąd „ODRZUCONE — użytkownik nie zgodził się na to polecenie.”. Profil powinien
   mieć w `system.md` zasadę, żeby po ODRZUCONE nie ponawiać wywołania.
 - **`Reject`:** model dostaje powód, a użytkownik nie widzi okna.
-- **`ConfirmMutation` = null:** zgoda bez pytania, patrz sekcja 2.
+- **`ConfirmMutation` = null:** zgoda bez pytania, patrz sekcja 2; „zawsze pytaj” strażnika — „ODRZUCONE”.
 
 ## 10. Nowe polecenie dla modelu: krok po kroku
 
@@ -429,8 +439,9 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 
 | Przestrzeń nazw | Typ | Do czego |
 |---|---|---|
-| `LokalneAI.Harness.Session` | `HarnessSession` | mini-sesja: `SendAsync`, `Progress`, `Context`, `Dispose` |
-| | `SessionOptions` | `ConfirmMutation`, `ContextNote`, `Variables` (`{{ja}}`), `CompactAt`, `KeepRecentMessages`, `ToolResultRole`, `History` (wznowienie zapisanej rozmowy: wiadomości `user`/`assistant`), `MeasureSystemPrompt` (raz na sesję dokładne tokeny samych zasad i narzędzi — jedno zapytanie z `MaxTokens = 1`, tylko `OllamaLlmClient`), `SubAgents` (gospodarz podagentów — sesja dostaje narzędzie `zlec_podagentowi` i sekcję „Podagenci”; `SubAgentResultLimit` = ile znaków wyniku podagenta wraca do modelu) |
+| `LokalneAI.Harness.Session` | `HarnessSession` | mini-sesja: `SendAsync`, `Progress`, `Context`, `Dispose`; `SendAsync(tekst, obrazy, ct)` — polecenie z obrazami (PNG/JPEG) dla modelu, który widzi obrazy; obrazy zostają przy poleceniu w historii (`History`, także przy wznowieniu) |
+| | `SessionOptions` | `ConfirmMutation`, `ContextNote`, `Variables` (`{{ja}}`), `CompactAt`, `KeepRecentMessages`, `ToolResultRole`, `History` (wznowienie zapisanej rozmowy: wiadomości `user`/`assistant`), `MeasureSystemPrompt` (raz na sesję dokładne tokeny samych zasad i narzędzi — jedno zapytanie z `MaxTokens = 1`, tylko `OllamaLlmClient`), `SubAgents` (gospodarz podagentów — sesja dostaje narzędzie `zlec_podagentowi` i sekcję „Podagenci”; `SubAgentResultLimit` = ile znaków wyniku podagenta wraca do modelu), `SkillCatalog` (katalog niewłączonych umiejętności — niżej), `Safety` (`SafetyOptions` strażnika bezpieczeństwa; null = domyślne foldery — strażnik działa zawsze) |
+| | `ISkillCatalog`, `SkillCatalogEntry`, `SkillCatalog` | brakujące polecenia: gospodarz podaje w `SessionOptions.SkillCatalog` niewłączone umiejętności (`Skills`: nazwa, opis, polecenia, słowa kluczowe) i `RequestAsync(nazwy, powód, ct)` — pytanie użytkownika przyciskiem; sesja dostaje `znajdz_umiejetnosc` (`SkillCatalog.Search` — słowa po 5 literach, nazwa ×3, polecenia ×2, opisy ×1; `Describe`) i `wlacz_umiejetnosci` (nazwy tylko z katalogu; po zgodzie tura kończy się bez kolejnego wywołania modelu, gospodarz włącza i ponawia polecenie) oraz sekcję „Brakujące polecenia”; gdy model odpowie albo zapyta „nie mam narzędzia” (`LooksLikeMissingTool`), sesja sama przeszukuje katalog (polecenie bez ścieżek — `WithoutPaths`) i raz cofa model z wynikiem (`NudgeFor`), a za drugim razem sama pyta gospodarza o najlepiej pasującą umiejętność. Bez kliknięcia nic się nie włącza |
 | | `ISubAgentHost` | gospodarz podagentów: `Skills` (umiejętności, które podagent może dostać), `Describe()` (zdanie o komputerach do promptu), `RunAsync(zlecenie, report, ct)` — dobiera komputer i model, buduje sesję podagenta i prowadzi ją przez `SubAgentRunner`; kilka zleceń z jednego kroku modelu sesja wykonuje równolegle, wyniki wracają w kolejności wywołań; sesji podagenta nie podaje się gospodarza (nie zleca dalej) |
 | | `SubAgentRequest`, `SubAgentResult`, `SubAgentSkill` | zlecenie (`Number`, `Task`, `Skills`, `Context`), wynik (`Success`, `Text`, `Machine`, `Model`, `Duration`, `Turn`), umiejętność do listy w promptie |
 | | `SubAgentInfo` | stan jednego podagenta do kafelka i wpisu w oknie: numer, zadanie, komputer, model, `Status`, `Step`, `IsRunning`, `Success`, `Result`, `Duration`, `Cancel` (przycisk „Przerwij”), `Observe(zdarzenie)`, `Describe()` |
@@ -438,6 +449,7 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `TurnResult`, `TurnKind` | wynik polecenia: `Answer`, `Question` albo `Failed`; `Calls`, `Warnings`, `NumbersVerified`, `ModelCallDetails` (tokeny i czasy każdego wywołania modelu) |
 | | `HarnessEvent`, `HarnessEventKind` | zdarzenia postępu (`Progress`); `ModelCall` po każdej odpowiedzi modelu (przed narzędziami, które krok zlecił) z `HarnessEvent.ModelCall`; `ModelThinking` niesie szacunek promptu w `Context` (`IsEstimate`); `ModelThinking` i `ModelStep` mają numer kroku w `Step` (tekst „Model pracuje (krok 2 z 12)…”); podagenci: `AgentStarted`, `AgentProgress` (zdarzenie sesji podagenta w `Inner`), `AgentFinished` — z `Agent` (`SubAgentInfo`) |
 | | `ModelCallMetrics` | jedno wywołanie modelu: `PromptTokens` (cały prompt — Ollama liczy też część z pamięci podręcznej), `OutputTokens`, `EstimatedPromptTokens` (szacunek przed wysłaniem), `AddedTokens` (przyrost promptu od poprzedniego wywołania) z `AddedKind` („pytanie”, „wyniki narzędzi”, „uwagi programu”…), `SystemTokens` (z `SystemMeasureTime` i `SystemMeasureLoadTime` — czas pomiaru), `Outcome`, czasy `LoadTime`, `PromptTime` (czytanie promptu), `OutputTime` (pisanie), `ServerTime`, `WallTime`, `QueueTime` (kolejka i sieć) |
+| | `GiveUpGuard` | „nie poddawaj się za łatwo” (2026-11-19): gdy odpowiedź brzmi jak „nie znalazłem / nie mam dostępu” (`LooksLikeGivingUp`, `LooksLikeNoAccess`), a w turze było mniej niż `MinWebSearches` (3) różnych wyszukiwań, sesja cofa model z listą użytych fraz (`WebRetryText`, najwyżej `MaxWebNudges` razy); „nie mam dostępu” bez próby — raz `AccessRetryText` |
 | | `TurnIntent` | wyraźne prośby w poleceniu, pilnowane przez sesję: „sprawdź w internecie” (`AsksForWeb` — sesja z internetem musi go użyć, inaczej raz cofa model) i „popraw / jeszcze raz” (`AsksForCorrection` — uwaga „nie powtarzaj” i temperatura ≥ 0,5 na tę turę) |
 | | `ExecutedCall` | wykonane wywołanie (w `TurnResult.Calls` i zdarzeniach); `Duration` = czas wykonania |
 | | `ContextUsage` | licznik kontekstu |
@@ -450,6 +462,8 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `ToolCall`, `ToolResult` | wywołanie od modelu (`GetString`, `GetNumber`, `GetBool`) i wynik (`Ok`, `Error`) |
 | | `WebAccess`, `WebAccessOptions` | internet dla modelu: `SearchAsync` (DuckDuckGo), `FetchAsync` (strona jako tekst); sieć biura zablokowana; włączany przez `SessionOptions.Web` i `HarnessProfile.WithInternet()` w profilach z `"internet": true` |
 | | `IConfirmingExecutor`, `ConfirmationDecision`, `ConfirmationKind` | zgoda zależna od argumentów |
+| | `SafetyGuard`, `SafetyOptions`, `SafetyVerdict`, `SafetyVerdictKind` | strażnik bezpieczeństwa: sesja sprawdza nim każde wywołanie przed zgodą i wykonaniem — `Block` (nigdy, także za zgodą: zmiana samego programu, furtki sieciowe, sekrety, autostart, wyłączanie zabezpieczeń, uprawnienia, wyciek, kod w locie, inne komputery), `AlwaysAsk` (pyta też w trybie bez pytania), `Allow`; `SafetyOptions` w `SessionOptions.Safety`: dodatkowe foldery chronione i sekrety, `PrivateFolders` (prywatne dane gospodarza, np. rozmowy — przy modelu Gemini albo GPT nie do czytania; dostawcę sesja bierze z `ICloudAwareLlmClient`), `Blocked` (dziennik); zasady: [bezpieczenstwo.md](bezpieczenstwo.md) |
+| | `IWorkingFolderProvider` | wykonawca podaje folder bieżący — strażnik liczy z niego ścieżki względne |
 | | `DelegateExecutor`, `RoutingExecutor` | wykonawca z funkcji; rozdzielanie po nazwie |
 | | `SimulatedModelExecutor` | atrapa modelu konstrukcji do prób bez Tekli |
 | | `ScriptedExecutor`, `ExpectedCall` | oczekiwane wywołania w testach i w `LokalneAI.Eval` |
@@ -460,7 +474,8 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `KnowledgeIndex` | wyszukiwarka `szukaj_wiedzy` w `wiedza\`; `AddFrom(indeks, przedrostek)` łączy indeksy profili |
 | | `Glossary`, `GlossaryEntry` | glosariusz: pary terminów w wierszach (`wiedza\*.txt`, `.tsv`, `.csv` albo plik z dysku przez `HarnessProfile.AddKnowledgeFile(ścieżka)`); sesja sama dokleja do polecenia i wyników narzędzi gospodarza odpowiedniki terminów znalezionych w tekście (`BuildHint`, także w odmianie) |
 | | `KnowledgeSync`, `KnowledgeSource`, `KnowledgeSyncResult` | aktualizacja wiedzy z `zrodla.json` |
-| | `BuiltInTools`, `Calculator` | narzędzia wbudowane: `kalkulator`, `szukaj_wiedzy`, internet (`szukaj_w_internecie`, `czytaj_strone`), `zlec_podagentowi` (`DelegateName`, dokładane przez `SessionOptions.SubAgents` / `HarnessProfile.WithSubAgents()`) |
+| | `IFolderAccess`, `FolderAccess` | folder spoza dozwolonych w trakcie rozmowy: błąd „poza dozwolonymi folderami” (`MissingFolders`; foldery systemowe `IsSystem` pomijane) → sesja pyta przez `ConfirmMutation` z `ToolCall.AccessFolder` (zawsze `ConfirmationDangerous` — pyta człowiek także w trybie bez pytania i w kontroli; `IsBroad` — cały dysk, dopisek w pytaniu), po zgodzie `IFolderAccess.AllowFolder` (FileSystem, Office, OCR, RFEM, `RoutingExecutor` — wszystkim) i ponowienie polecenia; odmowa raz na folder w sesji (`Denied`); bez okna zgody błąd dostaje `AskUserHint` |
+| | `BuiltInTools`, `Calculator` | narzędzia wbudowane: `kalkulator`, `szukaj_wiedzy`, internet (`szukaj_w_internecie`, `czytaj_strone`), `zlec_podagentowi` (`DelegateName`, dokładane przez `SessionOptions.SubAgents` / `HarnessProfile.WithSubAgents()`), `znajdz_umiejetnosc` i `wlacz_umiejetnosci` (`FindSkillName`, `EnableSkillsName`, `IsSkillTool`; dokładane przez `SessionOptions.SkillCatalog` / `HarnessProfile.WithSkillSearch()`) |
 | `LokalneAI.Harness.Llm` | `ILlmClient` | dostęp do modelu (własna implementacja: testy, inny serwer) |
 | | `OllamaLlmClient`, `OllamaOptions` | Ollama `/api/chat`; `ClientName` = nazwa w kolejce okna; `AllowThinking` (domyślnie false = zapytanie niesie `"think": false`, bo qwen3.5 myślał minutami przed krokiem); `Headers` = dodatkowe nagłówki HTTP (np. `X-LokalneAI-Przekazane: 1` — brama okna liczy na tym komputerze mimo „Gdzie liczyć”) |
 | | `LocalGateway` | brama okna LokalneAI na tym PC: `ChooseUrl()`, `IsRunningAsync()` |
@@ -470,15 +485,20 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `AnthropicLlmClient`, `AnthropicOptions` | Claude: `POST /v1/messages` |
 | | `CloudLlm` | `Create(dostawca, klucz, model)` — klient chmury dobrany do dostawcy |
 | | `CloudModels`, `CloudModelInfo` | lista modeli dostawcy i sprawdzenie klucza (`ListAsync`) |
-| | `LlmRequest`, `LlmResponse`, `LlmMessage` | zapytanie i odpowiedź modelu; `LlmRequest.MaxTokens` (limit odpowiedzi dla jednego zapytania), `LlmResponse.PromptDuration`/`OutputDuration` (czytanie promptu i pisanie, z Ollamy) |
+| | `LlmRequest`, `LlmResponse`, `LlmMessage` | zapytanie i odpowiedź modelu; `LlmRequest.MaxTokens` (limit odpowiedzi dla jednego zapytania), `LlmResponse.PromptDuration`/`OutputDuration` (czytanie promptu i pisanie, z Ollamy); `LlmMessage.Images` — obrazy wiadomości (Ollama: `images` w base64, Claude: bloki `image` przed tekstem tury, GPT i Gemini: `image_url` z adresem `data:`), `LlmMessage.MediaType(bajty)`; model bez obsługi obrazów ich nie dostaje — gospodarz daje wtedy tekst z OCR |
 | | `LlmException`, `LlmUnavailableException` | błędy serwera modelu |
 | `LokalneAI.Harness.Validation` | `SqlGuard` | strażnik SQL: jedno zapytanie, tylko odczyt |
 | | `SchemaValidator` | sprawdzenie argumentów z JSON Schema |
 | | `NumberGuard` | czy liczby w odpowiedzi są w wynikach narzędzi |
 | `LokalneAI.Harness.Charts` | `ChartSpec`, `ChartSeries`, `ChartKind`, `ChartSort` | opis wykresu z bloku ```` ```wykres ```` w odpowiedzi modelu (JSON po polsku: `typ` słupkowy/poziomy/skumulowany/liniowy/obszarowy/kołowy/pierścieniowy, `tytul`, `os_x`, `os_y`, `etykiety`, `serie[{nazwa, wartosci, kolor, typ, wypelnienie, przerywana}]`, `grupy`, `kolory`, `kolory_grup`, `sortuj`, `sortuj_wg`, `odwroc_x`, `odwroc_y`, `zakres_y`, `wartosci`, `wypelnij_miedzy`, `max_czesci`, `wysokosc`; zamiast etykiet i serii także `dane` z wierszami): `Parse(json, out błąd)` sortuje i odwraca już przy czytaniu, `ToTsv()` dla Excela, `SeriesColor`/`PointColor`/`GroupColor` — bez WPF, do użycia w każdym gospodarzu (WinForms, strona) |
 | | `ChartColors` | paleta serii (`Palette`, `Of(miejsce)`, `Rest`) i nazwy kolorów po polsku i angielsku albo `#rrggbb` → `Parse`, `Split` na R, G, B |
-| `LokalneAI.Harness.Wpf` | `HarnessPanel` | panel rozmowy: `SessionFactory`, `ConfirmMutationAsync`, `SendAsync`, `NewSession`, `TurnCompleted`; do zapisywanych rozmów: `ResetSession` (nowa sesja, wpisy zostają), `LoadEntries`, `AddInfo`, `TurnEnded`, `NewSessionClicked`, `NewSessionText`, `IsBusy`, `FocusInput`; `ShowTokens` — tokeny i czasy przy każdym wpisie (z prawej w szerokim oknie, `TokensBeside`; objaśnienie `TokensLegend`); `ShowModelSteps` — wpisy „Krok N” (powstają zawsze, to tylko widok); podagenci: kafelki nad polem polecenia (`AgentTilesList`, przycisk „Przerwij”) i wpis `Agent` z przebiegiem w `Children` (rozwijane drzewo) |
-| | `PanelEntry`, `PanelEntryKind` | wpisy rozmowy w panelu; `Confirm` = pytanie o zgodę z przyciskami Tak/Nie w rozmowie (`ConfirmMutationAsync` nie otwiera okna; Stop = nie); `Step` = krok modelu (nagłówek z nazwami wywołań, JSON w `Detail`); `Agent` = podagent (`Children`, `IsExpanded`, `HasChildren`, `ChildrenText`); `Metrics` — tokeny i czasy przy wpisie (do zapisu rozmowy) |
+| `LokalneAI.Harness.Whiteboard` | `BoardSnapshot` | stan tablicy w chwili polecenia: `Width`, `Height`, `UserItems` (rysunki, teksty, obrazy użytkownika), `ModelItems` (rysunki modelu), `HandwritingText`/`HandwritingConfidence` (OCR pociągnięć pióra), `ImageAttached`, `MaxLines`; `Describe()` — opis dla modelu po polsku: teksty dosłownie (T1…), rysunki ze współrzędnymi, pióro i marker jako obszary, obrazy (O1…) z OCR |
+| | `BoardItem`, `BoardItemKind` | element tablicy we współrzędnych tablicy (px, y w dół): `Pen`, `Marker`, `Line`, `Arrow`, `Rectangle`, `Ellipse`, `Polyline`, `Text`, `Image`; `X`, `Y`, `X2`, `Y2`, `Points`, `Text`, `Color` (#RRGGBB), `OcrText`, `FontSize`, prostokąt otaczający `Left`/`Top`/`Right`/`Bottom` |
+| | `BoardColors` | paleta tablicy z nazwami po polsku (`Palette`, `Default` = fioletowy modelu), `Parse(nazwa albo #RRGGBB)`, `NameOf(#RRGGBB)` — najbliższa nazwa do opisu |
+| | `IWhiteboardSurface`, `WhiteboardExecutor` | tablica gospodarza (rozmiar, `DrawAsync`, `ClearModelLayerAsync` — wołane z wątku w tle) i wykonawca umiejętności `whiteboard`: `rysuj` (wszystko albo nic — złe elementy dają błąd dla modelu, współrzędne poza tablicą są przycinane; `Parse`, `MaxItems`, `MinLength`, `KindName`) i `wyczysc_rysunki`; rysunków użytkownika model nie zmienia |
+| `LokalneAI.Harness.Wpf` | `HarnessPanel` | panel rozmowy: `SessionFactory`, `ConfirmMutationAsync`, `SendAsync`, `NewSession`, `TurnCompleted`; do zapisywanych rozmów: `ResetSession` (nowa sesja, wpisy zostają), `LoadEntries`, `AddInfo`, `TurnEnded`, `NewSessionClicked`, `NewSessionText`, `IsBusy`, `FocusInput`; `ShowTokens` — tokeny i czasy przy każdym wpisie (z prawej w szerokim oknie, `TokensBeside`; objaśnienie `TokensLegend`); `ShowModelSteps` — wpisy „Krok N” (powstają zawsze, to tylko widok); podagenci: kafelki nad polem polecenia (`AgentTilesList`, przycisk „Przerwij”) i wpis `Agent` z przebiegiem w `Children` (rozwijane drzewo); obrazy: `ImagePasted` (OCR wklejonego obrazka), `ImagesForModel` (true = obraz idzie też do modelu — miniatury `PendingImages` nad polem, „×” usuwa), `SendAsync(tekst, obrazy, pokazany tekst, dopisek)`; własne pole gospodarza: `ShowInput = false` i `Cancel()`; `AskAsync(pytanie, napis „tak”, napis „nie”, ct)` — pytanie z przyciskami w rozmowie (np. „Tak, włącz i ponów”) |
+| | `ClipboardImages`, `PendingImage` | obrazy ze schowka: `IsImage`, `ReadPng` (najpierw format „PNG”, zrzuty z zerową alfą jako nieprzezroczyste), `ToPng`, `Load`, `Shrink` (dłuższy bok najwyżej `ModelMaxSide` = 1568 px); obrazek czekający na wysłanie z miniaturą |
+| | `PanelEntry`, `PanelEntryKind` | wpisy rozmowy w panelu; `Confirm` = pytanie o zgodę z przyciskami Tak/Nie w rozmowie (`ConfirmMutationAsync` nie otwiera okna; Stop = nie; napisy przycisków `YesText`, `NoText`); `Step` = krok modelu (nagłówek z nazwami wywołań, JSON w `Detail`); `Agent` = podagent (`Children`, `IsExpanded`, `HasChildren`, `ChildrenText`); `Metrics` — tokeny i czasy przy wpisie (do zapisu rozmowy) |
 | | `AgentTile` | kafelek podagenta w trakcie pracy: `Title`, `Status` (umiejętności, krok, sekundy), `IsRunning`, `Cancel()`, `Refresh()` |
 | | `MarkdownText`, `MarkdownRenderer` | odpowiedź w Markdownie (tabele z ramkami, listy, pogrubienia, kod, linki), tekst do zaznaczania; `Markdown` = tekst (wiązanie), `TablesAsTsv` i menu „Kopiuj tabele do Excela”; `HarnessPanel` używa go dla odpowiedzi i pytań modelu |
 | | `ChartView` | wykres z bloku ```` ```wykres ```` w odpowiedzi (opis: `ChartSpec` z `LokalneAI.Harness.Charts`): słupkowy (pionowy, poziomy, skumulowany, linie nad słupkami), liniowy (wypełnienie pod linią i między liniami, przerywany), kołowy i pierścieniowy; legenda po seriach albo grupach, wartości po najechaniu, dane do Excela (`Spec.ToTsv()`) |

@@ -26,6 +26,13 @@ internal static class AutoTest
                 return;
             }
 
+            if (options.Tab is "whiteboard" or "tablica")
+            {
+                exitCode = await RunWhiteboardAsync(window, options, outputDir);
+                Application.Current.Shutdown(exitCode);
+                return;
+            }
+
             if (options.AutoTestQuestion == "#ikona")
             {
                 TrayIcon.SavePreview(Path.Combine(outputDir, "ikona.png")); // podgląd ikony w zasobniku
@@ -179,6 +186,71 @@ internal static class AutoTest
     }
 
     /// <summary>
+    /// Kontrola zakładki Whiteboard (<c>--zakladka whiteboard</c>): <c>#demo</c> kładzie przykładowy szkic (belka, podpory,
+    /// siła, teksty), <c>#obraz:plik.png</c> wkleja obraz z pliku, <c>#capture</c> sprawdza Capture (ramka 360×240 w lewym
+    /// górnym rogu ekranu na chwilę, zrzut na tablicę); reszta poleceń idzie przez „Zatwierdź”. Wynik: whiteboard.png
+    /// (okno), tablica.png (tablica jak dla modelu) i whiteboard.json (opis tablicy, rysunki Amadeusza, wpisy).
+    /// </summary>
+    private static async Task<int> RunWhiteboardAsync(MainWindow window, StartupOptions options, string outputDir)
+    {
+        var board = window.Whiteboard;
+        window.SelectTab("whiteboard");
+        window.CodeView.AutoConfirm = true; // zgody (gdy sesja ma umiejętności z Code) zatwierdza kontrola
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+        var commands = (options.AutoTestQuestion ?? "").Split(new[] { "||" }, StringSplitOptions.RemoveEmptyEntries).Select(c => c.Trim()).Where(c => c != "-").ToList();
+        foreach (var command in commands)
+        {
+            if (command == "#demo")
+            {
+                board.LoadDemoForTest(null);
+            }
+            else if (command.StartsWith("#obraz:", StringComparison.Ordinal))
+            {
+                board.LoadDemoForTest(null);
+                board.AddImage(File.ReadAllBytes(command["#obraz:".Length..].Trim()), new Point(700, 40), false, Path.GetFileName(command["#obraz:".Length..].Trim()));
+            }
+            else if (command == "#capture")
+            {
+                await board.CaptureAsync(async capture =>
+                {
+                    capture.Left = 0;
+                    capture.Top = 0;
+                    capture.Width = 360;
+                    capture.Height = 240;
+                    await Task.Delay(700);
+                    // Zrzut ramki w trakcie (jak widzi ją użytkownik): ramka, podpowiedź i przyciski nad tym, co jest pod spodem.
+                    var corner = capture.PointToScreen(new Point(0, 0));
+                    var far = capture.PointToScreen(new Point(capture.ActualWidth, capture.ActualHeight));
+                    var frame = ScreenCapture.Png(new Int32Rect((int)corner.X, (int)corner.Y, (int)(far.X - corner.X), (int)(far.Y - corner.Y)));
+                    if (frame is not null)
+                    {
+                        File.WriteAllBytes(Path.Combine(outputDir, "capture.png"), frame);
+                    }
+
+                    await capture.ConfirmAsync();
+                });
+            }
+            else
+            {
+                await board.SubmitAsync(command);
+            }
+        }
+
+        await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+        await Task.Delay(300);
+        window.SavePng(Path.Combine(outputDir, "whiteboard.png"));
+        File.WriteAllBytes(Path.Combine(outputDir, "tablica.png"), board.RenderBoardPng());
+        var entries = board.Answers.Entries.Select(e => new { rodzaj = e.Kind.ToString(), tekst = e.Text, szczegoly = e.Detail, ok = e.Success }).ToList();
+        File.WriteAllText(Path.Combine(outputDir, "whiteboard.json"), JsonSerializer.Serialize(new
+        {
+            opis = board.DescribeForTest(),
+            rysunkiAmadeusza = board.ModelItemsForTest.Select(i => LokalneAI.Harness.Whiteboard.WhiteboardExecutor.KindName(i.Kind) + " " + i.X + "," + i.Y + " " + i.X2 + "," + i.Y2 + (i.Text is null ? "" : " „" + i.Text + "”")).ToList(),
+            wpisy = entries,
+        }, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
+        return entries.Any(e => e.rodzaj == "Error") ? 1 : 0;
+    }
+
+    /// <summary>
     /// Kontrola pytania o zgodę w rozmowie (<c>#zgoda</c>): czeka na wpis z przyciskami, zapisuje zrzut okna i klika „Tak”
     /// (przez automatyzację interfejsu, jak użytkownik).
     /// </summary>
@@ -195,7 +267,7 @@ internal static class AutoTest
             await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             await Task.Delay(300);
             window.SavePng(screenshot);
-            var yes = FindButton(view.Panel, "Tak, wykonaj");
+            var yes = FindButton(view.Panel, "Tak, wykonaj") ?? FindButton(view.Panel, "Tak, włącz i ponów"); // zgoda na polecenie albo na brakującą umiejętność
             if (yes is not null)
             {
                 ((System.Windows.Automation.Provider.IInvokeProvider)new System.Windows.Automation.Peers.ButtonAutomationPeer(yes)
