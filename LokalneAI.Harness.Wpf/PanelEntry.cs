@@ -21,6 +21,10 @@ namespace LokalneAI.Harness.Wpf
         Info,
         /// <summary>Pytanie o zgodę przed poleceniem, które coś zmienia — z przyciskami Tak/Nie w rozmowie.</summary>
         Confirm,
+        /// <summary>Krok modelu: co zwrócił w danym kroku (wywołania, odpowiedź, pytanie, plan); widoczny przy <see cref="HarnessPanel.ShowModelSteps"/>.</summary>
+        Step,
+        /// <summary>Podagent: zadanie, komputer, model i wynik; w <see cref="PanelEntry.Children"/> jego przebieg (rozwijane drzewo).</summary>
+        Agent,
     }
 
     /// <summary>Jeden wpis w rozmowie: polecenie użytkownika, wywołanie narzędzia, odpowiedź…</summary>
@@ -70,6 +74,26 @@ namespace LokalneAI.Harness.Wpf
         /// <summary>Czy jest druga linia (<see cref="Detail"/>).</summary>
         public bool HasDetail => !string.IsNullOrEmpty(_detail);
 
+        private string _metrics;
+
+        /// <summary>
+        /// Tokeny i czasy przy wpisie (np. „model: 41 tok. (wywołanie)”, „narzędzie: 50 ms”), w kilku liniach; widać je, gdy
+        /// <see cref="HarnessPanel.ShowTokens"/>. Panel wypełnia je sam ze zdarzeń sesji; null = brak.
+        /// </summary>
+        public string Metrics
+        {
+            get => _metrics;
+            set
+            {
+                _metrics = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Metrics)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasMetrics)));
+            }
+        }
+
+        /// <summary>Czy są tokeny i czasy (<see cref="Metrics"/>).</summary>
+        public bool HasMetrics => !string.IsNullOrEmpty(_metrics);
+
         /// <summary>Wynik wywołania: true = OK, false = błąd, null = jeszcze trwa.</summary>
         public bool? Success
         {
@@ -93,6 +117,56 @@ namespace LokalneAI.Harness.Wpf
 
         /// <summary>Polecenie może coś zniszczyć (kasuje) — przycisk „Nie” jest wyróżniony.</summary>
         public bool Dangerous { get; set; }
+
+        private System.Collections.ObjectModel.ObservableCollection<PanelEntry> _children;
+        private bool _isExpanded;
+
+        /// <summary>
+        /// Wpisy podrzędne (wpis <see cref="PanelEntryKind.Agent"/>: przebieg podagenta — polecenie, kroki, wywołania, odpowiedź).
+        /// Tworzone przy pierwszym użyciu; <see cref="HasChildren"/> mówi, czy coś w nich jest.
+        /// </summary>
+        public System.Collections.ObjectModel.ObservableCollection<PanelEntry> Children
+        {
+            get
+            {
+                if (_children == null)
+                {
+                    _children = new System.Collections.ObjectModel.ObservableCollection<PanelEntry>();
+                    _children.CollectionChanged += (s, e) =>
+                    {
+                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasChildren)));
+                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChildrenText)));
+                    };
+                }
+
+                return _children;
+            }
+        }
+
+        /// <summary>Czy wpis ma wpisy podrzędne.</summary>
+        public bool HasChildren => _children != null && _children.Count > 0;
+
+        /// <summary>Napis przycisku rozwijania: „▸ przebieg (12 wpisów)” albo „▾ zwiń przebieg”.</summary>
+        public string ChildrenText
+        {
+            get
+            {
+                var count = _children == null ? 0 : _children.Count;
+                return _isExpanded ? "▾ zwiń przebieg" : "▸ przebieg (" + count + (count == 1 ? " wpis" : count >= 2 && count <= 4 ? " wpisy" : " wpisów") + ")";
+            }
+        }
+
+        /// <summary>Wpisy podrzędne rozwinięte (drzewo); domyślnie zwinięte — widać tylko nagłówek i wynik.</summary>
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set
+            {
+                _isExpanded = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsExpanded)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ChildrenText)));
+            }
+        }
 
         /// <summary>Zaczyna czekać na odpowiedź Tak/Nie (<see cref="PanelEntryKind.Confirm"/>).</summary>
         internal System.Threading.Tasks.Task<bool> Ask()

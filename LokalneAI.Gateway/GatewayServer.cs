@@ -84,6 +84,9 @@ public sealed class GatewayServer : IAsyncDisposable
     /// <summary>Kolejka zapytań (do okna: kto czeka, kto liczy, „Odrzuć”).</summary>
     public RequestQueue Queue { get; }
 
+    /// <summary>Tokeny policzone na tym PC: dla każdego komputera, który pytał, i dla siebie (Ustawienia → Kolejka).</summary>
+    public TokenTally Tokens { get; } = new();
+
     /// <summary>Bieżące ustawienia.</summary>
     public GatewayOptions Options => _options;
 
@@ -594,7 +597,14 @@ public sealed class GatewayServer : IAsyncDisposable
         using (var linked = CancellationTokenSource.CreateLinkedTokenSource(aborted, item.Cancellation.Token))
         {
             var clock = System.Diagnostics.Stopwatch.StartNew();
-            var ok = await ForwardAsync(context, target, targetName, pathAndQuery, body, headers, linked.Token).ConfigureAwait(false);
+            var tail = new ResponseTail();
+            var ok = await ForwardAsync(context, target, targetName, pathAndQuery, body, headers, linked.Token, tail).ConfigureAwait(false);
+            if (ok && !item.Rejected)
+            {
+                var (promptTokens, outputTokens) = tail.Read();
+                Tokens.Add(computer, fromThisPc ? null : remote.ToString(), fromThisPc, promptTokens, outputTokens, DateTimeOffset.Now);
+            }
+
             if (item.Rejected)
             {
                 OnActivity($"{computer} · {program}: przerwane przez właściciela.");
@@ -616,7 +626,8 @@ public sealed class GatewayServer : IAsyncDisposable
 
     /// <summary>Przekazuje zapytanie dalej i strumieniuje odpowiedź. Zwraca true, gdy odpowiedź przeszła w całości.</summary>
     private async Task<bool> ForwardAsync(
-        HttpContext context, string target, string targetName, string pathAndQuery, byte[]? body, Dictionary<string, string> headers, CancellationToken cancellationToken)
+        HttpContext context, string target, string targetName, string pathAndQuery, byte[]? body, Dictionary<string, string> headers, CancellationToken cancellationToken,
+        ResponseTail? tail = null)
     {
         using var message = new HttpRequestMessage(new HttpMethod(context.Request.Method), target + pathAndQuery);
         if (body is not null)
@@ -670,6 +681,7 @@ public sealed class GatewayServer : IAsyncDisposable
                 int read;
                 while ((read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
                 {
+                    tail?.Append(buffer.AsSpan(0, read));
                     await context.Response.Body.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                     await context.Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
                 }

@@ -15,7 +15,10 @@ Gotowe profile:
   ten sam wykonawca obsługuje polecenia `pdf_*` umiejętności `office` (scalanie, wycinanie, obrót stron);
 - [profile/rfem](../profile/rfem): modele RFEM 5 (.rf5) czytane z pliku bez programu Dlubal (`rfem_info`, `rfem_pret`, `rfem_wezel`,
   `rfem_przekroje`, `rfem_przypadki`, `rfem_sily`, `rfem_szukaj_pretow`): węzły, pręty z długością i przekrojem, materiały, przypadki
-  i kombinacje, siły w prętach z wyników solvera. Wykonawca `RfemExecutor` z `LokalneAI.Harness.Rfem`, tylko do odczytu;
+  i kombinacje, siły w prętach z wyników solvera, oraz model otwarty w uruchomionym RFEM 5 przez RF-COM (`rfem_otwarty`,
+  `rfem_otwarty_pret`, `rfem_otwarty_przekroje`, `rfem_otwarty_przypadki`, `rfem_otwarty_sily`, `rfem_otwarty_reakcje`, `rfem_wskaz` —
+  RFEM prosi użytkownika o kliknięcie obiektu; licencja RF-COM zajmowana na czas jednego polecenia). Wykonawca `RfemExecutor`
+  z `LokalneAI.Harness.Rfem`, tylko do odczytu;
 - [profile/tablice](../profile/tablice): tablice do projektowania konstrukcji stalowych — profil samej wiedzy (`narzedzia.json` z pustą
   tablicą, `szukaj_wiedzy` i `kalkulator`): charakterystyki przekrojów (Bogucki, Żyburtowicz), połączenia doczołowe DAST, tablice SZS C5
   do połączeń; pliki `.md` w `wiedza\` są generowane z `wiedza\dane\*.json` (jedna sekcja `#` na przekrój albo połączenie);
@@ -24,7 +27,19 @@ Gotowe profile:
   i zwroty w `wiedza\` przez `szukaj_wiedzy`; odpowiedź modelu to samo tłumaczenie;
 - [profile/mkk](../profile/mkk): pytania o programy Marka Kowolika (Hala, Modelarz węzłów) i o Robota, RFEM, IDEA StatiCa,
   IFC, SAP2000. Profil samej wiedzy: `narzedzia.json` ma pustą tablicę, model szuka w dokumentacji pobranej z repozytorium
-  MKK (`zrodla.json`) i odpowiada; okno nie pokazuje wtedy opcji Tekli (`HarnessProfile.HasHostTools`).
+  MKK (`zrodla.json`) i odpowiada; okno nie pokazuje wtedy opcji Tekli (`HarnessProfile.HasHostTools`);
+- zestaw **Check Structures** z repozytorium `CS-cheak_structures` (siedem profili samej wiedzy, każdy plik repozytorium
+  w dokładnie jednym, żeby łączenie w profil nie dublowało fragmentów; podział i decyzje w
+  [profile/cs_program/README.md](../profile/cs_program/README.md)):
+  [profile/cs_program](../profile/cs_program) (obsługa programu: instalacja, viewer, toolkit, teczki, wersje, serwisy,
+  eksporty, `.csx`, koszty, agent), [profile/cs_ifc](../profile/cs_ifc) (import IFC, bliźniak analityczny, jednostki,
+  psety, nazwy profili), [profile/cs_konstrukcja](../profile/cs_konstrukcja) (klasyfikacja `klasa_p1..p4`, role, typy
+  zespołów, osie i poziomy, płaszczyzny, obiekty i dylatacje), [profile/cs_polaczenia](../profile/cs_polaczenia) (śruby,
+  strefy i typy połączeń, krawędzie i spoiny, spoiny ze źródeł, sztywność, IDEA StatiCa),
+  [profile/cs_statyka](../profile/cs_statyka) (model MES z IFC, `static`, obciążenia, porównanie modeli, wyniki 3D),
+  [profile/cs_rysunki](../profile/cs_rysunki) (Układy, arkusze zespołów, części, NC DSTV, nesting),
+  [profile/cs_robot](../profile/cs_robot) (Robot przez COM, wytężenie na IFC, most MES → Robot); dokumentacja RFEM
+  z tego repozytorium doszła do `rfem` (`zrodla.json`, `wiedza/rfem_dlubal.md`).
 
 | Plik | Obowiązkowy | Co zawiera |
 |---|---|---|
@@ -101,7 +116,7 @@ przeliczony początek rozmowy, więc ten sam początek liczy się szybko. Koszt 
   "narzedzia_sql": ["zapytanie_sql"],            // argument "sql" przechodzi przez strażnika SQL
   "sprawdzaj_liczby": true,                      // liczby w odpowiedzi muszą być w wynikach narzędzi
   "id_zero_to_poprzedni": true,                  // "id": 0 = element z poprzedniego wywołania w tym kroku
-  "max_krokow": 6,
+  "max_krokow": 12,                              // kroki modelu na jedno polecenie (domyślnie 12; 2026-11-19 podwojone we wszystkich profilach do prób)
   "max_wywolan_w_kroku": 4,
   "plan": false,                                 // krótkie zdanie planu przed wywołaniami
   "opis_narzedzi": "zwiezly",                    // albo "pelny" (opisy parametrów — dłuższy prompt)
@@ -122,6 +137,7 @@ przeliczony początek rozmowy, więc ten sam początek liczy się szybko. Koszt 
 | `ocr` | bez pola | skany to dokumenty biura (protokoły, pisma, umowy) |
 | `rfem` | bez pola | modele obliczeniowe projektów klientów |
 | `tablice` | bez pola | wiedza z książek objętych prawem autorskim zostaje na komputerze |
+| `cs_program`, `cs_ifc`, `cs_konstrukcja`, `cs_polaczenia`, `cs_statyka`, `cs_rysunki`, `cs_robot` | bez pola | repozytorium CS jest prywatne, dokumentacja zawiera ustalenia biura i nazwy modeli; dopisanie `["anthropic"]` to decyzja użytkownika |
 | nowy profil bez pola | — | tylko modele lokalne, dopóki ktoś świadomie nie dopisze dostawców |
 
 Dozwolone wartości: `anthropic`, `openai`, `google`. Innych (np. `deepseek`) biblioteka nie przyjmie. Model w chmurze
@@ -142,6 +158,8 @@ takiego wpisu nie ma (np. `cde` widzą tylko osoby z dostępem do bazy). Adresó
 | `ocr` | `false` | jak `office`: tekst ze skanów zostaje na komputerze |
 | `rfem` | `false` | model widzi geometrię i siły z projektów klientów |
 | `tablice` | `false` | odpowiedzi tylko z tablic, bez szukania w internecie |
+| `cs_ifc`, `cs_robot` | `true` | publiczna dokumentacja buildingSMART, IfcOpenShell i Autodesk; `system.md` zakazuje wysyłania fragmentów wiedzy |
+| `cs_program`, `cs_konstrukcja`, `cs_polaczenia`, `cs_statyka`, `cs_rysunki` | `false` | treść wewnętrzna CS (decyzje biura, modele, reguły) |
 | nowy profil bez pola | — | bez internetu |
 
 Adresy w sieci biura i na tym komputerze (prywatne IP, nazwy bez kropki, `.local`, nazwy wskazujące adres prywatny,

@@ -1,0 +1,36 @@
+{
+  "zrodla": [
+    {
+      "typ": "git",
+      "repo": "https://github.com/Optimal-Design-of-Structures/CS-cheak_structures.git",
+      "galaz": "main",
+      "pliki": [
+        "handbook/glossary/polaczenia.md",
+        "handbook/glossary/spoiny.md",
+        "handbook/intents/przeglad-shared-edges.md",
+        "handbook/pitfalls/rfem_idea_sily.md",
+        "handbook/pitfalls/bolt_spoiny_polaczenia.md",
+        "docs/how-to/IDEA_API.md",
+        "docs/how-to/RFEM_DO_IDEA_SILY.md",
+        "docs/help/koszty_spawanie.md",
+        "docs/wyklady/WYKLAD_SPOINY_ZRODLA_2026-10-17.md",
+        "docs/wyklady/WYKLAD_SPOINY_Z_MODELU_ANALITYCZNEGO_2026-07-11.md",
+        "docs/wyklady/WYKLAD_POLACZENIA_DOCZOLOWE_SZTYWNOSC_2026-10-31.md",
+        "docs/wyklady/WYKLAD_POLACZENIA_ZAKLADKOWE_SZTYWNOSC_2026-10-11.md",
+        "docs/wyklady/WYKLAD_OBSZARY_POLACZEN_WIRTUALNE_BLACHY_2026-08-29.md",
+        "docs/wyklady/WYKLAD_AUDYT_KONSTRUKCJI_KATALOG_POLACZEN_2026-09-06.md",
+        "docs/plans/PLAN_SPOINY_ZE_ZRODEL_2026-10-18.md",
+        "docs/plans/PLAN_SZTYWNOSC_POLACZEN_2026-10-31.md",
+        "src/features/bolt/README.md",
+        "src/features/connection_set/README.md",
+        "src/features/strefa_polaczenia/README.md",
+        "src/features/shared_edges/README.md",
+        "src/features/spoiny/README.md",
+        "src/features/idea_match/README.md",
+        "tools/spoiny/s0/README.md",
+        "tools/spoiny/dwg_pomiar/README.md",
+        "tools/ocena_konektora/README.md"
+      ]
+    }
+  ]
+}

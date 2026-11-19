@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -20,6 +21,7 @@ public sealed class NetworkViewModel : ObservableObject
     private readonly StartupOptions _startup;
     private readonly Func<Task> _onTargetChanged;
     private readonly DispatcherTimer _clock;
+    private readonly DispatcherTimer _tokenSave;
     private GatewayServer? _gateway;
     private string? _gpuDescription;
     private bool _computeElsewhere;
@@ -64,7 +66,13 @@ public sealed class NetworkViewModel : ObservableObject
         FirewallCommand = new RelayCommand(SetupFirewallAsync, () => !_busy);
         _clock = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _clock.Tick += (_, _) => RefreshQueue();
+        ResetTokensCommand = new RelayCommand(() => _gateway?.Tokens.Reset());
+        _tokenSave = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _tokenSave.Tick += (_, _) => SaveTokens();
     }
+
+    /// <summary>Plik liczników tokenów bramy (<c>%APPDATA%\LokalneAI\tokeny.json</c>) — sumy przetrwają zamknięcie okna.</summary>
+    public static string TokensPath => Path.Combine(Path.GetDirectoryName(SettingsStore.DefaultPath)!, "tokeny.json");
 
     public RelayCommand ConnectCommand { get; }
 
@@ -75,6 +83,18 @@ public sealed class NetworkViewModel : ObservableObject
     public RelayCommand<QueueRow> RejectCommand { get; }
 
     public RelayCommand FirewallCommand { get; }
+
+    /// <summary>Zeruje liczniki tokenów (Ustawienia → Kolejka → „Resetuj”).</summary>
+    public RelayCommand ResetTokensCommand { get; }
+
+    /// <summary>Tokeny policzone na tym PC, według komputera, który pytał; ostatni wiersz to suma.</summary>
+    public ObservableCollection<TokenRow> Tokens { get; } = [];
+
+    /// <summary>„od 18.11.2026 14:05” — od kiedy liczą liczniki.</summary>
+    public string TokensSince => _gateway is null ? "" : "od " + _gateway.Tokens.Since.ToLocalTime().ToString("dd.MM.yyyy HH:mm", Pl);
+
+    /// <summary>Jeszcze nic nie policzono.</summary>
+    public bool HasNoTokens => Tokens.Count == 0;
 
     public ObservableCollection<PeerInfo> Peers { get; } = [];
 
@@ -132,6 +152,9 @@ public sealed class NetworkViewModel : ObservableObject
 
     /// <summary>Karta komputera, który liczy (do statystyk „gdzie liczył”). Null = karta tego PC.</summary>
     public string? RemoteGpu { get; private set; }
+
+    /// <summary>Największy kontekst, jaki przyjmuje od innych komputer, który liczy (null = ten komputer albo nie wiadomo).</summary>
+    public int? RemoteMaxContext { get; private set; }
 
     public string RemoteAddress
     {
@@ -284,6 +307,14 @@ public sealed class NetworkViewModel : ObservableObject
         _gateway = gateway;
         GatewayUrl = gateway.LocalUrl;
         gateway.Queue.Changed += (_, _) => Application.Current?.Dispatcher.InvokeAsync(RefreshQueue);
+        LoadTokens(gateway.Tokens);
+        gateway.Tokens.Changed += (_, _) => Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            RefreshTokens();
+            _tokenSave.Stop();
+            _tokenSave.Start();
+        });
+        RefreshTokens();
         gateway.Activity += (_, text) => Application.Current?.Dispatcher.InvokeAsync(() => AddActivity(text));
         if (options.IsRemote && await CheckRemoteAsync(options.RemoteUrl!) is { } remote)
         {
@@ -306,6 +337,7 @@ public sealed class NetworkViewModel : ObservableObject
         _clock.Stop();
         if (_gateway is not null)
         {
+            SaveTokens();
             await _gateway.DisposeAsync();
             _gateway = null;
         }
@@ -398,6 +430,7 @@ public sealed class NetworkViewModel : ObservableObject
 
         RemoteOk = true;
         RemoteGpu = probe.Info.Gpu;
+        RemoteMaxContext = probe.Info.MaxContext > 0 ? probe.Info.MaxContext : null;
         RemoteDescription = "✓ " + probe.Info.Describe() + $" · kontekst do {probe.Info.MaxContext}";
         return probe.Info;
     }
@@ -413,6 +446,7 @@ public sealed class NetworkViewModel : ObservableObject
         else
         {
             RemoteGpu = null;
+            RemoteMaxContext = null;
         }
 
         if (_gateway is not null)
@@ -560,6 +594,69 @@ public sealed class NetworkViewModel : ObservableObject
         Notify();
     }
 
+    private void RefreshTokens()
+    {
+        Tokens.Clear();
+        var totals = _gateway?.Tokens.Snapshot() ?? [];
+        foreach (var total in totals)
+        {
+            Tokens.Add(new TokenRow(total));
+        }
+
+        if (totals.Count > 1)
+        {
+            Tokens.Add(TokenRow.Sum(totals));
+        }
+
+        OnPropertyChanged(nameof(TokensSince));
+        OnPropertyChanged(nameof(HasNoTokens));
+    }
+
+    private void LoadTokens(TokenTally tally)
+    {
+        if (_startup.IsAutoTest || !File.Exists(TokensPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var saved = JsonSerializer.Deserialize<SavedTokens>(File.ReadAllText(TokensPath));
+            if (saved?.Totals is not null)
+            {
+                tally.Load(saved.Totals.Where(t => t is not null), saved.Since);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
+        {
+            AddActivity("Nie wczytałem liczników tokenów: " + e.Message);
+        }
+    }
+
+    private void SaveTokens()
+    {
+        _tokenSave.Stop();
+        if (_gateway is null || _startup.IsAutoTest)
+        {
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(TokensPath)!);
+            var temporary = TokensPath + ".tmp";
+            File.WriteAllText(temporary, JsonSerializer.Serialize(
+                new SavedTokens(_gateway.Tokens.Since, _gateway.Tokens.Snapshot().ToList()), new JsonSerializerOptions { WriteIndented = true }));
+            File.Move(temporary, TokensPath, overwrite: true);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            AddActivity("Nie zapisałem liczników tokenów: " + e.Message);
+        }
+    }
+
+    private sealed record SavedTokens(DateTimeOffset Since, List<TokenTotal> Totals);
+
     private void AddActivity(string text)
     {
         Activity.Insert(0, DateTime.Now.ToString("HH:mm:ss", Pl) + "  " + text);
@@ -603,6 +700,66 @@ public sealed class NetworkViewModel : ObservableObject
         {
             return null;
         }
+    }
+}
+
+/// <summary>Wiersz liczników tokenów w Ustawieniach → Kolejka.</summary>
+public sealed class TokenRow
+{
+    private static readonly CultureInfo Pl = CultureInfo.GetCultureInfo("pl-PL");
+
+    public TokenRow(TokenTotal total)
+    {
+        Who = total.IsThisComputer ? "ten komputer"
+            : string.IsNullOrEmpty(total.Address) || total.Address == total.Computer ? total.Computer
+            : $"{total.Computer} ({total.Address})";
+        RequestsText = Count(total.Requests, "zapytanie", "zapytania", "zapytań");
+        PromptText = total.PromptTokens.ToString("N0", Pl);
+        OutputText = total.OutputTokens.ToString("N0", Pl);
+        TotalText = (total.PromptTokens + total.OutputTokens).ToString("N0", Pl) + " tok.";
+        LastText = total.LastUsed == default ? "" : "ostatnio " + total.LastUsed.ToLocalTime().ToString("dd.MM HH:mm", Pl);
+    }
+
+    private TokenRow()
+    {
+    }
+
+    public string Who { get; private init; } = "";
+
+    public string RequestsText { get; private init; } = "";
+
+    /// <summary>Tokeny przeczytane przez model (prompt).</summary>
+    public string PromptText { get; private init; } = "";
+
+    /// <summary>Tokeny napisane przez model.</summary>
+    public string OutputText { get; private init; } = "";
+
+    public string TotalText { get; private init; } = "";
+
+    public string LastText { get; private init; } = "";
+
+    /// <summary>Wiersz „Razem” (pogrubiony).</summary>
+    public bool IsSum { get; private init; }
+
+    public static TokenRow Sum(IReadOnlyList<TokenTotal> totals)
+    {
+        var prompt = totals.Sum(t => t.PromptTokens);
+        var output = totals.Sum(t => t.OutputTokens);
+        return new TokenRow
+        {
+            Who = "Razem",
+            RequestsText = Count(totals.Sum(t => t.Requests), "zapytanie", "zapytania", "zapytań"),
+            PromptText = prompt.ToString("N0", Pl),
+            OutputText = output.ToString("N0", Pl),
+            TotalText = (prompt + output).ToString("N0", Pl) + " tok.",
+            IsSum = true,
+        };
+    }
+
+    private static string Count(long n, string one, string few, string many)
+    {
+        var word = n == 1 ? one : n % 10 is >= 2 and <= 4 && n % 100 is < 12 or > 14 ? few : many;
+        return n.ToString("N0", Pl) + " " + word;
     }
 }
 

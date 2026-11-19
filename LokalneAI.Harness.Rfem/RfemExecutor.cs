@@ -24,13 +24,24 @@ namespace LokalneAI.Harness.Rfem
 
         /// <summary>Najwięcej pozycji w listach (pręty, kombinacje).</summary>
         public int MaxListed { get; set; } = 60;
+
+        /// <summary>Po tylu sekundach wywołanie otwartego RFEM (RF-COM) uznaje się za zawieszone.</summary>
+        public TimeSpan LiveTimeout { get; set; } = TimeSpan.FromSeconds(120);
+
+        /// <summary>Ile czasu <c>rfem_wskaz</c> czeka, aż użytkownik kliknie obiekt w oknie RFEM i potwierdzi OK.</summary>
+        public TimeSpan PickTimeout { get; set; } = TimeSpan.FromMinutes(5);
+
+        /// <summary>Najwięcej kombinacji przeglądanych przy ekstremach „ze wszystkich” w otwartym RFEM (każda to osobne wywołanie COM).</summary>
+        public int MaxLoadingsScanned { get; set; } = 400;
     }
 
     /// <summary>
     /// Polecenia umiejętności „rfem”: czytanie modeli RFEM 5 (.rf5) bez programu Dlubal — węzły, linie, pręty z długościami,
-    /// przekroje i materiały, przypadki i kombinacje, a po obliczeniu także siły wewnętrzne w prętach z plików solvera.
+    /// przekroje i materiały, przypadki i kombinacje, a po obliczeniu także siły wewnętrzne w prętach z plików solwera.
     /// Wszystko tylko do odczytu, bez pytania o zgodę; ścieżki tylko w dozwolonych folderach. Pliki są czytane do pamięci
     /// (bez uchwytu) i trzymane, dopóki na dysku się nie zmienią.
+    /// Polecenia <c>rfem_otwarty*</c> i <c>rfem_wskaz</c> (<see cref="LiveTools"/>) czytają zamiast pliku model otwarty w uruchomionym
+    /// RFEM 5 przez RF-COM (<see cref="RfemLive"/>): też tylko do odczytu, licencja RF-COM zajmowana na czas jednego polecenia.
     /// </summary>
     public sealed class RfemExecutor : IToolExecutor, IConfirmingExecutor, IDisposable
     {
@@ -39,8 +50,16 @@ namespace LokalneAI.Harness.Rfem
         private readonly Dictionary<string, Rf5Document> _cache = new Dictionary<string, Rf5Document>(StringComparer.OrdinalIgnoreCase);
         private readonly object _lock = new object();
 
-        /// <summary>Nazwy poleceń RFEM (bez <c>szukaj_plikow</c> i <c>pokaz_zawartosc</c>).</summary>
+        /// <summary>Nazwy poleceń na pliku .rf5 (bez <c>szukaj_plikow</c> i <c>pokaz_zawartosc</c>).</summary>
         public static readonly IReadOnlyList<string> Tools = new[] { "rfem_info", "rfem_pret", "rfem_wezel", "rfem_przekroje", "rfem_przypadki", "rfem_sily", "rfem_szukaj_pretow" };
+
+        /// <summary>Nazwy poleceń na otwartym RFEM 5 (RF-COM): <c>rfem_otwarty</c>, <c>rfem_otwarty_pret</c>, …, <c>rfem_wskaz</c>.</summary>
+        public static IReadOnlyList<string> LiveTools => RfemLive.Tools;
+
+        /// <summary>Zdanie o stanie RFEM 5 na tym komputerze (zainstalowany? uruchomiony? jaki model w oknie) do notatek dla modelu; bez łączenia się przez COM.</summary>
+        public static string LiveStatus() => RfemLive.Status();
+
+        private readonly RfemLive _live;
 
         /// <summary>Tworzy wykonawcę.</summary>
         public RfemExecutor(RfemOptions options)
@@ -52,6 +71,7 @@ namespace LokalneAI.Harness.Rfem
                 WorkingFolder = _options.WorkingFolder,
                 MaxOutputChars = _options.MaxOutputChars,
             });
+            _live = new RfemLive(_options);
         }
 
         /// <inheritdoc/>
@@ -66,7 +86,7 @@ namespace LokalneAI.Harness.Rfem
 
             try
             {
-                var text = await Task.Run(() => Execute(call), cancellationToken).ConfigureAwait(false);
+                var text = await Task.Run(() => RfemLive.Tools.Contains(call.Name) ? _live.Execute(call, cancellationToken) : Execute(call), cancellationToken).ConfigureAwait(false);
                 return text.StartsWith("BŁĄD", StringComparison.Ordinal) ? ToolResult.Error(text) : ToolResult.Ok(text);
             }
             catch (RfemException e)
@@ -80,7 +100,7 @@ namespace LokalneAI.Harness.Rfem
             }
         }
 
-        /// <summary>Wszystko tylko czyta: bez pytania. Zła ścieżka albo nie plik .rf5 — odrzucenie z komunikatem.</summary>
+        /// <summary>Wszystko tylko czyta: bez pytania (także polecenia na otwartym RFEM). Zła ścieżka albo nie plik .rf5 — odrzucenie z komunikatem.</summary>
         public ConfirmationDecision Decide(ToolCall call)
         {
             switch (call.Name)
@@ -88,6 +108,11 @@ namespace LokalneAI.Harness.Rfem
                 case "szukaj_plikow":
                 case "pokaz_zawartosc":
                     return _files.Decide(call);
+            }
+
+            if (RfemLive.Tools.Contains(call.Name))
+            {
+                return ConfirmationDecision.NotNeeded;
             }
 
             if (!Tools.Contains(call.Name))
@@ -235,7 +260,8 @@ namespace LokalneAI.Harness.Rfem
             var text = new StringBuilder("OK pręt ").Append(no).Append(" (").Append(Path.GetFileName(document.Path)).Append("): ").Append(member.TypeName)
                 .Append(", linia ").Append(member.LineNo).Append(", węzły ").Append(string.Join(" → ", nodes))
                 .Append(length.HasValue ? ", długość " + Num(length.Value, 3) + " m" : ", długość nieznana (brak węzłów)")
-                .Append(", obrót ").Append(Num(member.Rotation * 180 / Math.PI, 1)).Append("°").Append(member.Comment.Length > 0 ? ", komentarz „" + member.Comment + "”" : "").Append('.');
+                .Append(", obrót ").Append(Num(member.Rotation * 180 / Math.PI, 1)).Append("°").Append(member.Comment.Length > 0 ? ", komentarz „" + member.Comment + "”" : "")
+                .Append(member.TeklaGuid.Length > 0 ? ", element Tekli " + member.TeklaGuid : "").Append('.');
 
             text.Append("\nWęzły [m]: ").Append(string.Join("; ", nodes.Select(n => model.Nodes.TryGetValue(n, out var node) ? n + " (" + Num(node.X, 3) + "; " + Num(node.Y, 3) + "; " + Num(node.Z, 3) + ")" : n + " (?)")));
 
@@ -823,7 +849,8 @@ namespace LokalneAI.Harness.Rfem
             return text == "-0" || text.StartsWith("-0,") && text.Skip(3).All(c => c == '0') ? text.Substring(1) : text;
         }
 
-        private static string Count(int count, string one, string few, string many)
+        /// <summary>Liczba z polską odmianą rzeczownika („1 pręt”, „2 pręty”, „5 prętów”).</summary>
+        internal static string Count(int count, string one, string few, string many)
         {
             var form = count == 1 ? one : count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20) ? few : many;
             return count + " " + form;

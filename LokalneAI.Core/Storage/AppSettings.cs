@@ -139,6 +139,15 @@ public sealed class AppSettings
     /// <summary>Ostatnio wpisany adres innego komputera (zostaje także po powrocie na „ten komputer”).</summary>
     public string? RemoteAddress { get; set; }
 
+    /// <summary>Komputery dla podagentów zakładki Code (Ustawienia → Gdzie liczyć → Komputery dla podagentów), bez tego komputera.</summary>
+    public List<AgentMachineSetting> AgentMachines { get; set; } = [];
+
+    /// <summary>Podagenci mogą liczyć także na tym komputerze (jego karcie), niezależnie od „Gdzie liczyć”.</summary>
+    public bool AgentsUseThisComputer { get; set; } = true;
+
+    /// <summary>Zakładka Code: pokazuj wpisy „Krok N” (co model zwrócił w każdym kroku). Przełącznik nad rozmową i w Ustawieniach → Czat.</summary>
+    public bool ShowSteps { get; set; }
+
     /// <summary>Pozwalaj na przeliczanie zapytań z innych komputerów tej samej podsieci.</summary>
     public bool ShareOnLan { get; set; }
 
@@ -156,6 +165,12 @@ public sealed class AppSettings
 
     /// <summary>„Odblokuj dostęp do internetu”: czat i zakładka Code (w profilach, które pozwalają) szukają w sieci i czytają strony.</summary>
     public bool InternetAccess { get; set; }
+
+    /// <summary>
+    /// Zakładka Code: tokeny i czasy przy każdym wpisie rozmowy (dokładne liczby z Ollamy; przy włączonym — jedno dodatkowe
+    /// zapytanie na sesję liczy tokeny samych zasad i narzędzi). Do nauki i diagnostyki, domyślnie wyłączone.
+    /// </summary>
+    public bool ShowTokens { get; set; }
 
     /// <summary>Rozwinięte sekcje zakładki Ustawienia (nazwy z okna). Null = domyślne okna.</summary>
     public List<string>? OpenSections { get; set; }
@@ -234,6 +249,11 @@ public sealed class AppSettings
         FavoriteModels = (FavoriteModels ?? []).Where(f => !string.IsNullOrWhiteSpace(f)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         OpenSections = OpenSections?.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.Ordinal).ToList();
         ComputeOn = string.IsNullOrWhiteSpace(ComputeOn) ? null : ComputeOn.Trim();
+        AgentMachines = (AgentMachines ?? [])
+            .Where(m => m is not null && !string.IsNullOrWhiteSpace(m.Address))
+            .GroupBy(m => m.Address.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => new AgentMachineSetting { Address = g.Key, Name = string.IsNullOrWhiteSpace(g.First().Name) ? null : g.First().Name!.Trim() })
+            .ToList();
         AddedDefaultSkills = (AddedDefaultSkills ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.Ordinal).ToList();
         HarnessProfiles = HarnessProfiles?.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.Ordinal).ToList();
         CodeGroups = (CodeGroups ?? [])
@@ -289,6 +309,9 @@ public sealed class WorkProfileSetting
     public static List<WorkProfileSetting> Defaults() =>
     [
         new() { Name = "Konstruktor", Skills = ["tekla", "mkk", "pliki", "formatowanie"] },
+        // Zestaw Check Structures (repozytorium CS): pięć najczęściej pytanych umiejętności; cs_rysunki, cs_robot i rfem dokłada się ręcznie,
+        // bo każda rola powiększa polecenie systemowe (patrz profile\cs_program\README.md).
+        new() { Name = "Check Structures", Skills = ["cs_program", "cs_ifc", "cs_konstrukcja", "cs_polaczenia", "cs_statyka", "formatowanie"] },
         new() { Name = "Biuro", Skills = ["office", "tlumaczenie", "pliki", "formatowanie"] },
         new() { Name = "Baza CDE", Skills = ["cde", "formatowanie"] },
         new() { Name = "Komputer", Skills = ["komputer", "formatowanie"] },

@@ -95,7 +95,19 @@ public sealed class ConversationGroupNode : ObservableObject
         set => SetProperty(ref _isSelected, value);
     }
 
-    /// <summary>Wczytuje listę rozmów z <c>.amadeusz\</c> (najnowsze pierwsze).</summary>
+    /// <summary>Wstawia rozmowę w miejsce według daty ostatniego polecenia (najnowsze pierwsze), np. po przeniesieniu do grupy.</summary>
+    public void InsertSorted(ConversationNode node)
+    {
+        var index = 0;
+        while (index < Conversations.Count && Conversations[index].Updated >= node.Updated)
+        {
+            index++;
+        }
+
+        Conversations.Insert(index, node);
+    }
+
+    /// <summary>Wczytuje listę rozmów z <c>.amadeusz\</c> (najnowsze polecenie pierwsze).</summary>
     public void Reload()
     {
         Conversations.Clear();

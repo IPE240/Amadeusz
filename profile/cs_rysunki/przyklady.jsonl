@@ -1,0 +1,10 @@
+{"uzytkownik": "Co to jest układ w CS i skąd bierze się lista układów?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "układ płaszczyzna elewacja osi rzut poziomu lista axes_levels"}}]}
+{"uzytkownik": "Jak wysłać szkic piórem do agenta?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "szkic piórem Układy Wyślij do agenta /szkic"}}]}
+{"uzytkownik": "Co montażysta chce zobaczyć jako pierwsze w komplecie rysunków?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "montażysta izometria komplet rysunków kolejność czytania"}}]}
+{"uzytkownik": "Jak CS wymiaruje blachy na arkuszu zespołu?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "wymiary arkusz zespołu wspólna linia narastająca blachy"}}]}
+{"uzytkownik": "Czy pliki NC z CS można puścić na produkcję?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "NC DSTV prototyp nie do produkcji plan testów walidator"}}]}
+{"uzytkownik": "Z jakiej strony patrzymy na elewację osi X?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "konwencja bazy oś X obserwator patrzenie cięcie plaster"}}]}
+{"uzytkownik": "Skąd rysunek części bierze otwory?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "rysunek części otwory osie śrub fasolki rama DSTV"}}]}
+{"uzytkownik": "Wygeneruj mi rysunki wszystkich osi do PDF.", "wywolania": [], "pytanie": "Nie wykonuję poleceń w programach. W CS: zakładka Układy → „Rysunki zakresu do PDF” (okładka, strona na arkusz, A3–A1); „główne” bierze osie główne, „wszystkie” także pomocnicze. Chcesz opis, co trafia na stronę?"}
+{"uzytkownik": "Czy na rysunkach układów są spoiny?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "spoiny domyślnie wyłączone arkusze Układów detale"}}]}
+{"uzytkownik": "Jak CS liczy masę części do zestawienia stali?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "masa części netto brutto profil wyjściowy zestawienie stali"}}]}

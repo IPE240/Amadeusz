@@ -1,0 +1,26 @@
+{
+  "zrodla": [
+    {
+      "typ": "git",
+      "repo": "https://github.com/Optimal-Design-of-Structures/CS-cheak_structures.git",
+      "galaz": "main",
+      "pliki": [
+        "docs/help/uklady_*.md",
+        "docs/how-to/ANKIETA_WARSZTAT_NC.md",
+        "docs/wyklady/WYKLAD_UKLADY_CO_CZYTA_KONSTRUKTOR_2026-11-02.md",
+        "docs/wyklady/pytania_wyk05.md",
+        "docs/wyklady/WYKLAD_RYSUNKI_WARSZTATOWE_ZESPOLY_CZESCI_NC_2026-10-13.md",
+        "docs/plans/PLAN_UKLADY_MONTAZOWE_2026-11-02.md",
+        "docs/plans/RAPORT_ROZPOZNANIE_RYSUNKI_WARSZTATOWE_2026-10-13.md",
+        "handbook/pitfalls/rysunki_warsztatowe_nc.md",
+        "src/features/plane_view/README.md",
+        "src/features/assembly_view/README.md",
+        "src/features/part_view/README.md",
+        "src/features/nc_dstv/README.md",
+        "src/features/nesting/README.md",
+        "src/features/drawing_settings/README.md",
+        "src/features/drawing_stats/README.md"
+      ]
+    }
+  ]
+}

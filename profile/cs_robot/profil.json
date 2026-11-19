@@ -1,0 +1,10 @@
+{
+  "nazwa": "cs_robot",
+  "opis": "Autodesk Robot w CS-check: sterowanie Robotem przez COM z Pythona (pywin32, jednostki SI, katalog przekrojów, osie lokalne GetLocalMtx, podpory i zwolnienia, kombinacje, panele, obciążenia), odczyt modelu z Robota do CS (robot_pull), wytężenie z wymiarowania na modelu IFC (robot_wytezenie, dopasuj_model_obliczeniowy), siły do magazynu wyników (robot_sily), most MES → Robot w toolkicie, przeniesienie modelu RFEM 6 → Robot. Model szuka w dokumentacji z repozytorium CS i odpowiada; nie wykonuje poleceń.",
+  "internet": true,
+  "zakonczenie": "model",
+  "narzedzia_wbudowane": ["szukaj_wiedzy", "kalkulator"],
+  "max_krokow": 8,
+  "max_wywolan_w_kroku": 2,
+  "temperatura": 0.1
+}

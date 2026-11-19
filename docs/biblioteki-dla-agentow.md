@@ -27,7 +27,14 @@ program gospodarza                                   serwer modelu
 2. Model odpowiada krokiem w JSON, wymuszonym schematem: wywołania narzędzi, odpowiedź albo pytanie.
 3. Biblioteka sprawdza argumenty ze schematem z `narzedzia.json`, pyta o zgodę (jeśli trzeba) i przekazuje wywołanie
    wykonawcy gospodarza (`IToolExecutor`).
-4. Wynik wraca do modelu. Pętla trwa do odpowiedzi albo pytania (najwyżej `max_krokow` kroków).
+4. Wynik wraca do modelu. Pętla trwa do odpowiedzi albo pytania (najwyżej `max_krokow` kroków; domyślnie 12).
+   Każdy krok to osobne zapytanie HTTP z całą rozmową od początku — serwer modelu nie trzyma stanu między krokami
+   (ma tylko pamięć podręczną tego samego początku promptu). Dzieli na kroki biblioteka, nie karta graficzna.
+5. Z gospodarzem podagentów (`SessionOptions.SubAgents`) model ma dodatkowo narzędzie `zlec_podagentowi`: zlecenie trafia do
+   osobnej sesji z własnym modelem (np. na innym komputerze), która nie widzi rozmowy i oddaje sam wynik; kilka zleceń
+   z jednego kroku liczy się równolegle. Gospodarz (okno LokalneAI: `SubAgentHost`) dobiera komputer z listy w Ustawieniach
+   i model do jego karty (`ModelChooser` w `LokalneAI.Core`), a `SubAgentRunner` przekazuje zdarzenia podagenta do
+   `Progress` sesji głównej (`AgentStarted`, `AgentProgress`, `AgentFinished`).
 
 Model niczego nie wykonuje sam. Wybiera tylko narzędzie z listy i podaje argumenty. Wykonuje sprawdzony kod gospodarza.
 
@@ -76,12 +83,13 @@ Model niczego nie wykonuje sam. Wybiera tylko narzędzie z listy i podaje argume
 | folderów, plików, PowerShella i uruchamiania programów | `FileSystemExecutor` i profil `pliki` albo `komputer` | `LokalneAI.Harness` |
 | dokumentów Word, Excel, PowerPoint i Outlooka (COM zainstalowanego Microsoft 365) | `OfficeExecutor` i profil `office` | `LokalneAI.Harness.Office` |
 | OCR skanów i zdjęć (Tesseract) oraz PDF: tekst, OCR skanów, scalanie, wycinanie, obrót | `OcrExecutor` i umiejętność `ocr` (polecenia `pdf_*` także w `office`) | `LokalneAI.Harness.Ocr` |
-| modeli RFEM 5 (.rf5) bez programu Dlubal: pręty, przekroje, długości, kombinacje, siły w prętach | `RfemExecutor` i umiejętność `rfem` | `LokalneAI.Harness.Rfem` |
+| modeli RFEM 5 (.rf5) bez programu Dlubal albo modelu otwartego w RFEM 5 (RF-COM): pręty, przekroje, długości, kombinacje, siły w prętach, reakcje, wskazanie kliknięciem | `RfemExecutor` i umiejętność `rfem` | `LokalneAI.Harness.Rfem` |
 | poleceń w Tekli przez most TeklaBridge | `TeklaBridgeExecutor` i profil `tekla` | `LokalneAI.Harness` |
 | prób bez Tekli | `SimulatedModelExecutor` | `LokalneAI.Harness` |
 | serwera innego niż Ollama (llama.cpp, LM Studio, vLLM) | `OpenAiCompatibleLlmClient` | `LokalneAI.Harness` |
 | modelu w chmurze (Claude, GPT, Gemini), gdy profil pozwala | `CloudLlm.Create` | `LokalneAI.Harness` |
 | aktualizacji wiedzy z repozytoriów | `KnowledgeSync.SyncAsync` | `LokalneAI.Harness` |
+| podagentów (model dzieli pracę na równoległe zlecenia dla osobnych sesji, zwykle na innych komputerach) | własny `ISubAgentHost` w `SessionOptions.SubAgents`; przebieg jednego podagenta prowadzi `SubAgentRunner.RunAsync` | `LokalneAI.Harness` |
 
 ## 4. Podłączenie do projektu
 
@@ -422,11 +430,16 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | Przestrzeń nazw | Typ | Do czego |
 |---|---|---|
 | `LokalneAI.Harness.Session` | `HarnessSession` | mini-sesja: `SendAsync`, `Progress`, `Context`, `Dispose` |
-| | `SessionOptions` | `ConfirmMutation`, `ContextNote`, `Variables` (`{{ja}}`), `CompactAt`, `KeepRecentMessages`, `ToolResultRole`, `History` (wznowienie zapisanej rozmowy: wiadomości `user`/`assistant`) |
-| | `TurnResult`, `TurnKind` | wynik polecenia: `Answer`, `Question` albo `Failed`; `Calls`, `Warnings`, `NumbersVerified` |
-| | `HarnessEvent`, `HarnessEventKind` | zdarzenia postępu (`Progress`) |
+| | `SessionOptions` | `ConfirmMutation`, `ContextNote`, `Variables` (`{{ja}}`), `CompactAt`, `KeepRecentMessages`, `ToolResultRole`, `History` (wznowienie zapisanej rozmowy: wiadomości `user`/`assistant`), `MeasureSystemPrompt` (raz na sesję dokładne tokeny samych zasad i narzędzi — jedno zapytanie z `MaxTokens = 1`, tylko `OllamaLlmClient`), `SubAgents` (gospodarz podagentów — sesja dostaje narzędzie `zlec_podagentowi` i sekcję „Podagenci”; `SubAgentResultLimit` = ile znaków wyniku podagenta wraca do modelu) |
+| | `ISubAgentHost` | gospodarz podagentów: `Skills` (umiejętności, które podagent może dostać), `Describe()` (zdanie o komputerach do promptu), `RunAsync(zlecenie, report, ct)` — dobiera komputer i model, buduje sesję podagenta i prowadzi ją przez `SubAgentRunner`; kilka zleceń z jednego kroku modelu sesja wykonuje równolegle, wyniki wracają w kolejności wywołań; sesji podagenta nie podaje się gospodarza (nie zleca dalej) |
+| | `SubAgentRequest`, `SubAgentResult`, `SubAgentSkill` | zlecenie (`Number`, `Task`, `Skills`, `Context`), wynik (`Success`, `Text`, `Machine`, `Model`, `Duration`, `Turn`), umiejętność do listy w promptie |
+| | `SubAgentInfo` | stan jednego podagenta do kafelka i wpisu w oknie: numer, zadanie, komputer, model, `Status`, `Step`, `IsRunning`, `Success`, `Result`, `Duration`, `Cancel` (przycisk „Przerwij”), `Observe(zdarzenie)`, `Describe()` |
+| | `SubAgentRunner` | `RunAsync(sesja podagenta, zlecenie, info, report, token tury)` — zdarzenia sesji podagenta idą dalej jako `AgentStarted`/`AgentProgress`/`AgentFinished`, pytanie podagenta = nieudany wynik, przerwanie kafelkiem = nieudany wynik, Stop tury = `OperationCanceledException`; `BuildTask` (polecenie dla podagenta), `FormatResult` (nagłówek „Podagent N (komputer, model, czas): …”), `ParseSkills` |
+| | `TurnResult`, `TurnKind` | wynik polecenia: `Answer`, `Question` albo `Failed`; `Calls`, `Warnings`, `NumbersVerified`, `ModelCallDetails` (tokeny i czasy każdego wywołania modelu) |
+| | `HarnessEvent`, `HarnessEventKind` | zdarzenia postępu (`Progress`); `ModelCall` po każdej odpowiedzi modelu (przed narzędziami, które krok zlecił) z `HarnessEvent.ModelCall`; `ModelThinking` niesie szacunek promptu w `Context` (`IsEstimate`); `ModelThinking` i `ModelStep` mają numer kroku w `Step` (tekst „Model pracuje (krok 2 z 12)…”); podagenci: `AgentStarted`, `AgentProgress` (zdarzenie sesji podagenta w `Inner`), `AgentFinished` — z `Agent` (`SubAgentInfo`) |
+| | `ModelCallMetrics` | jedno wywołanie modelu: `PromptTokens` (cały prompt — Ollama liczy też część z pamięci podręcznej), `OutputTokens`, `EstimatedPromptTokens` (szacunek przed wysłaniem), `AddedTokens` (przyrost promptu od poprzedniego wywołania) z `AddedKind` („pytanie”, „wyniki narzędzi”, „uwagi programu”…), `SystemTokens` (z `SystemMeasureTime` i `SystemMeasureLoadTime` — czas pomiaru), `Outcome`, czasy `LoadTime`, `PromptTime` (czytanie promptu), `OutputTime` (pisanie), `ServerTime`, `WallTime`, `QueueTime` (kolejka i sieć) |
 | | `TurnIntent` | wyraźne prośby w poleceniu, pilnowane przez sesję: „sprawdź w internecie” (`AsksForWeb` — sesja z internetem musi go użyć, inaczej raz cofa model) i „popraw / jeszcze raz” (`AsksForCorrection` — uwaga „nie powtarzaj” i temperatura ≥ 0,5 na tę turę) |
-| | `ExecutedCall` | wykonane wywołanie (w `TurnResult.Calls` i zdarzeniach) |
+| | `ExecutedCall` | wykonane wywołanie (w `TurnResult.Calls` i zdarzeniach); `Duration` = czas wykonania |
 | | `ContextUsage` | licznik kontekstu |
 | | `PromptBuilder` | podgląd polecenia systemowego |
 | | `StepSchema` | schemat JSON kroku modelu (do testów i diagnostyki) |
@@ -447,9 +460,9 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `KnowledgeIndex` | wyszukiwarka `szukaj_wiedzy` w `wiedza\`; `AddFrom(indeks, przedrostek)` łączy indeksy profili |
 | | `Glossary`, `GlossaryEntry` | glosariusz: pary terminów w wierszach (`wiedza\*.txt`, `.tsv`, `.csv` albo plik z dysku przez `HarnessProfile.AddKnowledgeFile(ścieżka)`); sesja sama dokleja do polecenia i wyników narzędzi gospodarza odpowiedniki terminów znalezionych w tekście (`BuildHint`, także w odmianie) |
 | | `KnowledgeSync`, `KnowledgeSource`, `KnowledgeSyncResult` | aktualizacja wiedzy z `zrodla.json` |
-| | `BuiltInTools`, `Calculator` | narzędzia wbudowane: `kalkulator`, `szukaj_wiedzy` |
+| | `BuiltInTools`, `Calculator` | narzędzia wbudowane: `kalkulator`, `szukaj_wiedzy`, internet (`szukaj_w_internecie`, `czytaj_strone`), `zlec_podagentowi` (`DelegateName`, dokładane przez `SessionOptions.SubAgents` / `HarnessProfile.WithSubAgents()`) |
 | `LokalneAI.Harness.Llm` | `ILlmClient` | dostęp do modelu (własna implementacja: testy, inny serwer) |
-| | `OllamaLlmClient`, `OllamaOptions` | Ollama `/api/chat`; `ClientName` = nazwa w kolejce okna; `AllowThinking` (domyślnie false = zapytanie niesie `"think": false`, bo qwen3.5 myślał minutami przed krokiem) |
+| | `OllamaLlmClient`, `OllamaOptions` | Ollama `/api/chat`; `ClientName` = nazwa w kolejce okna; `AllowThinking` (domyślnie false = zapytanie niesie `"think": false`, bo qwen3.5 myślał minutami przed krokiem); `Headers` = dodatkowe nagłówki HTTP (np. `X-LokalneAI-Przekazane: 1` — brama okna liczy na tym komputerze mimo „Gdzie liczyć”) |
 | | `LocalGateway` | brama okna LokalneAI na tym PC: `ChooseUrl()`, `IsRunningAsync()` |
 | | `OpenAiCompatibleLlmClient`, `OpenAiCompatibleOptions` | serwery z API OpenAI `/v1/chat/completions`; w chmurze GPT i Gemini (`SchemaInPrompt`, `ChatPath`) |
 | | `CloudProvider` | dozwoleni dostawcy w chmurze (`All`, `Find`), `ClassifyUrl` (kto liczy pod adresem), `IsOllamaCloudModel` |
@@ -457,15 +470,16 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `AnthropicLlmClient`, `AnthropicOptions` | Claude: `POST /v1/messages` |
 | | `CloudLlm` | `Create(dostawca, klucz, model)` — klient chmury dobrany do dostawcy |
 | | `CloudModels`, `CloudModelInfo` | lista modeli dostawcy i sprawdzenie klucza (`ListAsync`) |
-| | `LlmRequest`, `LlmResponse`, `LlmMessage` | zapytanie i odpowiedź modelu |
+| | `LlmRequest`, `LlmResponse`, `LlmMessage` | zapytanie i odpowiedź modelu; `LlmRequest.MaxTokens` (limit odpowiedzi dla jednego zapytania), `LlmResponse.PromptDuration`/`OutputDuration` (czytanie promptu i pisanie, z Ollamy) |
 | | `LlmException`, `LlmUnavailableException` | błędy serwera modelu |
 | `LokalneAI.Harness.Validation` | `SqlGuard` | strażnik SQL: jedno zapytanie, tylko odczyt |
 | | `SchemaValidator` | sprawdzenie argumentów z JSON Schema |
 | | `NumberGuard` | czy liczby w odpowiedzi są w wynikach narzędzi |
 | `LokalneAI.Harness.Charts` | `ChartSpec`, `ChartSeries`, `ChartKind`, `ChartSort` | opis wykresu z bloku ```` ```wykres ```` w odpowiedzi modelu (JSON po polsku: `typ` słupkowy/poziomy/skumulowany/liniowy/obszarowy/kołowy/pierścieniowy, `tytul`, `os_x`, `os_y`, `etykiety`, `serie[{nazwa, wartosci, kolor, typ, wypelnienie, przerywana}]`, `grupy`, `kolory`, `kolory_grup`, `sortuj`, `sortuj_wg`, `odwroc_x`, `odwroc_y`, `zakres_y`, `wartosci`, `wypelnij_miedzy`, `max_czesci`, `wysokosc`; zamiast etykiet i serii także `dane` z wierszami): `Parse(json, out błąd)` sortuje i odwraca już przy czytaniu, `ToTsv()` dla Excela, `SeriesColor`/`PointColor`/`GroupColor` — bez WPF, do użycia w każdym gospodarzu (WinForms, strona) |
 | | `ChartColors` | paleta serii (`Palette`, `Of(miejsce)`, `Rest`) i nazwy kolorów po polsku i angielsku albo `#rrggbb` → `Parse`, `Split` na R, G, B |
-| `LokalneAI.Harness.Wpf` | `HarnessPanel` | panel rozmowy: `SessionFactory`, `ConfirmMutationAsync`, `SendAsync`, `NewSession`, `TurnCompleted`; do zapisywanych rozmów: `ResetSession` (nowa sesja, wpisy zostają), `LoadEntries`, `AddInfo`, `TurnEnded`, `NewSessionClicked`, `NewSessionText`, `IsBusy`, `FocusInput` |
-| | `PanelEntry`, `PanelEntryKind` | wpisy rozmowy w panelu; `Confirm` = pytanie o zgodę z przyciskami Tak/Nie w rozmowie (`ConfirmMutationAsync` nie otwiera okna; Stop = nie) |
+| `LokalneAI.Harness.Wpf` | `HarnessPanel` | panel rozmowy: `SessionFactory`, `ConfirmMutationAsync`, `SendAsync`, `NewSession`, `TurnCompleted`; do zapisywanych rozmów: `ResetSession` (nowa sesja, wpisy zostają), `LoadEntries`, `AddInfo`, `TurnEnded`, `NewSessionClicked`, `NewSessionText`, `IsBusy`, `FocusInput`; `ShowTokens` — tokeny i czasy przy każdym wpisie (z prawej w szerokim oknie, `TokensBeside`; objaśnienie `TokensLegend`); `ShowModelSteps` — wpisy „Krok N” (powstają zawsze, to tylko widok); podagenci: kafelki nad polem polecenia (`AgentTilesList`, przycisk „Przerwij”) i wpis `Agent` z przebiegiem w `Children` (rozwijane drzewo) |
+| | `PanelEntry`, `PanelEntryKind` | wpisy rozmowy w panelu; `Confirm` = pytanie o zgodę z przyciskami Tak/Nie w rozmowie (`ConfirmMutationAsync` nie otwiera okna; Stop = nie); `Step` = krok modelu (nagłówek z nazwami wywołań, JSON w `Detail`); `Agent` = podagent (`Children`, `IsExpanded`, `HasChildren`, `ChildrenText`); `Metrics` — tokeny i czasy przy wpisie (do zapisu rozmowy) |
+| | `AgentTile` | kafelek podagenta w trakcie pracy: `Title`, `Status` (umiejętności, krok, sekundy), `IsRunning`, `Cancel()`, `Refresh()` |
 | | `MarkdownText`, `MarkdownRenderer` | odpowiedź w Markdownie (tabele z ramkami, listy, pogrubienia, kod, linki), tekst do zaznaczania; `Markdown` = tekst (wiązanie), `TablesAsTsv` i menu „Kopiuj tabele do Excela”; `HarnessPanel` używa go dla odpowiedzi i pytań modelu |
 | | `ChartView` | wykres z bloku ```` ```wykres ```` w odpowiedzi (opis: `ChartSpec` z `LokalneAI.Harness.Charts`): słupkowy (pionowy, poziomy, skumulowany, linie nad słupkami), liniowy (wypełnienie pod linią i między liniami, przerywany), kołowy i pierścieniowy; legenda po seriach albo grupach, wartości po najechaniu, dane do Excela (`Spec.ToTsv()`) |
 | `LokalneAI.Harness.Postgres` | `PostgresReadOnlyExecutor`, `PostgresReadOnlyOptions` | SQL tylko do odczytu (profil `cde`) |
@@ -476,7 +490,7 @@ Na koniec, jeśli działa Ollama: `LokalneAI.Eval test` (sekcja 10). Do prób ca
 | | `OcrEngine`, `OcrResult`, `OcrException` | Tesseract na pliku, PNG z pamięci (np. schowek) albo stronach PDF: `RecognizeFile`, `RecognizePng`, `RecognizePdf`, `EnsureLanguages`; `IsAvailable()` = natywne dll działają |
 | | `OcrLanguages` | dane języków: `DefaultFolder`, `Missing`, `Available`, `DownloadMissingAsync` (tessdata_fast), `Known` z nazwami |
 | | `PdfTools`, `PdfInfo` | PDFium (tekst strony, render do PNG, `Info`) i PDFsharp (`Merge`, `ExtractPages`, `Rotate`); `ParsePages("1-3,5,8-")` |
-| `LokalneAI.Harness.Rfem` | `RfemExecutor`, `RfemOptions` | polecenia `rfem_*` (umiejętność `rfem`): `AllowedRoots`, `WorkingFolder`, `MaxOutputChars`, `MaxListed`; `Document(path)` = wczytany plik z pamięci podręcznej |
+| `LokalneAI.Harness.Rfem` | `RfemExecutor`, `RfemOptions` | polecenia `rfem_*` (umiejętność `rfem`): `AllowedRoots`, `WorkingFolder`, `MaxOutputChars`, `MaxListed`; `Document(path)` = wczytany plik z pamięci podręcznej; polecenia na otwartym RFEM 5 (RF-COM): `LiveTools` (`rfem_otwarty*`, `rfem_wskaz`), `LiveStatus()` (zdanie do notatek: zainstalowany, uruchomiony, jaki model), `LiveTimeout`, `PickTimeout`, `MaxLoadingsScanned` |
 | | `Rf5Document` | plik .rf5 w pamięci: `Open(path)`, `FromBytes`, `Model`, `Mesh`, `Results`, `MemberLength(no)`, `HasResults`, `Container` |
 | | `Rf5Model`, `Rf5Node`, `Rf5Line`, `Rf5Member`, `Rf5CrossSection`, `Rf5Material`, `Rf5LoadCase`, `Rf5Combination` | tabele modelu (SI: m, m², m⁴, Pa); `MemberLength`, `SectionOf`, `MaterialOf`, `MembersWithSection`, `MembersAtNode`, `Warnings` |
 | | `Rf5Results`, `Rf5ResultSet`, `Rf5ForcePoint` | zestawy wyników z protokołem solvera (`CombinationNo`, `CaseNos`, `Label`), `Find("KO5")`, `MemberForces(set, no)` → punkty x, N, Vy, Vz, Mt, My, Mz [N, Nm] i przemieszczenia [m] |

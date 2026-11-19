@@ -13,7 +13,7 @@
     "zapytanie_sql"
   ],
   "sprawdzaj_liczby": true,
-  "max_krokow": 6,
+  "max_krokow": 12,
   "max_wywolan_w_kroku": 2,
   "sql_reguly": [
     {

@@ -1,0 +1,34 @@
+{
+  "zrodla": [
+    {
+      "typ": "git",
+      "repo": "https://github.com/Optimal-Design-of-Structures/CS-cheak_structures.git",
+      "galaz": "main",
+      "pliki": [
+        "handbook/glossary.md",
+        "handbook/glossary/klasyfikacja.md",
+        "handbook/glossary/struktury.md",
+        "handbook/glossary/assembly_alcs.md",
+        "handbook/glossary/osie_uklady.md",
+        "handbook/glossary/podzial_obiektow.md",
+        "handbook/interpretacja.md",
+        "handbook/intents/debug-classification.md",
+        "docs/wyklady/WYKLAD_OBIEKTY_KONSTRUKCYJNE_2026-10-24.md",
+        "docs/wyklady/WYKLAD_DYLATACJE_PODZIAL_PLIKU_2026-10-05.md",
+        "docs/wyklady/WYKLAD_WIRTUALNE_PRETY_Z_BLACH_2026-09-02.md",
+        "src/features/cs1/README.md",
+        "src/features/cs2/README.md",
+        "src/features/cs3/README.md",
+        "src/features/cs4/README.md",
+        "src/features/similarity/README.md",
+        "src/features/assembly/README.md",
+        "src/features/assembly_layout/README.md",
+        "src/features/assembly_pattern/README.md",
+        "src/features/assembly_similarity/README.md",
+        "src/features/assembly_synthesis/README.md",
+        "src/features/axes_levels/README.md",
+        "src/features/podzial_obiektow/README.md"
+      ]
+    }
+  ]
+}

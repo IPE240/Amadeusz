@@ -1,0 +1,6 @@
+{"id": "CP01", "opis": "instalacja", "kroki": [{"uzytkownik": "Jak zainstalować CS-check i czy potrzebuję uprawnień administratora?", "oczekiwane": []}]}
+{"id": "CP02", "opis": "serwisy obliczeniowe", "kroki": [{"uzytkownik": "Czym różni się Licz od Dolicz w serwisach obliczeniowych?", "oczekiwane": []}]}
+{"id": "CP03", "opis": "limity programu", "kroki": [{"uzytkownik": "Czy CS liczy siły wewnętrzne?", "oczekiwane": []}]}
+{"id": "CP04", "opis": "paczka csx", "kroki": [{"uzytkownik": "Jakie profile ma paczka projektu .csx?", "oczekiwane": []}]}
+{"id": "CP05", "opis": "prośba o wykonanie = instrukcja", "kroki": [{"uzytkownik": "Policz mi koszty tego modelu.", "oczekiwane": []}]}
+{"id": "CP06", "opis": "sesja: teczka i dziennik", "kroki": [{"uzytkownik": "Co to jest teczka projektu?", "oczekiwane": []}, {"uzytkownik": "A gdzie widać, kto co zrobił w projekcie?", "oczekiwane": []}]}

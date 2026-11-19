@@ -43,6 +43,7 @@ public sealed class MainViewModel : ObservableObject
     private CancellationTokenSource? _cts;
     private string? _gpuName;
     private string? _gpuDescription;
+    private double? _gpuGb;
     private string? _modelToPull;
     private bool _refreshing;
     /// <summary>Modele z Ollamy (tego albo wybranego komputera), bez modeli „-cloud” liczonych na ollama.com.</summary>
@@ -113,6 +114,7 @@ public sealed class MainViewModel : ObservableObject
         };
         Cloud = new CloudViewModel(_settings, _keys, RebuildModels, SaveSettings);
         Credentials = new CredentialsViewModel(new CredentialVault(), _settings, _keys, SaveSettings);
+        Agents = new AgentMachinesViewModel(_settings, SaveSettings);
         if (_settings.AddDefaultSkills(ProfilesFolder.List(ProfilesFolder.Find())))
         {
             SaveSettings(); // np. nowa umiejętność „formatowanie” dopisana raz do profili i do wyboru w zakładce Code
@@ -264,6 +266,54 @@ public sealed class MainViewModel : ObservableObject
 
     /// <summary>Zmienił się przełącznik internetu (zakładka Code zaczyna nową sesję).</summary>
     public event EventHandler? InternetChanged;
+
+    /// <summary>Ustawienia → Czat: tokeny i czasy przy wpisach zakładki Code (zapisywane od razu).</summary>
+    public bool ShowTokens
+    {
+        get => _settings.ShowTokens;
+        set
+        {
+            if (_settings.ShowTokens == value)
+            {
+                return;
+            }
+
+            _settings.ShowTokens = value;
+            OnPropertyChanged();
+            ShowTokensChanged?.Invoke(this, EventArgs.Empty);
+            SaveSettings();
+        }
+    }
+
+    /// <summary>Zmienił się przełącznik „Pokaż tokeny i czasy”.</summary>
+    public event EventHandler? ShowTokensChanged;
+
+    /// <summary>Ustawienia → Czat: wpisy „Krok N” w zakładce Code (ten sam przełącznik, co nad rozmową; zapisywany od razu).</summary>
+    public bool ShowSteps
+    {
+        get => _settings.ShowSteps;
+        set
+        {
+            if (_settings.ShowSteps == value)
+            {
+                return;
+            }
+
+            _settings.ShowSteps = value;
+            OnPropertyChanged();
+            ShowStepsChanged?.Invoke(this, EventArgs.Empty);
+            SaveSettings();
+        }
+    }
+
+    /// <summary>Zmienił się przełącznik „Pokaż kroki modelu” w Ustawieniach.</summary>
+    public event EventHandler? ShowStepsChanged;
+
+    /// <summary>Zakładka Code zmieniła przełącznik kroków — odśwież pole w Ustawieniach.</summary>
+    public void RefreshShowSteps() => OnPropertyChanged(nameof(ShowSteps));
+
+    /// <summary>Ustawienia → Gdzie liczyć → Komputery dla podagentów.</summary>
+    public AgentMachinesViewModel Agents { get; }
 
     /// <summary>Gwiazdka na liście modeli: ulubione są na górze.</summary>
     public RelayCommand<ModelItem> ToggleFavoriteCommand { get; }
@@ -544,6 +594,9 @@ public sealed class MainViewModel : ObservableObject
             var card = cards.FirstOrDefault();
             _gpuName = card?.Name;
             _gpuDescription = card?.Describe();
+            _gpuGb = card?.TotalMiB is int mib ? mib / 1024.0 : null;
+            Agents.ThisComputerText = card is null ? "Ten komputer (karta nieznana — model policzy procesor)" : "Ten komputer (" + card.Describe() + ")";
+            _ = Agents.CheckAllAsync();
             GpuText = card is null ? "Nie wykryłem karty graficznej — model policzy procesor" : "Karta: " + card.Describe();
             await Network.StartAsync(_local.BaseUrl, card?.Describe());
             UseGateway();
@@ -875,13 +928,34 @@ public sealed class MainViewModel : ObservableObject
             ModelChoices = Models.Select(m => new ModelChoice(m.Key, m.IsCloud ? m.Display + " (" + m.Cloud!.Name + ")" : m.Name)).ToList(),
             GetPostgres = Credentials.GetPostgres,
             Web = InternetAccess ? _web : null,
-            // Prompt profilu (karta, narzędzia, przykłady) zajmuje 4–8 tys. tokenów — mniej niż 16 384 nie ma sensu.
-            ContextLength = Math.Max(16384, ContextLength),
+            ContextLength = HarnessContextLength(),
             Temperature = temperature,
+            LocalOllamaUrl = _local.BaseUrl,
+            LocalGpuGb = _gpuGb,
+            LocalGpuText = _gpuDescription,
             ProfilesRoot = ProfilesFolder.Find(),
             Settings = _settings,
             Save = SaveSettings,
         };
+    }
+
+    /// <summary>
+    /// Kontekst dla Code i czatu z internetem. Prompt umiejętności (karta, narzędzia, przykłady, wiedza) zajmuje 2–8 tys. tokenów,
+    /// więc co najmniej 16 384 — ale nie więcej, niż przyjmuje komputer, który liczy (jego Ustawienia → Udostępnianie,
+    /// „kontekst do”); większe zapytanie brama tamtego komputera odrzuca.
+    /// </summary>
+    internal int HarnessContextLength()
+    {
+        var wanted = Math.Max(16384, ContextLength);
+        return Network.IsRemote && Network.RemoteMaxContext is int max && wanted > max ? max : wanted;
+    }
+
+    /// <summary>Dzisiejsza data dla modelu z dniem tygodnia („środa, 2026-11-18”) — sama data kończyła się zgadywaniem dnia.</summary>
+    internal static string TodayText()
+    {
+        var today = DateTime.Today;
+        return CultureInfo.GetCultureInfo("pl-PL").DateTimeFormat.GetDayName(today.DayOfWeek) + ", "
+            + today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
 
     internal static bool TryParseTemperature(string? text, out double value)
@@ -1000,7 +1074,7 @@ public sealed class MainViewModel : ObservableObject
                 {
                     Url = _client.BaseUrl,
                     Model = selected.Name,
-                    ContextLength = Math.Max(16384, ContextLength),
+                    ContextLength = HarnessContextLength(),
                     Temperature = temperature,
                     KeepAlive = "10m",
                     ClientName = "Czat (internet)",
@@ -1086,7 +1160,7 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Data i (przy „Pamiętaj rozmowę”) wcześniejsze pytania i odpowiedzi czatu, krótko.</summary>
     private string InternetChatNote(string question)
     {
-        var note = new StringBuilder("Dziś jest ").Append(DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)).Append('.');
+        var note = new StringBuilder("Dziś jest ").Append(TodayText()).Append('.');
         // Bez „Pamiętaj rozmowę” prośba „popraw / jeszcze raz” i tak dotyczy ostatniej odpowiedzi — ją model musi widzieć.
         var take = RememberConversation ? 6 : TurnIntent.AsksForCorrection(question) ? 1 : 0;
         if (take > 0)

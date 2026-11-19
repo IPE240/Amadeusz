@@ -1,0 +1,10 @@
+{
+  "nazwa": "cs_statyka",
+  "opis": "Model obliczeniowy w CS-check: model prętowy MES z IFC (pręt systemu, węzeł obliczeniowy, łańcuchy prętów, podpory, pręty sztywne i uzupełniające), neutralny model static z magazynem wyników (przebiegi, bloki), obciążenia normowe (śnieg PN-EN 1991-1-3, obudowa i powierzchnie obciążenia, rozkład na pręty), porównanie modelu fizycznego z analitycznym, wyniki statyki 3D w viewerze. CS nie liczy statyki: solver to RFEM albo Robot. Model szuka w dokumentacji z repozytorium CS i odpowiada; nie wykonuje poleceń.",
+  "internet": false,
+  "zakonczenie": "model",
+  "narzedzia_wbudowane": ["szukaj_wiedzy", "kalkulator"],
+  "max_krokow": 8,
+  "max_wywolan_w_kroku": 2,
+  "temperatura": 0.1
+}

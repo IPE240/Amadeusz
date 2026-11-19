@@ -3,7 +3,7 @@
   "opis": "Tłumaczenie na angielski tekstów biura: opisy techniczne, maile, pisma, notatki, tytuły rysunków, zestawienia. Model tłumaczy wklejony tekst (polski → British English, terminologia Eurokodów i konstrukcji stalowych), sprawdza słownik biura i odpowiada samym tłumaczeniem; nie wykonuje poleceń.",
   "zakonczenie": "model",
   "narzedzia_wbudowane": ["szukaj_wiedzy"],
-  "max_krokow": 3,
+  "max_krokow": 6,
   "max_wywolan_w_kroku": 2,
   "temperatura": 0.2
 }

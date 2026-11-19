@@ -117,6 +117,12 @@ internal static class AutoTest
         var resume = commands.Remove("#wznow");
         var inlineConsent = commands.Remove("#zgoda"); // pytanie o zgodę w rozmowie: zrzut, potem klik „Tak”
         var skillsList = commands.Remove("#lista");
+        if (commands.Remove("#tokeny"))
+        {
+            // „Pokaż tokeny i czasy” (Ustawienia → Czat) tylko w tej kontroli — w autoteście ustawienia się nie zapisują.
+            viewModel.ShowTokens = true;
+        }
+
         view.ConfigureForTest(options.Harness!, roots, options.HarnessConnection, options.HarnessPerson, options.HarnessConversations, resume);
         if (commands.Remove("#zrodla"))
         {
@@ -160,7 +166,7 @@ internal static class AutoTest
         await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
         await Task.Delay(300);
         window.SavePng(Path.Combine(outputDir, "harness.png"));
-        var entries = view.Panel.Entries.Select(e => new { rodzaj = e.Kind.ToString(), tekst = e.Text, szczegoly = e.Detail, ok = e.Success }).ToList();
+        var entries = view.Panel.Entries.Select(e => new { rodzaj = e.Kind.ToString(), tekst = e.Text, szczegoly = e.Detail, ok = e.Success, metryki = e.Metrics }).ToList();
         File.WriteAllText(Path.Combine(outputDir, "harness.json"), JsonSerializer.Serialize(new
         {
             profil = view.ProfileName,

@@ -29,11 +29,90 @@ namespace LokalneAI.Harness.Wpf
         private PanelEntry _thinking;
         private bool _follow = true;
 
+        // Tokeny i czasy przy wpisach (ShowTokens): polecenie bieżącej tury, krok modelu czekający na swój wpis,
+        // wpisy bieżącego kroku (dostaną „→ do modelu” z następnego wywołania), pisanie pytania.
+        private PanelEntry _turnUser;
+        private ModelCallMetrics _pendingModel;
+        private readonly System.Collections.Generic.List<PanelEntry> _stepTiles = new System.Collections.Generic.List<PanelEntry>();
+        private int _sessionModelCalls;
+        private DateTime? _typingStart;
+        private TimeSpan? _pendingTyping;
+
+        /// <summary>Pokazywać przy wpisach tokeny i czasy (<see cref="PanelEntry.Metrics"/>) — do nauki i diagnostyki.</summary>
+        public static readonly DependencyProperty ShowTokensProperty = DependencyProperty.Register(
+            nameof(ShowTokens), typeof(bool), typeof(HarnessPanel), new PropertyMetadata(false));
+
+        /// <summary>Liczniki obok wpisów (szerokie okno) zamiast pod nimi — ustawia panel przy zmianie szerokości.</summary>
+        public static readonly DependencyProperty TokensBesideProperty = DependencyProperty.Register(
+            nameof(TokensBeside), typeof(bool), typeof(HarnessPanel), new PropertyMetadata(true));
+
+        /// <summary>
+        /// Pokazywać przy każdym wpisie dokładne tokeny i czasy z serwera modelu: przy poleceniu — pisanie pytania i skład promptu,
+        /// przy kroku modelu — ile napisał, myślenie i pisanie, przy narzędziu — czas i ile wyniku wróciło do modelu, pod turą — Σ
+        /// wejście | praca | odpowiedź. W szerokim oknie z prawej strony wpisu, w wąskim pod nim. Liczy się zawsze; to tylko widok.
+        /// </summary>
+        public bool ShowTokens
+        {
+            get => (bool)GetValue(ShowTokensProperty);
+            set => SetValue(ShowTokensProperty, value);
+        }
+
+        /// <summary>Czy liczniki stoją obok wpisów (okno dość szerokie); inaczej pod nimi.</summary>
+        public bool TokensBeside
+        {
+            get => (bool)GetValue(TokensBesideProperty);
+            private set => SetValue(TokensBesideProperty, value);
+        }
+
+        /// <summary>Objaśnienie liczników (podpowiedź przy nich).</summary>
+        public static string TokensLegend => TokenText.Legend;
+
         /// <summary>Tworzy pusty panel. Przed pierwszym poleceniem ustaw <see cref="SessionFactory"/>.</summary>
         public HarnessPanel()
         {
             InitializeComponent();
             EntriesList.ItemsSource = _entries;
+            AgentTiles.ItemsSource = _agentTiles;
+            _agentTiles.CollectionChanged += (s, e) =>
+            {
+                AgentTiles.Visibility = _agentTiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                if (_agentTiles.Count > 0 && _agentClock == null)
+                {
+                    _agentClock = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+                    _agentClock.Tick += (s2, e2) =>
+                    {
+                        foreach (var tile in _agentTiles)
+                        {
+                            tile.Refresh();
+                        }
+                    };
+                }
+
+                if (_agentClock != null)
+                {
+                    if (_agentTiles.Count > 0)
+                    {
+                        _agentClock.Start();
+                    }
+                    else
+                    {
+                        _agentClock.Stop();
+                    }
+                }
+            };
+            Scroll.SizeChanged += (s, e) => TokensBeside = Scroll.ActualWidth >= 760;
+            InputBox.TextChanged += (s, e) =>
+            {
+                // Pisanie pytania: od pierwszego znaku w pustym polu do wysłania.
+                if (InputBox.Text.Length == 0)
+                {
+                    _typingStart = null;
+                }
+                else if (_typingStart == null)
+                {
+                    _typingStart = DateTime.UtcNow;
+                }
+            };
             Scroll.ScrollChanged += (s, e) =>
             {
                 if (e.ExtentHeightChange == 0)
@@ -57,8 +136,29 @@ namespace LokalneAI.Harness.Wpf
             set => TitleText.Text = value;
         }
 
-        /// <summary>Pokazywać surowe kroki modelu (JSON) — do diagnostyki.</summary>
-        public bool ShowModelSteps { get; set; }
+        /// <summary>Pokazywać wpisy „Krok N” (<see cref="PanelEntryKind.Step"/>): co model zwrócił w każdym kroku, z JSON-em w szczegółach.</summary>
+        public static readonly DependencyProperty ShowModelStepsProperty = DependencyProperty.Register(
+            nameof(ShowModelSteps), typeof(bool), typeof(HarnessPanel), new PropertyMetadata(false));
+
+        /// <summary>
+        /// Pokazywać kroki modelu w rozmowie: wpis „Krok N” po każdej odpowiedzi modelu (wywołania, odpowiedź, pytanie, plan)
+        /// z surowym JSON-em w szczegółach. Wpisy powstają zawsze (także w przebiegu podagentów) i zapisują się z rozmową;
+        /// to tylko widok, więc przełącznik działa też na wpisy sprzed zmiany.
+        /// </summary>
+        public bool ShowModelSteps
+        {
+            get => (bool)GetValue(ShowModelStepsProperty);
+            set => SetValue(ShowModelStepsProperty, value);
+        }
+
+        // Podagenci: kafelki nad polem polecenia (w trakcie) i wpisy Agent w rozmowie (drzewo przebiegu) — po numerze podagenta.
+        private readonly ObservableCollection<AgentTile> _agentTiles = new ObservableCollection<AgentTile>();
+        private readonly System.Collections.Generic.Dictionary<int, PanelEntry> _agentEntries = new System.Collections.Generic.Dictionary<int, PanelEntry>();
+        private readonly System.Collections.Generic.Dictionary<int, PanelEntry> _agentThinking = new System.Collections.Generic.Dictionary<int, PanelEntry>();
+        private System.Windows.Threading.DispatcherTimer _agentClock;
+
+        /// <summary>Podagenci, którzy właśnie liczą (kafelki nad polem polecenia).</summary>
+        public ObservableCollection<AgentTile> AgentTilesList => _agentTiles;
 
         /// <summary>Ile znaków wyniku polecenia pokazać pod wywołaniem (np. więcej dla wyników PowerShella).</summary>
         public int ResultPreviewLength { get; set; } = 600;
@@ -137,7 +237,15 @@ namespace LokalneAI.Harness.Wpf
                 return null;
             }
 
-            _entries.Add(new PanelEntry(PanelEntryKind.User, text.Trim()));
+            var typing = _pendingTyping;
+            _pendingTyping = null;
+            _turnUser = new PanelEntry(PanelEntryKind.User, text.Trim())
+            {
+                Metrics = typing.HasValue ? "pisanie pytania: " + TokenText.Time(typing.Value) : null,
+            };
+            _entries.Add(_turnUser);
+            _pendingModel = null;
+            _stepTiles.Clear();
             _follow = true;
             SetBusy(true);
             TurnResult turn = null;
@@ -150,7 +258,10 @@ namespace LokalneAI.Harness.Wpf
                     _entries.Add(new PanelEntry(PanelEntryKind.Error, turn.Text));
                 }
 
-                _entries.Add(new PanelEntry(PanelEntryKind.Info, string.Format(Pl, "{0:0.0} s · wywołań modelu: {1}", turn.Duration.TotalSeconds, turn.ModelCalls)));
+                _entries.Add(new PanelEntry(PanelEntryKind.Info, string.Format(Pl, "{0:0.0} s · wywołań modelu: {1}", turn.Duration.TotalSeconds, turn.ModelCalls))
+                {
+                    Metrics = TokenText.Turn(turn, typing),
+                });
             }
             catch (OperationCanceledException)
             {
@@ -170,6 +281,10 @@ namespace LokalneAI.Harness.Wpf
                 RemoveThinking();
                 _cts.Dispose();
                 _cts = null;
+                _turnUser = null;
+                _pendingModel = null;
+                _stepTiles.Clear();
+                FinishAgents();
                 SetBusy(false);
             }
 
@@ -187,6 +302,7 @@ namespace LokalneAI.Harness.Wpf
         {
             _cts?.Cancel();
             CloseSession();
+            FinishAgents();
             _entries.Clear();
             UpdateContext(null);
         }
@@ -256,6 +372,8 @@ namespace LokalneAI.Harness.Wpf
                 _session.Dispose();
                 _session = null;
             }
+
+            _sessionModelCalls = 0;
         }
 
         private void OnProgress(object sender, HarnessEvent e)
@@ -296,23 +414,38 @@ namespace LokalneAI.Harness.Wpf
                         _entries.Add(_thinking);
                     }
 
+                    _thinking.Metrics = e.Context != null && e.Context.UsedTokens > 0 ? TokenText.Estimate(e.Context) : null;
+                    break;
+                case HarnessEventKind.ModelCall:
+                    OnModelCall(e.ModelCall);
                     break;
                 case HarnessEventKind.ModelStep:
-                    if (ShowModelSteps)
-                    {
-                        _entries.Insert(Math.Max(0, _entries.Count - (_thinking != null ? 1 : 0)), new PanelEntry(PanelEntryKind.Info, e.Text));
-                    }
-
+                    // Wpis kroku powstaje zawsze (zapisuje się z rozmową); widać go przy ShowModelSteps.
+                    Insert(StepEntry(e));
+                    break;
+                case HarnessEventKind.AgentStarted:
+                    OnAgentStarted(e.Agent);
+                    break;
+                case HarnessEventKind.AgentProgress:
+                    OnAgentProgress(e.Agent, e.Inner);
+                    break;
+                case HarnessEventKind.AgentFinished:
+                    OnAgentFinished(e.Agent);
                     break;
                 case HarnessEventKind.ToolStarted:
-                    Insert(new PanelEntry(PanelEntryKind.Call, "→ " + e.Call.Tool, DescribeArguments(e.Call.ArgumentsJson)) { Success = null });
+                    Insert(Track(new PanelEntry(PanelEntryKind.Call, "→ " + e.Call.Tool, DescribeArguments(e.Call.ArgumentsJson)) { Success = null }));
                     break;
                 case HarnessEventKind.ToolFinished:
                     var open = _entries.LastOrDefault(x => x.Kind == PanelEntryKind.Call && x.Success == null && x.Text == "→ " + e.Call.Tool);
                     if (open == null)
                     {
-                        open = new PanelEntry(PanelEntryKind.Call, "→ " + e.Call.Tool, DescribeArguments(e.Call.ArgumentsJson));
+                        open = Track(new PanelEntry(PanelEntryKind.Call, "→ " + e.Call.Tool, DescribeArguments(e.Call.ArgumentsJson)));
                         Insert(open);
+                    }
+
+                    if (e.Call.Duration > TimeSpan.Zero)
+                    {
+                        open.Metrics = TokenText.Append(open.Metrics, "narzędzie: " + TokenText.Time(e.Call.Duration));
                     }
 
                     open.Success = e.Call.Success;
@@ -320,19 +453,72 @@ namespace LokalneAI.Harness.Wpf
                     break;
                 case HarnessEventKind.Answer:
                     RemoveThinking();
-                    _entries.Add(new PanelEntry(PanelEntryKind.Answer, e.Text));
+                    var answer = new PanelEntry(PanelEntryKind.Answer, e.Text);
+                    if (_turnUser != null && _pendingModel == null)
+                    {
+                        answer.Metrics = "odpowiedź złożył program z wyników narzędzi (model jej nie pisał)";
+                    }
+
+                    _entries.Add(Track(answer));
                     break;
                 case HarnessEventKind.Question:
                     RemoveThinking();
-                    _entries.Add(new PanelEntry(PanelEntryKind.Question, e.Text));
+                    _entries.Add(Track(new PanelEntry(PanelEntryKind.Question, e.Text)));
                     break;
                 case HarnessEventKind.Warning:
-                    Insert(new PanelEntry(PanelEntryKind.Warning, e.Text));
+                    Insert(Track(new PanelEntry(PanelEntryKind.Warning, e.Text)));
                     break;
                 case HarnessEventKind.ContextChanged:
                     UpdateContext(e.Context);
                     break;
             }
+        }
+
+        /// <summary>
+        /// Model odpowiedział: pierwsze wywołanie tury opisuje polecenie użytkownika (skład promptu), następne — o ile urósł
+        /// prompt po wpisach poprzedniego kroku (wyniki narzędzi). Liczby tego kroku czekają na pierwszy wpis, który krok wywoła.
+        /// </summary>
+        private void OnModelCall(ModelCallMetrics m)
+        {
+            if (m == null || _turnUser == null)
+            {
+                return;
+            }
+
+            _sessionModelCalls++;
+            if (m.CallInTurn == 1)
+            {
+                _turnUser.Metrics = TokenText.Append(_turnUser.Metrics, TokenText.FirstPrompt(m, _sessionModelCalls == 1));
+            }
+            else
+            {
+                var target = _stepTiles.LastOrDefault(t => t.Kind == PanelEntryKind.Call) ?? _stepTiles.LastOrDefault();
+                if (target != null)
+                {
+                    target.Metrics = TokenText.Append(target.Metrics, TokenText.Added(m));
+                }
+            }
+
+            _stepTiles.Clear();
+            _pendingModel = m;
+        }
+
+        /// <summary>Wpis bieżącego kroku: dostaje liczby kroku modelu, który go wywołał (pierwszy wpis po tym kroku).</summary>
+        private PanelEntry Track(PanelEntry entry)
+        {
+            if (_turnUser == null)
+            {
+                return entry;
+            }
+
+            _stepTiles.Add(entry);
+            if (_pendingModel != null)
+            {
+                entry.Metrics = TokenText.Append(TokenText.Model(_pendingModel), entry.Metrics);
+                _pendingModel = null;
+            }
+
+            return entry;
         }
 
         private void Insert(PanelEntry entry)
@@ -342,6 +528,229 @@ namespace LokalneAI.Harness.Wpf
             _entries.Insert(index, entry);
         }
 
+        /// <summary>Wpis „Krok N: …” z surowego kroku modelu: rodzaj kroku, plan i nazwy wywołań w nagłówku, JSON w szczegółach.</summary>
+        internal static PanelEntry StepEntry(HarnessEvent e)
+            => new PanelEntry(PanelEntryKind.Step, DescribeStep(e.Text, e.Step), Shorten(e.Text, 2000));
+
+        /// <summary>„Krok 2: wywołania → czytaj_plik, czytaj_plik” / „Krok 3: odpowiedź” / „Krok 1: plan — …; wywołania → …”.</summary>
+        internal static string DescribeStep(string json, int step)
+        {
+            var head = step > 0 ? "Krok " + step + ": " : "Krok: ";
+            try
+            {
+                using (var document = JsonDocument.Parse(json ?? ""))
+                {
+                    var root = document.RootElement;
+                    if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("krok", out var kind) || kind.ValueKind != JsonValueKind.String)
+                    {
+                        return head + "niepoprawny krok (nie JSON kroku)";
+                    }
+
+                    var parts = new System.Collections.Generic.List<string>();
+                    if (root.TryGetProperty("plan", out var plan) && plan.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(plan.GetString()))
+                    {
+                        parts.Add("plan — " + Shorten(plan.GetString().Trim(), 200));
+                    }
+
+                    switch (kind.GetString())
+                    {
+                        case "wywolania":
+                            var names = new System.Collections.Generic.List<string>();
+                            if (root.TryGetProperty("wywolania", out var calls) && calls.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var call in calls.EnumerateArray())
+                                {
+                                    names.Add(call.TryGetProperty("narzedzie", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : "?");
+                                }
+                            }
+
+                            parts.Add("wywołania → " + (names.Count == 0 ? "(brak)" : string.Join(", ", names)));
+                            break;
+                        case "odpowiedz":
+                            parts.Add("odpowiedź");
+                            break;
+                        case "pytanie":
+                            parts.Add("pytanie do użytkownika");
+                            break;
+                        default:
+                            parts.Add(kind.GetString());
+                            break;
+                    }
+
+                    return head + string.Join("; ", parts);
+                }
+            }
+            catch (JsonException)
+            {
+                return head + "niepoprawny krok (nie JSON)";
+            }
+        }
+
+        // ───────────────────────────── Podagenci ─────────────────────────────
+
+        private void OnAgentStarted(SubAgentInfo agent)
+        {
+            if (agent == null)
+            {
+                return;
+            }
+
+            var entry = new PanelEntry(PanelEntryKind.Agent, "Podagent " + agent.Number + ": " + Shorten((agent.Task ?? "").Replace("\r", "").Replace("\n", " "), 160), AgentDetail(agent))
+            {
+                Success = null,
+            };
+            _agentEntries[agent.Number] = entry;
+            Insert(entry);
+            var tile = _agentTiles.FirstOrDefault(t => t.Number == agent.Number);
+            if (tile == null)
+            {
+                _agentTiles.Add(new AgentTile(agent));
+            }
+            else
+            {
+                tile.Refresh();
+            }
+        }
+
+        private void OnAgentProgress(SubAgentInfo agent, HarnessEvent inner)
+        {
+            if (agent == null || inner == null)
+            {
+                return;
+            }
+
+            PanelEntry parent;
+            if (!_agentEntries.TryGetValue(agent.Number, out parent))
+            {
+                OnAgentStarted(agent);
+                parent = _agentEntries[agent.Number];
+            }
+
+            ShowChild(agent.Number, parent, inner);
+            parent.Detail = AgentDetail(agent);
+            _agentTiles.FirstOrDefault(t => t.Number == agent.Number)?.Refresh();
+        }
+
+        private void OnAgentFinished(SubAgentInfo agent)
+        {
+            if (agent == null)
+            {
+                return;
+            }
+
+            PanelEntry entry;
+            if (_agentEntries.TryGetValue(agent.Number, out entry))
+            {
+                PanelEntry thinking;
+                if (_agentThinking.TryGetValue(agent.Number, out thinking))
+                {
+                    entry.Children.Remove(thinking);
+                    _agentThinking.Remove(agent.Number);
+                }
+
+                entry.Success = agent.Success;
+                entry.Detail = AgentDetail(agent);
+            }
+
+            var tile = _agentTiles.FirstOrDefault(t => t.Number == agent.Number);
+            if (tile != null)
+            {
+                _agentTiles.Remove(tile);
+            }
+        }
+
+        /// <summary>Druga linia wpisu podagenta: komputer, model, umiejętności, stan albo wynik i czas.</summary>
+        private string AgentDetail(SubAgentInfo agent)
+        {
+            var where = (agent.Machine ?? "?") + " · " + (agent.Model ?? "?") + (string.IsNullOrWhiteSpace(agent.Skills) ? "" : " · " + agent.Skills);
+            if (agent.IsRunning || agent.Success == null)
+            {
+                return where + " · " + (agent.Status ?? "startuje") + (agent.Duration > TimeSpan.Zero ? " · " + TokenText.Time(agent.Duration) : "");
+            }
+
+            return where + " · " + TokenText.Time(agent.Duration) + "\n" + (agent.Success == true ? "" : "BŁĄD: ") + Shorten(agent.Result, ResultPreviewLength);
+        }
+
+        /// <summary>Zdarzenie z sesji podagenta → wpis w jego przebiegu (uproszczona wersja <see cref="Show"/>, bez liczników tokenów).</summary>
+        private void ShowChild(int number, PanelEntry parent, HarnessEvent e)
+        {
+            var children = parent.Children;
+            PanelEntry thinking;
+            _agentThinking.TryGetValue(number, out thinking);
+            switch (e.Kind)
+            {
+                case HarnessEventKind.ModelThinking:
+                    if (thinking == null)
+                    {
+                        thinking = new PanelEntry(PanelEntryKind.Info, e.Text);
+                        _agentThinking[number] = thinking;
+                    }
+                    else
+                    {
+                        thinking.Text = e.Text;
+                        children.Remove(thinking);
+                    }
+
+                    children.Add(thinking);
+                    break;
+                case HarnessEventKind.ModelStep:
+                    InsertChild(children, thinking, StepEntry(e));
+                    break;
+                case HarnessEventKind.ToolStarted:
+                    InsertChild(children, thinking, new PanelEntry(PanelEntryKind.Call, "→ " + e.Call.Tool, DescribeArguments(e.Call.ArgumentsJson)) { Success = null });
+                    break;
+                case HarnessEventKind.ToolFinished:
+                    var open = children.LastOrDefault(x => x.Kind == PanelEntryKind.Call && x.Success == null && x.Text == "→ " + e.Call.Tool);
+                    if (open == null)
+                    {
+                        open = new PanelEntry(PanelEntryKind.Call, "→ " + e.Call.Tool, DescribeArguments(e.Call.ArgumentsJson));
+                        InsertChild(children, thinking, open);
+                    }
+
+                    if (e.Call.Duration > TimeSpan.Zero)
+                    {
+                        open.Metrics = TokenText.Append(open.Metrics, "narzędzie: " + TokenText.Time(e.Call.Duration));
+                    }
+
+                    open.Success = e.Call.Success;
+                    open.Detail = DescribeArguments(e.Call.ArgumentsJson) + "\n" + (e.Call.Success || (e.Call.Result ?? "").StartsWith("BŁĄD", StringComparison.Ordinal) ? "" : "BŁĄD: ") + Shorten(e.Call.Result, ResultPreviewLength);
+                    break;
+                case HarnessEventKind.Answer:
+                    RemoveChildThinking(number, children);
+                    children.Add(new PanelEntry(PanelEntryKind.Answer, e.Text));
+                    break;
+                case HarnessEventKind.Question:
+                    RemoveChildThinking(number, children);
+                    children.Add(new PanelEntry(PanelEntryKind.Question, e.Text));
+                    break;
+                case HarnessEventKind.Warning:
+                    InsertChild(children, thinking, new PanelEntry(PanelEntryKind.Warning, e.Text));
+                    break;
+            }
+        }
+
+        private static void InsertChild(ObservableCollection<PanelEntry> children, PanelEntry thinking, PanelEntry entry)
+        {
+            var index = thinking != null && children.Contains(thinking) ? children.IndexOf(thinking) : children.Count;
+            children.Insert(index, entry);
+        }
+
+        private void RemoveChildThinking(int number, ObservableCollection<PanelEntry> children)
+        {
+            PanelEntry thinking;
+            if (_agentThinking.TryGetValue(number, out thinking))
+            {
+                children.Remove(thinking);
+                _agentThinking.Remove(number);
+            }
+        }
+
+        private void AgentCancel_Click(object sender, RoutedEventArgs e)
+        {
+            var tile = (sender as FrameworkElement)?.DataContext as AgentTile;
+            tile?.Cancel();
+        }
+
         private void RemoveThinking()
         {
             if (_thinking != null)
@@ -349,6 +758,29 @@ namespace LokalneAI.Harness.Wpf
                 _entries.Remove(_thinking);
                 _thinking = null;
             }
+        }
+
+        /// <summary>Koniec tury (także przerwanej): kafelki znikają, otwarte wpisy podagentów dostają stan „przerwany”.</summary>
+        private void FinishAgents()
+        {
+            foreach (var pair in _agentEntries.ToList())
+            {
+                PanelEntry thinking;
+                if (_agentThinking.TryGetValue(pair.Key, out thinking))
+                {
+                    pair.Value.Children.Remove(thinking);
+                }
+
+                if (pair.Value.Success == null)
+                {
+                    pair.Value.Success = false;
+                    pair.Value.Detail = (pair.Value.Detail ?? "") + "\nprzerwany";
+                }
+            }
+
+            _agentThinking.Clear();
+            _agentEntries.Clear();
+            _agentTiles.Clear();
         }
 
         private void UpdateContext(ContextUsage context)
@@ -380,6 +812,7 @@ namespace LokalneAI.Harness.Wpf
                 return;
             }
 
+            _pendingTyping = _typingStart.HasValue ? DateTime.UtcNow - _typingStart.Value : (TimeSpan?)null;
             InputBox.Clear();
             await SendAsync(text);
             InputBox.Focus();

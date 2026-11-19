@@ -1,0 +1,10 @@
+{"uzytkownik": "W jakich jednostkach CS trzyma współrzędne blach?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "jednostki core.blacha cs_origin metry milimetry"}}]}
+{"uzytkownik": "Co znaczy klasa_p4 brak_w_bazie?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "klasa_p4 brak_w_bazie katalog profil rozmiar"}}]}
+{"uzytkownik": "Czym różni się profil psetów user od full w eksporcie IFC?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "psety profil user full eksport IFC geometria duplikaty"}}]}
+{"uzytkownik": "Jak CS rozpoznaje blachownicę falistą WT z nazwy?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "WT blachownica falista SIN grubość środnika litera"}}]}
+{"uzytkownik": "Jak dopisać numery prętów z RFEM jako psety do pliku IFC?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "dopisz psety kopia IFC tabela klucz numer pręta RFEM"}}]}
+{"uzytkownik": "Dlaczego CS używa dwóch parserów IFC?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "web-ifc IfcOpenShell dwa parsery metadane geometria manifest"}}]}
+{"uzytkownik": "Czy spoiny są w wyeksportowanym IFC?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "eksport spoin nakładka shared-edges bare"}}]}
+{"uzytkownik": "Przelicz 0,35 m na milimetry.", "wywolania": [{"narzedzie": "kalkulator", "argumenty": {"wyrazenie": "0,35*1000"}}]}
+{"uzytkownik": "Ile przekrojów ma katalog profili CS i w jakiej konwencji są nazwy?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "katalog profili 4559 konwencja Tekli profile_catalog"}}]}
+{"uzytkownik": "Co to jest spis IFC z BUDOWY?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "ifc_spis spis plików IFC dysk biura pre-analiza"}}]}

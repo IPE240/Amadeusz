@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -36,6 +37,12 @@ namespace LokalneAI.Harness.Llm
         /// Ollama go pomija. Null = bez nazwy.
         /// </summary>
         public string ClientName { get; set; }
+
+        /// <summary>
+        /// Dodatkowe nagłówki HTTP każdego zapytania, np. <c>X-LokalneAI-Przekazane: 1</c> — brama okna liczy wtedy na tym
+        /// komputerze, choć „Gdzie liczyć” wskazuje inny (podagent na własnej karcie). Null = bez dodatkowych nagłówków.
+        /// </summary>
+        public IDictionary<string, string> Headers { get; set; }
 
         /// <summary>
         /// Pozwól modelowi „myśleć” przed odpowiedzią (pole <c>think</c> w <c>/api/chat</c>). Domyślnie false: zapytanie niesie
@@ -107,6 +114,17 @@ namespace LokalneAI.Harness.Llm
                 if (!string.IsNullOrWhiteSpace(_options.ClientName))
                 {
                     message.Headers.TryAddWithoutValidation(LocalGateway.ProgramHeader, Uri.EscapeDataString(_options.ClientName.Trim()));
+                }
+
+                if (_options.Headers != null)
+                {
+                    foreach (var header in _options.Headers)
+                    {
+                        if (!string.IsNullOrWhiteSpace(header.Key))
+                        {
+                            message.Headers.TryAddWithoutValidation(header.Key, header.Value ?? "");
+                        }
+                    }
                 }
 
                 var clock = Stopwatch.StartNew();
@@ -181,9 +199,10 @@ namespace LokalneAI.Harness.Llm
                     writer.WriteStartObject("options");
                     writer.WriteNumber("temperature", request.Temperature ?? _options.Temperature);
                     writer.WriteNumber("num_ctx", _options.ContextLength);
-                    if (_options.MaxTokens > 0)
+                    var maxTokens = request.MaxTokens ?? _options.MaxTokens;
+                    if (maxTokens > 0)
                     {
-                        writer.WriteNumber("num_predict", _options.MaxTokens);
+                        writer.WriteNumber("num_predict", maxTokens);
                     }
 
                     writer.WriteEndObject();
@@ -238,9 +257,9 @@ namespace LokalneAI.Harness.Llm
                         Duration = root.TryGetProperty("total_duration", out var total) && total.TryGetInt64(out var ns)
                             ? TimeSpan.FromTicks(ns / 100)
                             : elapsed,
-                        LoadDuration = root.TryGetProperty("load_duration", out var load) && load.TryGetInt64(out var loadNs)
-                            ? TimeSpan.FromTicks(loadNs / 100)
-                            : TimeSpan.Zero,
+                        LoadDuration = ReadDuration(root, "load_duration"),
+                        PromptDuration = ReadDuration(root, "prompt_eval_duration"),
+                        OutputDuration = ReadDuration(root, "eval_duration"),
                         Model = root.TryGetProperty("model", out var model) ? model.GetString() : null,
                     };
                 }
@@ -250,6 +269,9 @@ namespace LokalneAI.Harness.Llm
                 throw new LlmException("Nieczytelna odpowiedź serwera modelu: " + Text.Shorten(json, 200), e);
             }
         }
+
+        private static TimeSpan ReadDuration(JsonElement root, string name)
+            => root.TryGetProperty(name, out var value) && value.TryGetInt64(out var ns) ? TimeSpan.FromTicks(ns / 100) : TimeSpan.Zero;
 
         private static int ReadInt(JsonElement root, string name)
             => root.TryGetProperty(name, out var value) && value.TryGetInt32(out var number) ? number : 0;

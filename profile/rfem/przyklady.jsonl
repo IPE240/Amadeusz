@@ -17,4 +17,16 @@
 {"uzytkownik": "znajdź modele RFEM w projekcie WSP", "wywolania": [{"narzedzie": "szukaj_plikow", "argumenty": {"wzorzec": "*.rf5", "sciezka": "1095_WSP"}}]}
 {"uzytkownik": "co jest w folderze Obliczenia?", "wywolania": [{"narzedzie": "pokaz_zawartosc", "argumenty": {"sciezka": "Obliczenia"}}]}
 {"uzytkownik": "jakie są reakcje podporowe w węźle 1?", "wywolania": []}
-{"uzytkownik": "jaki jest przekrój pręta?", "wywolania": []}
+{"uzytkownik": "jaki jest przekrój pręta w pliku hala.rf5?", "wywolania": []}
+{"uzytkownik": "mam otwarty RFEM 5.27. Jaki przekrój ma zaznaczony pręt?", "wywolania": [{"narzedzie": "rfem_wskaz", "argumenty": {}}]}
+{"uzytkownik": "co jest teraz otwarte w RFEM-ie?", "wywolania": [{"narzedzie": "rfem_otwarty", "argumenty": {}}]}
+{"uzytkownik": "w otwartym modelu RFEM jaki przekrój i długość ma pręt 28?", "wywolania": [{"narzedzie": "rfem_otwarty_pret", "argumenty": {"numer": 28}}]}
+{"uzytkownik": "siły w pręcie 28 od KO5 z otwartego RFEM-a", "wywolania": [{"narzedzie": "rfem_otwarty_sily", "argumenty": {"numer": 28, "obciazenie": "KO5"}}]}
+{"uzytkownik": "jaka jest największa siła w pręcie 61 w otwartym modelu?", "wywolania": [{"narzedzie": "rfem_otwarty_sily", "argumenty": {"numer": 61}}]}
+{"uzytkownik": "ugięcie pręta 95 od KW1 — model mam otwarty w RFEM", "wywolania": [{"narzedzie": "rfem_otwarty_sily", "argumenty": {"numer": 95, "obciazenie": "KW1", "co": "przemieszczenia"}}]}
+{"uzytkownik": "jakie są reakcje w węźle 1 od KO12? (model otwarty w RFEM)", "wywolania": [{"narzedzie": "rfem_otwarty_reakcje", "argumenty": {"wezel": 1, "obciazenie": "KO12"}}]}
+{"uzytkownik": "wskażę ci węzeł w RFEM-ie, podaj jego współrzędne", "wywolania": [{"narzedzie": "rfem_wskaz", "argumenty": {"co": "wezly"}}]}
+{"uzytkownik": "jakie kombinacje ma model otwarty w RFEM i które są policzone?", "wywolania": [{"narzedzie": "rfem_otwarty_przypadki", "argumenty": {}}]}
+{"uzytkownik": "jakie przekroje są w otwartym modelu?", "wywolania": [{"narzedzie": "rfem_otwarty_przekroje", "argumenty": {}}]}
+{"uzytkownik": "który element Tekli to pręt 14?", "wywolania": [{"narzedzie": "rfem_pret", "argumenty": {"numer": 14}}]}
+{"uzytkownik": "siły w pręcie 14 od samego ciężaru własnego (PO1)", "wywolania": [{"narzedzie": "rfem_sily", "argumenty": {"numer": 14, "obciazenie": "PO1"}}]}

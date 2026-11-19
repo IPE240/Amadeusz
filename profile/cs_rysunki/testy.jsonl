@@ -1,0 +1,6 @@
+{"id": "CR01", "opis": "układ", "kroki": [{"uzytkownik": "Czym jest układ w zakładce Układy?", "oczekiwane": []}]}
+{"id": "CR02", "opis": "izometrie w komplecie", "kroki": [{"uzytkownik": "Ile rysunków izometrycznych ma być w komplecie montażowym według wykładu?", "oczekiwane": []}]}
+{"id": "CR03", "opis": "NC prototyp", "kroki": [{"uzytkownik": "Czy CS generuje pliki NC gotowe do produkcji?", "oczekiwane": []}]}
+{"id": "CR04", "opis": "trzy rodzaje rysunków", "kroki": [{"uzytkownik": "Czym różni się arkusz zespołu od rysunku części?", "oczekiwane": []}]}
+{"id": "CR05", "opis": "prośba o wykonanie = instrukcja", "kroki": [{"uzytkownik": "Zrób rysunek zespołu B12.", "oczekiwane": []}]}
+{"id": "CR06", "opis": "sesja: szkice", "kroki": [{"uzytkownik": "Co to są szkice na rysunkach układów?", "oczekiwane": []}, {"uzytkownik": "I co z nimi robi agent?", "oczekiwane": []}]}

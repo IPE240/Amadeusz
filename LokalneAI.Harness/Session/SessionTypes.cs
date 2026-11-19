@@ -42,6 +42,24 @@ namespace LokalneAI.Harness.Session
         /// od nowa z bieżącego profilu, więc rozmowę można wznowić z innymi profilami niż te, z którymi się zaczęła.
         /// </summary>
         public IList<Llm.LlmMessage> History { get; set; }
+
+        /// <summary>
+        /// Przed pierwszym wywołaniem modelu policz dokładnie tokeny samego polecenia systemowego (zasady, narzędzia, wiedza)
+        /// jednym dodatkowym zapytaniem z jednym tokenem odpowiedzi (<see cref="ModelCallMetrics.SystemTokens"/>). Tylko dla
+        /// <see cref="Llm.OllamaLlmClient"/> — do chmury nie idzie dodatkowe płatne zapytanie. Kosztuje ok. sekundy czytania promptu,
+        /// które i tak by nastąpiło: następne zapytanie ma ten sam początek i Ollama bierze go z pamięci podręcznej.
+        /// </summary>
+        public bool MeasureSystemPrompt { get; set; }
+
+        /// <summary>
+        /// Gospodarz podagentów (<see cref="ISubAgentHost"/>): gdy ustawiony, sesja dostaje narzędzie <c>zlec_podagentowi</c>
+        /// i sekcję „Podagenci” w poleceniu systemowym; kilka zleceń z jednego kroku modelu liczy się równolegle. Null = bez podagentów.
+        /// Sesji podagenta nie podawaj gospodarza (podagent nie zleca dalej).
+        /// </summary>
+        public ISubAgentHost SubAgents { get; set; }
+
+        /// <summary>Najwięcej znaków wyniku podagenta, które wracają do modelu agenta głównego (reszta ucięta z dopiskiem); 0 = bez limitu.</summary>
+        public int SubAgentResultLimit { get; set; } = 6000;
     }
 
     /// <summary>Zajętość kontekstu modelu — do licznika w oknie gospodarza.</summary>
@@ -92,6 +110,17 @@ namespace LokalneAI.Harness.Session
         Question,
         /// <summary>Zmienił się licznik kontekstu (<see cref="HarnessEvent.Context"/>).</summary>
         ContextChanged,
+        /// <summary>
+        /// Model odpowiedział: dokładne tokeny i czasy tego wywołania (<see cref="HarnessEvent.ModelCall"/>). Przychodzi po
+        /// odczytaniu kroku, a przed wywołaniami narzędzi, odpowiedzią albo pytaniem, które ten krok wywołał.
+        /// </summary>
+        ModelCall,
+        /// <summary>Podagent wystartował (<see cref="HarnessEvent.Agent"/>: numer, zadanie, komputer, model).</summary>
+        AgentStarted,
+        /// <summary>Zdarzenie z sesji podagenta (<see cref="HarnessEvent.Inner"/>) — krok, wywołanie, wynik; <see cref="HarnessEvent.Agent"/> mówi którego.</summary>
+        AgentProgress,
+        /// <summary>Podagent skończył (<see cref="HarnessEvent.Agent"/>: <see cref="SubAgentInfo.Success"/>, <see cref="SubAgentInfo.Result"/>, czas).</summary>
+        AgentFinished,
     }
 
     /// <summary>Zdarzenie sesji. Uwaga: może przyjść z wątku w tle — okno musi przełączyć się na swój wątek.</summary>
@@ -115,8 +144,94 @@ namespace LokalneAI.Harness.Session
         /// <summary>Wywołanie (przy <see cref="HarnessEventKind.ToolStarted"/> i <see cref="HarnessEventKind.ToolFinished"/>); inaczej null.</summary>
         public ExecutedCall Call { get; }
 
-        /// <summary>Licznik kontekstu (przy <see cref="HarnessEventKind.ContextChanged"/>); inaczej null.</summary>
+        /// <summary>
+        /// Licznik kontekstu (przy <see cref="HarnessEventKind.ContextChanged"/>); przy <see cref="HarnessEventKind.ModelThinking"/>
+        /// szacunek promptu przed wysłaniem (<see cref="ContextUsage.IsEstimate"/>), inaczej null.
+        /// </summary>
         public ContextUsage Context { get; }
+
+        /// <summary>Tokeny i czasy wywołania modelu (przy <see cref="HarnessEventKind.ModelCall"/>); inaczej null.</summary>
+        public ModelCallMetrics ModelCall { get; internal set; }
+
+        /// <summary>Numer kroku modelu w turze (przy <see cref="HarnessEventKind.ModelThinking"/> i <see cref="HarnessEventKind.ModelStep"/>); 0 = nie dotyczy.</summary>
+        public int Step { get; internal set; }
+
+        /// <summary>Podagent, którego dotyczy zdarzenie (<see cref="HarnessEventKind.AgentStarted"/>, <see cref="HarnessEventKind.AgentProgress"/>, <see cref="HarnessEventKind.AgentFinished"/>); inaczej null.</summary>
+        public SubAgentInfo Agent { get; internal set; }
+
+        /// <summary>Zdarzenie z sesji podagenta (przy <see cref="HarnessEventKind.AgentProgress"/>); inaczej null.</summary>
+        public HarnessEvent Inner { get; internal set; }
+    }
+
+    /// <summary>
+    /// Jedno wywołanie modelu w turze: dokładne liczby tokenów i czasy z serwera (Ollama: <c>prompt_eval_count</c>, <c>eval_count</c>,
+    /// <c>load_duration</c>, <c>prompt_eval_duration</c>, <c>eval_duration</c>, <c>total_duration</c>) i czas zmierzony przez sesję.
+    /// </summary>
+    public sealed class ModelCallMetrics
+    {
+        /// <summary>Numer wywołania w turze (od 1).</summary>
+        public int CallInTurn { get; set; }
+
+        /// <summary>Numer kroku modelu w turze (od 1).</summary>
+        public int Step { get; set; }
+
+        /// <summary>Co model zwrócił: <c>wywolania</c>, <c>odpowiedz</c>, <c>pytanie</c> albo <c>bledny_krok</c>.</summary>
+        public string Outcome { get; set; }
+
+        /// <summary>Model, który odpowiedział (z serwera); null, gdy serwer nie podał.</summary>
+        public string Model { get; set; }
+
+        /// <summary>
+        /// Tokeny całego promptu (polecenie systemowe, historia, nowe wiadomości). Ollama liczy tu cały prompt, także część
+        /// wziętą z pamięci podręcznej — o tym, ile model naprawdę przeliczył, mówi <see cref="PromptTime"/>.
+        /// </summary>
+        public int PromptTokens { get; set; }
+
+        /// <summary>Tokeny napisane przez model w tym wywołaniu (krok w JSON).</summary>
+        public int OutputTokens { get; set; }
+
+        /// <summary>Szacunek tokenów promptu przed wysłaniem (znaki przeliczone współczynnikiem z poprzednich odpowiedzi).</summary>
+        public int EstimatedPromptTokens { get; set; }
+
+        /// <summary>
+        /// Tokeny dopisane do rozmowy od poprzedniego wywołania: prompt − (poprzedni prompt + poprzednia odpowiedź modelu),
+        /// z kilkoma tokenami szablonu rozmowy. Przy pierwszym wywołaniu sesji: prompt − <see cref="SystemTokens"/>.
+        /// Null, gdy nie da się policzyć (brak pomiaru polecenia systemowego, skrócona historia).
+        /// </summary>
+        public int? AddedTokens { get; set; }
+
+        /// <summary>Co zostało dopisane (<see cref="AddedTokens"/>): np. „pytanie”, „wyniki narzędzi”, „uwagi programu”.</summary>
+        public string AddedKind { get; set; }
+
+        /// <summary>Tokeny samego polecenia systemowego (zasady, narzędzia, wiedza) — gdy <see cref="SessionOptions.MeasureSystemPrompt"/>.</summary>
+        public int? SystemTokens { get; set; }
+
+        /// <summary>
+        /// Czas pomiaru <see cref="SystemTokens"/> tuż przed tym wywołaniem (tylko pierwsze wywołanie sesji): to zapytanie czyta
+        /// zasady i często ładuje model, więc samo wywołanie ma potem krótkie „myślenie” (zasady są już w pamięci podręcznej).
+        /// </summary>
+        public TimeSpan SystemMeasureTime { get; set; }
+
+        /// <summary>Z <see cref="SystemMeasureTime"/>: ładowanie modelu do pamięci.</summary>
+        public TimeSpan SystemMeasureLoadTime { get; set; }
+
+        /// <summary>Czas ładowania modelu do pamięci (zero, gdy był załadowany).</summary>
+        public TimeSpan LoadTime { get; set; }
+
+        /// <summary>Czas czytania promptu („myślenie” przed pierwszym tokenem; z pamięci podręcznej prawie zero).</summary>
+        public TimeSpan PromptTime { get; set; }
+
+        /// <summary>Czas pisania odpowiedzi.</summary>
+        public TimeSpan OutputTime { get; set; }
+
+        /// <summary>Cała praca serwera modelu (ładowanie + czytanie + pisanie); zero, gdy serwer nie podaje.</summary>
+        public TimeSpan ServerTime { get; set; }
+
+        /// <summary>Czas zapytania zmierzony przez sesję: od wysłania do odebrania odpowiedzi.</summary>
+        public TimeSpan WallTime { get; set; }
+
+        /// <summary>Kolejka, sieć i przesyłanie: <see cref="WallTime"/> − <see cref="ServerTime"/> (zero, gdy serwer nie podaje czasów).</summary>
+        public TimeSpan QueueTime => ServerTime > TimeSpan.Zero && WallTime > ServerTime ? WallTime - ServerTime : TimeSpan.Zero;
     }
 
     /// <summary>Wywołanie wykonane w turze: co, z jakimi argumentami, z jakim wynikiem.</summary>
@@ -145,6 +260,9 @@ namespace LokalneAI.Harness.Session
 
         /// <summary>Polecenie oznaczone w profilu jako kończące turę (<c>konczy_ture</c>), np. <c>cd</c>.</summary>
         public bool FinishesTurn { get; set; }
+
+        /// <summary>Czas wykonania narzędzia (z czekaniem na zgodę użytkownika, jeśli pytało); zero, gdy odrzucone przed wykonaniem.</summary>
+        public TimeSpan Duration { get; set; }
 
         /// <summary>Np. „wstaw_slup {…} → OK id=1001”.</summary>
         public override string ToString() => Tool + " " + ArgumentsJson + " → " + (Success ? "" : "[błąd] ") + Result;
@@ -192,5 +310,8 @@ namespace LokalneAI.Harness.Session
 
         /// <summary>Licznik kontekstu po turze.</summary>
         public ContextUsage Context { get; set; }
+
+        /// <summary>Tokeny i czasy każdego wywołania modelu w tej turze, po kolei.</summary>
+        public IReadOnlyList<ModelCallMetrics> ModelCallDetails { get; set; } = new List<ModelCallMetrics>();
     }
 }

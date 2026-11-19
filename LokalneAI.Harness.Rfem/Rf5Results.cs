@@ -220,6 +220,13 @@ namespace LokalneAI.Harness.Rfem
                         break;
                 }
             }
+
+            // Wyniki samego przypadku n liczonego razem z kombinacjami RFEM zapisuje pod NCOMB = 10000 − n (PO1 → 9999, PO27 → 9973),
+            // z NCASE = n i NCOEF = 1. Takiej kombinacji nie ma w tabeli — to pojedynczy przypadek (model F10 z Tekli, 2026-11-19).
+            if (set.CombinationNo >= 9000 && set.CaseNos.Length == 1 && set.CombinationNo + set.CaseNos[0] == 10000)
+            {
+                set.CombinationNo = 0;
+            }
         }
 
         /// <summary>Zestaw dla „KO5”, „CO5”, „5” (kombinacja) albo „PO3”, „LC3” (przypadek); null, gdy nie ma.</summary>

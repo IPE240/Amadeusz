@@ -1,0 +1,10 @@
+{"uzytkownik": "Jak podpiąć się z Pythona do działającego Robota?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "Robot COM Dispatch GetActiveObject instancja proces"}}]}
+{"uzytkownik": "W jakich jednostkach Robot oddaje moduł Younga przez API?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "jednostki Robot API SI Pa moduł Younga gęstość"}}]}
+{"uzytkownik": "Dlaczego flagi podpór z Robota są równe -1?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "podpory zwolnienia DOF odwrócone -1 VARIANT_TRUE"}}]}
+{"uzytkownik": "Jak przenieść wytężenie z Robota na model IFC?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "wytężenie Robot model IFC cztery polecenia robot_wytezenie dopasuj"}}]}
+{"uzytkownik": "Skąd brać osie lokalne prętów z Robota?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "osie lokalne GetLocalMtx Gamma pręt"}}]}
+{"uzytkownik": "Jak wysłać model MES do Robota z toolkitu?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "MES Robot zakładka Wyślij most kopia SaveAs"}}]}
+{"uzytkownik": "Czy da się przenieść model z RFEM 6 do Robota?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "RFEM do Robota convert SOAP osobna instalacja"}}]}
+{"uzytkownik": "Policz ten model w Robocie.", "wywolania": [], "pytanie": "Nie wykonuję poleceń w programach. W CS wysyłka do Robota idzie z toolkitu: zakładka MES → Robot → „Wyślij do Robota” (najpierw kontrola bez Robota i bramka mechanizmu; Robot pracuje na kopii Twojego modelu). Chcesz opis listy kontrolnej mostu?"}
+{"uzytkownik": "Co zrobić, gdy LoadFromDBase nie znajdzie przekroju?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "LoadFromDBase ShapeType 0 brak przekroju katalog"}}]}
+{"uzytkownik": "Jakiego enumu użyć przy tworzeniu kombinacji w Robocie?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "CreateCombination I_CBT IRobotCombinationType enum kolizja"}}]}

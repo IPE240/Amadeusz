@@ -1,0 +1,6 @@
+{"id": "CB01", "opis": "GetActiveObject", "kroki": [{"uzytkownik": "Czy GetActiveObject działa dla Robota?", "oczekiwane": []}]}
+{"id": "CB02", "opis": "jednostki", "kroki": [{"uzytkownik": "Jaką wartość E dla S235 zwraca API Robota?", "oczekiwane": []}]}
+{"id": "CB03", "opis": "Gamma stopnie", "kroki": [{"uzytkownik": "W jakich jednostkach jest Gamma pręta w API Robota, a w jakich kąt obrotu w RFEM?", "oczekiwane": []}]}
+{"id": "CB04", "opis": "wytężenie lista prętów", "kroki": [{"uzytkownik": "Dlaczego robot_wytezenie wymaga jednorazowego kroku ręcznego w oknie Robota?", "oczekiwane": []}]}
+{"id": "CB05", "opis": "prośba o wykonanie = odmowa", "kroki": [{"uzytkownik": "Zapisz ten model w Robocie.", "oczekiwane": []}]}
+{"id": "CB06", "opis": "sesja: robot_pull", "kroki": [{"uzytkownik": "Co robi robot_pull.py?", "oczekiwane": []}, {"uzytkownik": "A co daje przełącznik --do-core?", "oczekiwane": []}]}

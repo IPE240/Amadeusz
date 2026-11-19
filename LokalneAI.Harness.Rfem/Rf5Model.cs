@@ -39,6 +39,9 @@ namespace LokalneAI.Harness.Rfem
         /// <summary>Węzły po kolei (prosta: 2, łamana: więcej).</summary>
         public IList<int> Nodes { get; set; } = new List<int>();
 
+        /// <summary>Kąt zapisany przy linii [rad] (w niektórych modelach π/2 — linie z obróconym układem); 0 = brak.</summary>
+        public double Rotation { get; set; }
+
         /// <summary>Komentarz z tabeli RFEM.</summary>
         public string Comment { get; set; } = "";
     }
@@ -69,6 +72,9 @@ namespace LokalneAI.Harness.Rfem
 
         /// <summary>Komentarz z tabeli RFEM (np. „słup osi A”).</summary>
         public string Comment { get; set; } = "";
+
+        /// <summary>GUID elementu Tekli (PhysicalID z metadanych eksportu Tekla → RFEM); pusty, gdy model nie pochodzi z Tekli.</summary>
+        public string TeklaGuid { get; set; } = "";
 
         /// <summary>Typ po polsku.</summary>
         public string TypeName

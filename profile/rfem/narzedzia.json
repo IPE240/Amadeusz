@@ -60,7 +60,7 @@
     },
     {
       "nazwa": "rfem_pret",
-      "opis": "Dane pręta: typ (belka, pręt sztywny, kratownicowy…), linia i węzły ze współrzędnymi, długość [m], obrót, przekrój z charakterystykami (A, Iy, Iz, It) i materiałem, a gdy plik ma wyniki — ekstrema sił ze wszystkich kombinacji.",
+      "opis": "Dane pręta: typ (belka, pręt sztywny, kratownicowy…), linia i węzły ze współrzędnymi, długość [m], obrót, komentarz (w modelach z Tekli także identyfikator elementu Tekli — GUID), przekrój z charakterystykami (A, Iy, Iz, It) i materiałem, a gdy plik ma wyniki — ekstrema sił ze wszystkich kombinacji.",
       "zmienia_model": false,
       "parametry": {
         "type": "object",
@@ -194,6 +194,121 @@
           "sciezka": {
             "type": "string",
             "description": "plik .rf5; pusta = jedyny plik .rf5 w folderze bieżącym"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_otwarty",
+      "opis": "Co jest otwarte w uruchomionym RFEM 5 (przez RF-COM, bez pliku): wersja, nazwa i ścieżka modelu, liczby węzłów, linii, prętów (z typami), przekroje z liczbą prętów, materiały, liczby PO/KO/KW i czy są wyniki. Od tego zaczynaj, gdy użytkownik mówi o otwartym RFEM-ie.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_otwarty_pret",
+      "opis": "Pręt z modelu otwartego w RFEM 5: typ, linia, węzły ze współrzędnymi, długość [m], obrót, przeguby, przekrój (A, Iy, Iz, It) z materiałem, czy model ma wyniki. Gdy użytkownik mówi o zaznaczonym albo wskazanym pręcie bez numeru — rfem_wskaz.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "numer": {
+            "type": "integer",
+            "description": "numer pręta w RFEM"
+          }
+        },
+        "required": [
+          "numer"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_otwarty_przekroje",
+      "opis": "Tabela przekrojów modelu otwartego w RFEM 5: numer, nazwa, materiał, A [cm²], Iy, Iz, It [cm⁴], które pręty go mają i ich łączna długość; na końcu materiały (E, G, ciężar).",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_otwarty_przypadki",
+      "opis": "Przypadki obciążeń (PO), kombinacje obciążeń (KO) z wyrażeniami i kombinacje wyników (KW) modelu otwartego w RFEM 5, z zaznaczeniem, które mają wyniki.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_otwarty_sily",
+      "opis": "Siły wewnętrzne pręta z obliczeń w otwartym RFEM 5 [kN, kNm]: bez obciazenie — ekstrema N, Vy, Vz, Mt, My, Mz ze wszystkich kombinacji z wynikami (z numerem KO i miejscem x; przy setkach kombinacji trwa kilkanaście sekund); z obciazenie (np. KO5, PO1, KW1) — przebieg wzdłuż pręta. co=przemieszczenia daje ugięcia [mm]. Model musi być policzony.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "numer": {
+            "type": "integer",
+            "description": "numer pręta"
+          },
+          "obciazenie": {
+            "type": "string",
+            "description": "kombinacja, przypadek albo kombinacja wyników z otwartego modelu, np. KO5, PO1, KW1; pusty = ekstrema ze wszystkich kombinacji z wynikami"
+          },
+          "co": {
+            "type": "string",
+            "description": "sily (domyślnie) albo przemieszczenia"
+          }
+        },
+        "required": [
+          "numer"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_otwarty_reakcje",
+      "opis": "Reakcje podporowe w węźle z obliczeń w otwartym RFEM 5 [kN, kNm], osie globalne: z obciazenie (np. KO5) wartości, bez — ekstrema ze wszystkich kombinacji z wynikami.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "wezel": {
+            "type": "integer",
+            "description": "numer węzła podporowego"
+          },
+          "obciazenie": {
+            "type": "string",
+            "description": "kombinacja, przypadek albo kombinacja wyników z otwartego modelu, np. KO5, PO1, KW1; pusty = ekstrema ze wszystkich kombinacji z wynikami"
+          }
+        },
+        "required": [
+          "wezel"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nazwa": "rfem_wskaz",
+      "opis": "Prosi użytkownika o kliknięcie obiektów w oknie otwartego RFEM 5 (RFEM otwiera okno wyboru; użytkownik klika pręty, węzły albo linie i potwierdza OK) i oddaje ich dane: dla jednego pręta pełny opis z przekrojem i długością, dla kilku listę. Używaj, gdy użytkownik pyta o „zaznaczony”, „ten” albo „wskazany” pręt bez numeru.",
+      "zmienia_model": false,
+      "parametry": {
+        "type": "object",
+        "properties": {
+          "co": {
+            "type": "string",
+            "description": "prety (domyślnie), wezly albo linie"
           }
         },
         "required": [],

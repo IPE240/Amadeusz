@@ -9,3 +9,6 @@ Tu wklej notatki, które pomagają modelowi pracować z modelami RFEM biura, np.
 - typowe przekroje i materiały w projektach biura, znaki sił i układy lokalne prętów.
 
 Gotowa notatka: `rfem5.md` (co program czyta z pliku .rf5, jednostki, znaki, czego nie ma, skąd biorą się numery kombinacji).
+
+Od 2026-11-18 jest tu też `rfem_dlubal.md` (RFEM 6 przez API II, obwiednie, RF-COM w RFEM 5, lustro RFEM w CS, bezpieczeństwo
+zapisu) oraz `zrodla\CS-cheak_structures\` pobierane według `..\zrodla.json` z repozytorium CS (poza gitem).

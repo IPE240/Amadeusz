@@ -1,0 +1,6 @@
+{"id": "CI01", "opis": "jednostki blach", "kroki": [{"uzytkownik": "W jakich jednostkach są współrzędne początku układu blachy w core.blacha?", "oczekiwane": []}]}
+{"id": "CI02", "opis": "brak_w_bazie", "kroki": [{"uzytkownik": "Czy klasa_p4 równe brak_w_bazie to błąd klasyfikacji?", "oczekiwane": []}]}
+{"id": "CI03", "opis": "profile psetów", "kroki": [{"uzytkownik": "Który profil psetów jest domyślny w eksporcie IFC i co zawiera?", "oczekiwane": []}]}
+{"id": "CI04", "opis": "separatory nazw profili", "kroki": [{"uzytkownik": "Czy RHS100x60x5 i RHS100*60*5 to ten sam profil dla CS?", "oczekiwane": []}]}
+{"id": "CI05", "opis": "bliźniak analityczny", "kroki": [{"uzytkownik": "Co CS trzyma w core.pret zamiast siatki?", "oczekiwane": []}]}
+{"id": "CI06", "opis": "sesja: spoiny w eksporcie", "kroki": [{"uzytkownik": "Czy wyeksportowany IFC zawiera spoiny?", "oczekiwane": []}, {"uzytkownik": "A jak je zobaczyć?", "oczekiwane": []}]}

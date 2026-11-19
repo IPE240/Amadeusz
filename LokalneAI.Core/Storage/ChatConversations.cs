@@ -98,7 +98,7 @@ public static class ChatConversationStore
         {
             if (CodeConversationStore.Load(file) is { } conversation)
             {
-                list.Add(new CodeConversationInfo(Path.GetFileNameWithoutExtension(file), conversation.Title, conversation.Updated, file));
+                list.Add(new CodeConversationInfo(Path.GetFileNameWithoutExtension(file), conversation.Title, conversation.Activity, file));
             }
         }
 

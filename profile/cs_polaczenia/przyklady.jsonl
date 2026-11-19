@@ -1,0 +1,10 @@
+{"uzytkownik": "Jak CS dobiera grubość spoiny przewidzianej?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "grubość spoiny cieńsza ścianka wyokrąglenie reguła krawędź"}}]}
+{"uzytkownik": "Skąd CS bierze spoiny rzeczywiste, gdy w modelu Tekli ich nie ma?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "spoiny ze źródeł rysunki uwagi ogólne model IfcFastener"}}]}
+{"uzytkownik": "Która spoina wygrywa, gdy rysunek i model mówią co innego?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "zrodlo_spoiny kolejność rysunek model uwagi rozbieżność"}}]}
+{"uzytkownik": "Jak duża jest strefa połączenia wokół zestawu śrub?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "strefa połączenia figura 3D średnica śruby otoczka wypukła"}}]}
+{"uzytkownik": "Kiedy połączenie jest doczołowe, a kiedy zakładkowe?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "typ_polaczenia doczolowe zakladkowe skosne kąt osi śrub"}}]}
+{"uzytkownik": "Czy przez REST API IDEA da się dodać blachę do węzła?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "IDEA REST API dodaj blachę śrubę spoinę szablon IOM"}}]}
+{"uzytkownik": "Dlaczego połączenie zakładkowe nie zawsze jest przegubem?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "połączenie zakładkowe sztywność przegub luz docisk moment"}}]}
+{"uzytkownik": "Policz nośność tej blachy czołowej.", "wywolania": [], "pytanie": "CS nie liczy nośności połączeń. Nośność i CBFEM daje IDEA StatiCa (CS przygotowuje geometrię węzła i siły z RFEM), a wzory EC3 dla typowych połączeń ma Modelarz węzłów (umiejętność mkk). Chcesz, żebym opisał, jak przekazać ten węzeł do IDEA?"}
+{"uzytkownik": "Jak przekazać siły z RFEM do węzła w IDEA?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "siły RFEM do IDEA rfem_do_idea przegub znaki koniec pręta"}}]}
+{"uzytkownik": "Co oznacza pewność spoiny przeniesiona?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "pewnosc_spoiny przeniesiona pewna z_uwag_ogolnych przewidziana_cs"}}]}

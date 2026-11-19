@@ -42,6 +42,16 @@ namespace LokalneAI.Harness.Session
         private double _tokensPerEstimate = 1.0;
         private bool _disposed;
 
+        // Liczniki tokenów (ModelCallMetrics): koniec poprzedniego wywołania (prompt + odpowiedź); 0 = sesja jeszcze nie pytała
+        // modelu, -1 = nie wiadomo (historia skrócona). Co program dopisał do rozmowy od poprzedniego wywołania.
+        private int _lastEnd;
+        private int? _systemTokens;
+        private bool _systemMeasured;
+        private TimeSpan _measureTime;
+        private TimeSpan _measureLoadTime;
+        private readonly List<string> _addedParts = new List<string>();
+        private List<ModelCallMetrics> _turnMetrics = new List<ModelCallMetrics>();
+
         /// <summary>
         /// Tworzy sesję. <paramref name="executor"/> wykonuje narzędzia gospodarza; null tylko wtedy, gdy profil ma same narzędzia
         /// wbudowane. Polecenie systemowe składa się raz, tutaj: zmiana profilu albo <see cref="SessionOptions"/> wymaga nowej sesji.
@@ -53,6 +63,12 @@ namespace LokalneAI.Harness.Session
             EnsureCloudAllowed(llm, profile);
             _executor = executor;
             _options = options ?? new SessionOptions();
+            if (_options.SubAgents != null)
+            {
+                // Gospodarz podagentów: model dostaje narzędzie zlec_podagentowi i sekcję „Podagenci” w poleceniu systemowym.
+                _profile = _profile.WithSubAgents();
+            }
+
             _systemPrompt = PromptBuilder.BuildSystem(_profile, _options);
             _schema = StepSchema.Build(_profile.Tools, _profile.Settings.MaxCallsPerStep, _profile.Settings.Plan);
             if (_options.History != null)
@@ -62,6 +78,11 @@ namespace LokalneAI.Harness.Session
                 {
                     _history.Add(new LlmMessage(message.Role, message.Content));
                     _numberSources.Add(message.Content);
+                }
+
+                if (_history.Count > 0)
+                {
+                    _addedParts.Add("historia");
                 }
             }
 
@@ -245,6 +266,8 @@ namespace LokalneAI.Harness.Session
 
             var userMessage = WithGlossary(userText);
             AddHistory(new LlmMessage("user", hints.Count == 0 ? userMessage : userMessage + "\n\n" + string.Join("\n", hints)));
+            _addedParts.Add("pytanie");
+            _turnMetrics = new List<ModelCallMetrics>();
             _numberSources.Add(userText);
 
             // Przy prośbie o poprawkę trochę wyższa temperatura — przy 0,1 to samo pytanie daje prawie tę samą odpowiedź.
@@ -259,24 +282,32 @@ namespace LokalneAI.Harness.Session
                 }
 
                 CompactIfNeeded(warnings);
-                Raise(new HarnessEvent(HarnessEventKind.ModelThinking, "Model pracuje (krok " + step + ")…"));
+                await MeasureSystemPromptAsync(cancellationToken).ConfigureAwait(false);
+                var estimated = (int)(EstimateAll() * _tokensPerEstimate);
+                Raise(new HarnessEvent(HarnessEventKind.ModelThinking, "Model pracuje (krok " + step + " z " + _profile.Settings.MaxSteps + ")…", null,
+                    new ContextUsage(estimated, _llm.ContextLength, true)) { Step = step });
 
+                var wall = Stopwatch.StartNew();
                 var response = await _llm.CompleteAsync(new LlmRequest
                 {
                     Messages = BuildMessages(),
                     JsonSchema = _schema,
                     Temperature = temperature,
                 }, cancellationToken).ConfigureAwait(false);
+                wall.Stop();
                 modelCalls++;
                 UpdateContext(response);
                 var raw = (response.Content ?? "").Trim();
                 steps.Add(raw);
-                Raise(new HarnessEvent(HarnessEventKind.ModelStep, raw));
+                Raise(new HarnessEvent(HarnessEventKind.ModelStep, raw) { Step = step });
 
-                if (!TryParseStep(raw, out var kind, out var root, out var parseError))
+                var parsed = TryParseStep(raw, out var kind, out var root, out var parseError);
+                RaiseModelCall(response, wall.Elapsed, estimated, modelCalls, step, parsed ? kind : "bledny_krok");
+                if (!parsed)
                 {
                     AddHistory(new LlmMessage("assistant", raw));
                     AddHistory(new LlmMessage("user", "Twoja odpowiedź nie jest poprawnym krokiem (" + parseError + "). Odpowiedz JSON-em w jednym z wariantów: wywolania, odpowiedz, pytanie."));
+                    _addedParts.Add("uwagi programu");
                     warnings.Add("Model zwrócił niepoprawny krok: " + parseError);
                     continue;
                 }
@@ -305,6 +336,7 @@ namespace LokalneAI.Harness.Session
                             AddHistory(new LlmMessage("user",
                                 "Nie sprawdziłeś w internecie, a użytkownik wyraźnie o to prosił. Wywołaj teraz " + BuiltInTools.WebSearchName
                                 + " (potem " + BuiltInTools.WebFetchName + " dla najlepszego wyniku) i odpowiedz na podstawie znalezionych stron, ze „Źródła:”."));
+                            _addedParts.Add("uwagi programu");
                             continue;
                         }
                         if (_profile.Settings.CheckNumbers)
@@ -321,6 +353,7 @@ namespace LokalneAI.Harness.Session
                                     AddHistory(new LlmMessage("user",
                                         "Liczby " + list + " nie występują w wynikach narzędzi. Podaj odpowiedź tylko z liczbami z wyników; "
                                         + "jeśli trzeba coś przeliczyć, użyj narzędzia (kalkulator albo zapytanie)."));
+                                    _addedParts.Add("uwagi programu");
                                     continue;
                                 }
 
@@ -341,6 +374,7 @@ namespace LokalneAI.Harness.Session
                     var hostText = string.Join("\n", executed.Where(c => c.Success && !c.BuiltIn).Select(c => c.Result));
                     var results = PromptBuilder.BuildResults(executed);
                     AddHistory(new LlmMessage(_options.ToolResultRole ?? "user", hostText.Length > 0 ? WithGlossary(results, hostText) : results));
+                    _addedParts.Add("wyniki narzędzi");
                     foreach (var call in executed.Where(c => c.Success))
                     {
                         _numberSources.Add(call.Result);
@@ -358,6 +392,7 @@ namespace LokalneAI.Harness.Session
                             ? "Gotowe: " + string.Join("; ", executed.Select(Describe)) + "."
                             : summary;
                         AddHistory(new LlmMessage("assistant", "{\"krok\":\"odpowiedz\",\"tekst\":" + JsonSerializer.Serialize(remembered, Text.Relaxed) + "}"));
+                        _addedParts.Add("podsumowanie programu");
                         Raise(new HarnessEvent(HarnessEventKind.Answer, summary));
                         return Finish(TurnKind.Answer, summary, calls, warnings, steps, modelCalls, clock, true);
                     }
@@ -377,6 +412,7 @@ namespace LokalneAI.Harness.Session
                 return executed;
             }
 
+            var delegated = new List<DelegatedCall>();
             var index = 0;
             foreach (var item in array.EnumerateArray())
             {
@@ -419,7 +455,17 @@ namespace LokalneAI.Harness.Session
                 record.ArgumentsJson = Text.Compact(prepared);
                 var call = new ToolCall(definition, prepared, step, index);
                 Raise(new HarnessEvent(HarnessEventKind.ToolStarted, call.ToString(), record));
+                var toolClock = Stopwatch.StartNew();
+                if (definition.IsBuiltIn && BuiltInTools.IsDelegate(call.Name) && _options.SubAgents != null)
+                {
+                    // Zlecenia podagentom z jednego kroku liczą się równolegle; wyniki wracają po pętli, w kolejności wywołań.
+                    executed.Add(record);
+                    delegated.Add(new DelegatedCall(record, toolClock, RunDelegateAsync(call, cancellationToken)));
+                    continue;
+                }
+
                 var result = await RunToolAsync(call, cancellationToken).ConfigureAwait(false);
+                record.Duration = toolClock.Elapsed;
                 if (!definition.IsBuiltIn && _executor != null)
                 {
                     record.Mutates = call.Mutating;
@@ -432,7 +478,84 @@ namespace LokalneAI.Harness.Session
                 Raise(new HarnessEvent(HarnessEventKind.ToolFinished, record.ToString(), record));
             }
 
+            foreach (var item in delegated)
+            {
+                // Stop całej tury przerywa też podagentów (ten sam token) — wtedy OperationCanceledException idzie wyżej.
+                var result = await item.Task.ConfigureAwait(false);
+                item.Record.Duration = item.Clock.Elapsed;
+                item.Record.Success = result.Success;
+                item.Record.Result = result.Text;
+                Raise(new HarnessEvent(HarnessEventKind.ToolFinished, item.Record.ToString(), item.Record));
+            }
+
             return executed;
+        }
+
+        /// <summary>Zlecenie podagentowi wystartowane w kroku; wynik czeka na koniec pętli wywołań.</summary>
+        private sealed class DelegatedCall
+        {
+            public DelegatedCall(ExecutedCall record, Stopwatch clock, Task<ToolResult> task)
+            {
+                Record = record;
+                Clock = clock;
+                Task = task;
+            }
+
+            public ExecutedCall Record { get; }
+
+            public Stopwatch Clock { get; }
+
+            public Task<ToolResult> Task { get; }
+        }
+
+        private int _agentCounter;
+
+        /// <summary>
+        /// Zlecenie podagentowi (<see cref="BuiltInTools.DelegateName"/>): sprawdza zadanie i umiejętności, numeruje podagenta
+        /// i oddaje go gospodarzowi (<see cref="SessionOptions.SubAgents"/>). Błędy gospodarza wracają do modelu jako wynik,
+        /// Stop całej tury — jako <see cref="OperationCanceledException"/>.
+        /// </summary>
+        private async Task<ToolResult> RunDelegateAsync(ToolCall call, CancellationToken cancellationToken)
+        {
+            var host = _options.SubAgents;
+            var task = call.GetString("zadanie");
+            if (string.IsNullOrWhiteSpace(task))
+            {
+                return ToolResult.Error("BŁĄD: puste zadanie dla podagenta — napisz, co ma zrobić i co oddać.");
+            }
+
+            var known = host.Skills ?? new List<SubAgentSkill>();
+            var skills = SubAgentRunner.ParseSkills(call.GetString("umiejetnosci"));
+            var unknown = skills.Where(s => known.All(k => !string.Equals(k.Name, s, StringComparison.OrdinalIgnoreCase))).ToList();
+            if (unknown.Count > 0)
+            {
+                return ToolResult.Error("BŁĄD: podagent nie ma umiejętności " + string.Join(", ", unknown) + ". Dostępne: "
+                    + (known.Count == 0 ? "żadne (zostaw pole puste)" : string.Join(", ", known.Select(k => k.Name))) + ".");
+            }
+
+            var number = Interlocked.Increment(ref _agentCounter);
+            var request = new SubAgentRequest
+            {
+                Number = number,
+                Task = task.Trim(),
+                Skills = skills.Count == 0 ? null : skills,
+                Context = string.IsNullOrWhiteSpace(call.GetString("kontekst")) ? null : call.GetString("kontekst").Trim(),
+            };
+            try
+            {
+                var result = await host.RunAsync(request, Raise, cancellationToken).ConfigureAwait(false);
+                var text = SubAgentRunner.FormatResult(result, number, _options.SubAgentResultLimit);
+                return result != null && result.Success ? ToolResult.Ok(text) : ToolResult.Error(text);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                // Gospodarz nie może przerwać tury — błąd wraca do modelu.
+                return ToolResult.Error("BŁĄD podagent " + number + ": " + e.Message);
+            }
         }
 
         private async Task<ToolResult> RunToolAsync(ToolCall call, CancellationToken cancellationToken)
@@ -741,6 +864,7 @@ namespace LokalneAI.Harness.Session
                 _history.Insert(0, new LlmMessage("user", summary.ToString()));
                 _history.Insert(1, new LlmMessage("assistant", "{\"krok\":\"odpowiedz\",\"tekst\":\"Rozumiem.\"}"));
                 _turnStart = _turnStart - older.Count + 2;
+                _lastEnd = -1; // prompt się zmienił — przyrost tokenów przy następnym wywołaniu jest nieznany
             }
             var warning = "Kontekst prawie pełny — starsza część sesji została skrócona.";
             warnings.Add(warning);
@@ -763,7 +887,87 @@ namespace LokalneAI.Harness.Session
                 ModelCalls = modelCalls,
                 Duration = clock.Elapsed,
                 Context = Context,
+                ModelCallDetails = _turnMetrics,
             };
+        }
+
+        /// <summary>
+        /// Raz na sesję, gdy <see cref="SessionOptions.MeasureSystemPrompt"/>: tokeny samego polecenia systemowego jednym zapytaniem
+        /// z jednym tokenem odpowiedzi (tylko Ollama — do chmury nie wysyłamy dodatkowego płatnego zapytania). Błąd nie przerywa tury.
+        /// </summary>
+        private async Task MeasureSystemPromptAsync(CancellationToken cancellationToken)
+        {
+            if (_systemMeasured || !_options.MeasureSystemPrompt || !(_llm is OllamaLlmClient))
+            {
+                return;
+            }
+
+            _systemMeasured = true;
+            var clock = Stopwatch.StartNew();
+            try
+            {
+                var probe = await _llm.CompleteAsync(new LlmRequest
+                {
+                    Messages = new List<LlmMessage> { new LlmMessage("system", _systemPrompt) },
+                    MaxTokens = 1,
+                    Temperature = 0,
+                }, cancellationToken).ConfigureAwait(false);
+                if (probe.PromptTokens > 0)
+                {
+                    _systemTokens = probe.PromptTokens;
+                }
+
+                _measureTime = clock.Elapsed;
+                _measureLoadTime = probe.LoadDuration;
+            }
+            catch (LlmException)
+            {
+                // Bez pomiaru liczniki pokażą cały pierwszy prompt zamiast podziału na zasady i pytanie.
+            }
+        }
+
+        /// <summary>Tokeny i czasy wywołania modelu: zdarzenie <see cref="HarnessEventKind.ModelCall"/> i wpis do <see cref="TurnResult.ModelCallDetails"/>.</summary>
+        private void RaiseModelCall(LlmResponse response, TimeSpan wall, int estimated, int callInTurn, int step, string outcome)
+        {
+            var fromServer = response.PromptDuration > TimeSpan.Zero || response.OutputDuration > TimeSpan.Zero;
+            var metrics = new ModelCallMetrics
+            {
+                CallInTurn = callInTurn,
+                Step = step,
+                Outcome = outcome,
+                Model = response.Model,
+                PromptTokens = response.PromptTokens,
+                OutputTokens = response.OutputTokens,
+                EstimatedPromptTokens = estimated,
+                SystemTokens = _systemTokens,
+                SystemMeasureTime = _measureTime,
+                SystemMeasureLoadTime = _measureLoadTime,
+                AddedKind = string.Join(" + ", _addedParts.Distinct()),
+                LoadTime = response.LoadDuration,
+                PromptTime = response.PromptDuration,
+                OutputTime = response.OutputDuration,
+                ServerTime = fromServer ? response.Duration : TimeSpan.Zero,
+                WallTime = wall,
+            };
+            if (response.PromptTokens > 0)
+            {
+                // Dokładne liczby z serwera; przyrost = różnica pełnych promptów (Ollama liczy cały prompt, także z pamięci podręcznej).
+                int? added = _lastEnd > 0 ? response.PromptTokens - _lastEnd
+                    : _lastEnd == 0 && _systemTokens.HasValue ? response.PromptTokens - _systemTokens.Value
+                    : (int?)null;
+                metrics.AddedTokens = added >= 0 ? added : null;
+                _lastEnd = response.PromptTokens + response.OutputTokens;
+            }
+            else
+            {
+                _lastEnd = -1;
+            }
+
+            _addedParts.Clear();
+            _measureTime = TimeSpan.Zero; // pomiar zasad liczy się tylko przy pierwszym wywołaniu po nim
+            _measureLoadTime = TimeSpan.Zero;
+            _turnMetrics.Add(metrics);
+            Raise(new HarnessEvent(HarnessEventKind.ModelCall, outcome) { ModelCall = metrics });
         }
 
         private static bool TryParseStep(string raw, out string kind, out JsonDocument document, out string error)

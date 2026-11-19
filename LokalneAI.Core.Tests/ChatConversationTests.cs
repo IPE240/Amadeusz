@@ -87,4 +87,30 @@ public class ChatConversationTests : IDisposable
         CodeConversationStore.List(group); // przy wczytaniu listy kosz się czyści
         Assert.False(File.Exists(trashed));
     }
+
+    [Fact]
+    public void Lista_SortujePoOstatnimPoleceniu_NiePoZapisie()
+    {
+        // „Stara” zapisana przed chwilą (np. przy przejściu do innej rozmowy), ale ostatnie polecenie miała wcześniej.
+        var stara = Sample("Stara");
+        stara.LastPrompt = DateTime.Now.AddHours(-2);
+        stara.Updated = DateTime.Now;
+        var nowa = Sample("Nowa");
+        nowa.LastPrompt = DateTime.Now.AddHours(-1);
+        nowa.Updated = DateTime.Now.AddHours(-1);
+        var dawna = Sample("Sprzed zmiany"); // plik bez LastPrompt: liczy się Updated
+        dawna.Updated = DateTime.Now.AddHours(-3);
+        Directory.CreateDirectory(_root);
+        ChatConversationStore.Save(_root, stara);
+        ChatConversationStore.Save(_root, nowa);
+        ChatConversationStore.Save(_root, dawna);
+
+        Assert.Equal(["Nowa", "Stara", "Sprzed zmiany"], ChatConversationStore.List(_root).Select(c => c.Title));
+
+        // Zakładka Code: ten sam porządek w <folder>\.amadeusz.
+        CodeConversationStore.Save(_root, stara);
+        CodeConversationStore.Save(_root, nowa);
+        CodeConversationStore.Save(_root, dawna);
+        Assert.Equal(["Nowa", "Stara", "Sprzed zmiany"], CodeConversationStore.List(_root).Select(c => c.Title));
+    }
 }

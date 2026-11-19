@@ -190,13 +190,15 @@ public class SessionTests
     {
         var call = "{\"krok\":\"wywolania\",\"wywolania\":[{\"narzedzie\":\"zmien_profil\",\"argumenty\":{\"id\":5,\"profil\":\"HEB300\"}}]}";
         var profile = TeklaLike(FinishMode.Model);
-        var llm = new ScriptedLlm(Enumerable.Repeat(call, 10).ToArray());
+        // Więcej kroków w skrypcie niż limit (domyślnie 12) — tura ma się skończyć limitem, nie końcem skryptu.
+        var llm = new ScriptedLlm(Enumerable.Repeat(call, profile.Settings.MaxSteps + 3).ToArray());
         using var session = new HarnessSession(llm, profile, new SimulatedModelExecutor());
 
         var turn = await session.SendAsync("zmień");
 
         Assert.Equal(TurnKind.Failed, turn.Kind);
         Assert.Equal(profile.Settings.MaxSteps, turn.ModelCalls);
+        Assert.Contains("w " + profile.Settings.MaxSteps + " krokach", turn.Text);
     }
 
     [Fact]

@@ -144,27 +144,20 @@ namespace LokalneAI.Harness.Rfem
                     r--;
                 }
 
-                // Nagłówek obiektu: [i32 numer][len][komentarz][00×7][01×n] — bez komentarza len = 0, czyli numer i 8 zer.
-                if (r < 12 || !IsZero(data, r - 7, 7))
+                // Nagłówek obiektu: [i32 numer][tekst 1][tekst 2][00×6][01×n] — bez tekstów to numer i 8 zer (patrz ReadHeader).
+                var header = ReadHeader(data, r);
+                if (header == null)
                 {
                     continue;
                 }
 
-                var commentLength = CommentLength(data, r - 8);
-                if (commentLength < 0 || r - 12 - commentLength < 0)
-                {
-                    continue;
-                }
-
-                var comment = commentLength > 0 ? DecodeText(data, r - 7 - commentLength, commentLength) : "";
-                var no = BitConverter.ToInt32(data, r - 12 - commentLength);
                 var a = p + key.Length;
                 if (a + 96 > data.Length)
                 {
                     continue;
                 }
 
-                if (TryMember(data, a, no, comment, model) || TryLine(data, a, no, comment, model) || TryNode(data, a, no, comment, model))
+                if (TryMember(data, a, header, model) || TryLine(data, a, header, model) || TryNode(data, a, header, model))
                 {
                     continue;
                 }
@@ -175,8 +168,10 @@ namespace LokalneAI.Harness.Rfem
             return unknown;
         }
 
-        private static bool TryMember(byte[] data, int a, int no, string comment, Rf5Model model)
+        private static bool TryMember(byte[] data, int a, ObjectHeader header, Rf5Model model)
         {
+            var no = header.No;
+            var comment = header.Comment;
             // [00][f4 obrót][00×5][i32 linia][len][typ: Beam, BeamRigid, TrussN…][bloki Numbers: przekroje, drugi zestaw]
             if (data[a] != 0 || !IsZero(data, a + 5, 5))
             {
@@ -213,6 +208,7 @@ namespace LokalneAI.Harness.Rfem
                 Type = type,
                 Rotation = BitConverter.ToSingle(data, a + 1),
                 Comment = comment,
+                TeklaGuid = header.TeklaGuid,
             };
 
             var q = a + 15 + typeLength;
@@ -248,9 +244,9 @@ namespace LokalneAI.Harness.Rfem
             return true;
         }
 
-        private static bool TryLine(byte[] data, int a, int no, string comment, Rf5Model model)
+        private static bool TryLine(byte[] data, int a, ObjectHeader header, Rf5Model model)
         {
-            // zera (zwykle 10), potem blok Numbers z węzłami
+            // zera (zwykle 10), potem blok Numbers z węzłami; odmiana z kątem: [00][f4 kąt][00×5][Numbers] (np. π/2 przy liniach z obróconym układem)
             var z = 0;
             while (z < 16 && data[a + z] == 0)
             {
@@ -258,21 +254,30 @@ namespace LokalneAI.Harness.Rfem
             }
 
             var nodes = ReadNumbers(data, a + z, out _);
-            if (nodes == null || nodes.Length < 2 || nodes.Any(n => n <= 0))
+            float rotation = 0;
+            if (nodes == null && data[a] == 0 && IsZero(data, a + 5, 5))
+            {
+                nodes = ReadNumbers(data, a + 10, out _);
+                rotation = BitConverter.ToSingle(data, a + 1);
+            }
+
+            if (nodes == null || nodes.Length < 2 || nodes.Any(n => n <= 0) || !Finite(rotation))
             {
                 return false;
             }
 
-            if (!model.Lines.ContainsKey(no))
+            if (!model.Lines.ContainsKey(header.No))
             {
-                model.Lines[no] = new Rf5Line { No = no, Nodes = nodes.ToList(), Comment = comment };
+                model.Lines[header.No] = new Rf5Line { No = header.No, Nodes = nodes.ToList(), Comment = header.Comment, Rotation = rotation };
             }
 
             return true;
         }
 
-        private static bool TryNode(byte[] data, int a, int no, string comment, Rf5Model model)
+        private static bool TryNode(byte[] data, int a, ObjectHeader header, Rf5Model model)
         {
+            var no = header.No;
+            var comment = header.Comment;
             // [00×8][f8 x][f8 y][f8 z][len][nazwa układu, np. Standard]
             if (!IsZero(data, a, 8))
             {
@@ -676,9 +681,101 @@ namespace LokalneAI.Harness.Rfem
             }
         }
 
+        /// <summary>Nagłówek obiektu przed ciągiem jedynek: numer, komentarz i GUID z metadanych Tekli.</summary>
+        private sealed class ObjectHeader
+        {
+            public int No;
+            public string Comment = "";
+            public string TeklaGuid = "";
+        }
+
+        private static readonly Regex TeklaGuidPattern = new Regex("<PhysicalID>([0-9A-Fa-f-]{36})</PhysicalID>", RegexOptions.Compiled);
+
+        /// <summary>Największa długość tekstu w nagłówku (metadane Tekli mają 266 znaków).</summary>
+        private const int MaxHeaderText = 4096;
+
         /// <summary>
-        /// Długość komentarza w nagłówku rekordu: <paramref name="last"/> to ostatni bajt przed siedmioma zerami. Bez komentarza
-        /// jest tam 0 (bajt długości); z komentarzem — ostatni znak, a bajt długości L leży L bajtów wcześniej. −1 = nie pasuje.
+        /// Nagłówek obiektu czytany od końca: <c>[i32 numer][tekst 1][tekst 2][00×6]</c> przed ciągiem jedynek zaczynającym się
+        /// na <paramref name="onesStart"/>. Tekst to <c>[u8 len][znaki]</c> albo dla dłuższych <c>[FF][u16 len][znaki]</c>; pusty = sam bajt 0
+        /// (bez tekstów: numer i 8 zer). Tekst 1 to komentarz z tabeli. Eksport z Tekli wpisuje w tekst 1 albo w tekst 2 266-znakowy
+        /// <c>&lt;TeklaItemMetadata&gt;</c> z GUID-em elementu (PhysicalID) — gdy parser znał tylko krótki komentarz z jednym bajtem
+        /// długości, gubił prawie wszystkie pręty takiego modelu albo brał numer z wnętrza tekstu. Null, gdy układ nie pasuje.
+        /// </summary>
+        private static ObjectHeader ReadHeader(byte[] data, int onesStart)
+        {
+            if (onesStart < 14 || !IsZero(data, onesStart - 6, 6))
+            {
+                return null;
+            }
+
+            if (!TryTextEndingAt(data, onesStart - 7, out var start2, out var text2) || !TryTextEndingAt(data, start2 - 1, out var start1, out var text1) || start1 < 4)
+            {
+                return null;
+            }
+
+            var header = new ObjectHeader { No = BitConverter.ToInt32(data, start1 - 4) };
+            foreach (var text in new[] { text1, text2 })
+            {
+                if (text.StartsWith("<TeklaItemMetadata", StringComparison.Ordinal))
+                {
+                    var guid = TeklaGuidPattern.Match(text);
+                    header.TeklaGuid = guid.Success ? guid.Groups[1].Value.ToLowerInvariant() : "";
+                }
+                else if (text.Length > 0 && header.Comment.Length == 0)
+                {
+                    header.Comment = text;
+                }
+            }
+
+            return header;
+        }
+
+        /// <summary>
+        /// Tekst, którego ostatni bajt leży na <paramref name="last"/>: <c>[u8 len]</c> do 254 znaków albo <c>[FF][u16 len]</c>; pusty = sam bajt 0.
+        /// Najpierw forma długa, bo jej warunek jest mocny (FF i dokładna długość), a w długim tekście bajt równy odległości trafia się przypadkiem.
+        /// </summary>
+        private static bool TryTextEndingAt(byte[] data, int last, out int start, out string text)
+        {
+            start = last;
+            text = "";
+            if (last < 0)
+            {
+                return false;
+            }
+
+            if (data[last] == 0)
+            {
+                return true;
+            }
+
+            for (var length = 1; length <= MaxHeaderText && last - length - 2 >= 4; length++)
+            {
+                var p = last - length - 2;
+                if (data[p] == 0xFF && BitConverter.ToUInt16(data, p + 1) == length && Printable(data, p + 3, length))
+                {
+                    start = p;
+                    text = DecodeText(data, p + 3, length);
+                    return true;
+                }
+            }
+
+            for (var length = 1; length <= 254 && last - length >= 4; length++)
+            {
+                if (data[last - length] == length && Printable(data, last - length + 1, length))
+                {
+                    start = last - length;
+                    text = DecodeText(data, last - length + 1, length);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Długość komentarza w nagłówku tabeli przekrojów i materiałów (tylko krótka forma <c>[u8 len]</c>): <paramref name="last"/> to
+        /// ostatni bajt przed siedmioma zerami. Bez komentarza jest tam 0 (bajt długości); z komentarzem — ostatni znak, a bajt długości L
+        /// leży L bajtów wcześniej. −1 = nie pasuje. Obiekty (węzły, linie, pręty) czyta <see cref="ReadHeader"/>.
         /// </summary>
         private static int CommentLength(byte[] data, int last)
         {

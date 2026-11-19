@@ -16,19 +16,19 @@ wykonuje. Nic nie wychodzi do internetu. Nazwa repozytorium to Amadeusz, a proje
 
 | Ścieżka | Co to jest |
 |---|---|
-| `LokalneAI.Harness` | rdzeń (.NET Standard 2.0): sesja, profile, wykonawcy, strażnicy, klienci modelu |
-| `LokalneAI.Harness.Wpf` | panel rozmowy `HarnessPanel` (net48 i net10.0-windows) |
+| `LokalneAI.Harness` | rdzeń (.NET Standard 2.0): sesja, profile, wykonawcy, strażnicy, klienci modelu; podagenci (`Session\SubAgents.cs`: `ISubAgentHost`, `SubAgentRunner`, narzędzie `zlec_podagentowi` — zlecenia z jednego kroku równolegle) |
+| `LokalneAI.Harness.Wpf` | panel rozmowy `HarnessPanel` (net48 i net10.0-windows): wpisy „Krok N” (`ShowModelSteps`), kafelki podagentów nad polem polecenia (`AgentTile`, „Przerwij”) i wpis `Agent` z przebiegiem jako drzewo (`PanelEntry.Children`) |
 | `LokalneAI.Harness.Postgres` | SQL tylko do odczytu dla profilu `cde` (Npgsql 8) |
 | `LokalneAI.Harness.Office` | Word, Excel, Outlook i PowerPoint dla profilu `office` przez COM zainstalowanego Microsoft 365 (późne wiązanie, bez paczek Interop; `OfficeExecutor`, `OfficeOptions`) |
 | `LokalneAI.Harness.Ocr` | OCR skryptem (Tesseract 5, dane tessdata_fast pobierane do `%LOCALAPPDATA%\LokalneAI\tessdata`) i PDF (PDFium przez Docnet.Core: tekst i render stron; PDFsharp 6.1 MIT: scalanie, wycinanie, obrót) dla umiejętności `ocr` i poleceń `pdf_*` w `office`; `OcrExecutor`, `OcrEngine`, `OcrOptions`, `PdfTools`, `OcrLanguages` |
-| `LokalneAI.Harness.Rfem` | czytnik plików RFEM 5 (.rf5) bez programu Dlubal dla umiejętności `rfem`: kontener ZIP/OLE (`Rf5Archive`, własny `CompoundFile`), tabele modelu z inżynierii wstecznej (`Rf5Parser`: węzły, linie, pręty, przekroje, materiały, PO/KO/KW), siatka (`Rf5Mesh`), siły w prętach z plików solvera (`Rf5Results`), `RfemExecutor` |
+| `LokalneAI.Harness.Rfem` | czytnik plików RFEM 5 (.rf5) bez programu Dlubal dla umiejętności `rfem`: kontener ZIP/OLE (`Rf5Archive`, własny `CompoundFile`), tabele modelu z inżynierii wstecznej (`Rf5Parser`: węzły, linie, pręty, przekroje, materiały, PO/KO/KW), siatka (`Rf5Mesh`), siły w prętach z plików solvera (`Rf5Results`), `RfemExecutor`; otwarty RFEM 5 przez RF-COM (`Com\RfemCom.cs` — interfejsy vtable wygenerowane z biblioteki typów v5.7, `RfemComSession`, `RfemLive`: polecenia `rfem_otwarty*`, `rfem_wskaz`) |
 | `LokalneAI.Harness.Tests` | testy xUnit, uruchamiane na net10.0 i net48 |
-| `LokalneAI.App` | okno `LokalneAI.exe`: zakładki Czat, Code (asystent z uprawnieniami) i Ustawienia (gdzie liczyć, modele w chmurze, udostępnianie, kolejka); lista modeli z ulubionymi; wygląd jak TransmittalMaster (`Theme.xaml`: te same klucze kolorów i stylów, własny pasek tytułu z kartami) |
+| `LokalneAI.App` | okno `LokalneAI.exe`: zakładki Czat, Code (asystent z uprawnieniami) i Ustawienia (gdzie liczyć z listą komputerów dla podagentów, modele w chmurze, udostępnianie, kolejka); lista modeli z ulubionymi; wygląd jak TransmittalMaster (`Theme.xaml`: te same klucze kolorów i stylów, własny pasek tytułu z kartami); gospodarz podagentów `SubAgentHost` (komputer z listy, model do karty przez `ModelChooser` z `LokalneAI.Core`), lista komputerów `AgentMachinesViewModel` |
 | `LokalneAI.Gateway` | brama okna (Kestrel, net10.0): kolejka zapytań, liczenie na innym komputerze, udostępnianie w podsieci ([docs/siec.md](docs/siec.md)) |
 | `LokalneAI.Core`, `LokalneAI.Core.Tests` | klient Ollamy okna i testy (także bramy: `GatewayTests`) |
 | `LokalneAI.Eval` | testy profili z prawdziwym modelem, rozmiar promptu, aktualizacja i przeszukiwanie wiedzy |
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie (WinForms, .NET Framework 4.8) |
-| `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer`, `mkk` (sama wiedza: programy Marka Kowolika i Robot, RFEM, IDEA, IFC z repozytorium MKK), `office` (dokumenty Word, Excel, Outlook, PowerPoint i PDF), `tlumaczenie` (sama wiedza: tłumaczenie tekstów biura na angielski ze słownikiem konstrukcyjnym), `ocr` (tekst ze skanów, zdjęć i PDF-ów bez warstwy tekstowej), `rfem` (modele RFEM 5 z pliku .rf5: pręty, przekroje, długości, kombinacje, siły — bez Dlubala), `tablice` (sama wiedza: tablice Żyburtowicza, połączenia DAST, SZS C5 — dane z OCR w `wiedza\dane\*.json`, `.md` generowane) ([docs/profile.md](docs/profile.md)) |
+| `profile\<nazwa>` | profile asystenta: `tekla`, `cde`, `pliki`, `komputer`, `mkk` (sama wiedza: programy Marka Kowolika i Robot, RFEM, IDEA, IFC z repozytorium MKK), `office` (dokumenty Word, Excel, Outlook, PowerPoint i PDF), `tlumaczenie` (sama wiedza: tłumaczenie tekstów biura na angielski ze słownikiem konstrukcyjnym), `ocr` (tekst ze skanów, zdjęć i PDF-ów bez warstwy tekstowej), `rfem` (modele RFEM 5 z pliku .rf5 bez Dlubala albo z otwartego RFEM 5 przez RF-COM: pręty, przekroje, długości, kombinacje, siły, reakcje, wskazanie kliknięciem), `tablice` (sama wiedza: tablice Żyburtowicza, połączenia DAST, SZS C5 — dane z OCR w `wiedza\dane\*.json`, `.md` generowane), zestaw `cs_program`, `cs_ifc`, `cs_konstrukcja`, `cs_polaczenia`, `cs_statyka`, `cs_rysunki`, `cs_robot` (sama wiedza z repozytorium CS-cheak_structures, podział w `profile\cs_program\README.md`; dokumentacja RFEM z CS w `rfem`) ([docs/profile.md](docs/profile.md)) |
 | `szablony\` | szablon profilu i plików dla repozytoriów programów biura |
 | `narzedzia\` | budowanie instalatora, porównanie modeli, `sprawdz_przyklady` (kompilacja przykładów z dokumentacji) |
 | `instalator\` | skrypty instalacji u użytkownika |
@@ -106,7 +106,10 @@ Zasady: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md). W tym repo
 ## Pułapki
 
 - **Ollama i kontekst:** obcina po cichu prompt dłuższy niż `ContextLength`. Profil `tekla` potrzebuje 16384.
-- **Licznik tokenów:** `prompt_eval_count` w Ollamie liczy cały prompt, także część z pamięci podręcznej.
+- **Licznik tokenów:** `prompt_eval_count` w Ollamie liczy cały prompt, także część z pamięci podręcznej (sprawdzone na Ollamie 0.40:
+  ten sam prompt drugi raz — ta sama liczba, czas czytania z 3,8 s na 0,06 s). Dlatego przyrost tokenów między wywołaniami
+  (`ModelCallMetrics.AddedTokens`) to różnica pełnych promptów. Ollama nie ma `/api/tokenize` (404); tokeny samych zasad liczy
+  zapytanie z `num_predict: 1` — `num_predict: 0` znaczy „bez limitu”, nie „nic nie pisz”.
 - **Myślenie modeli:** qwen3.5 potrafił „myśleć” kilka minut przed krokiem w JSON (limit 300 s w Eval). `OllamaLlmClient`
   wysyła `"think": false` (`OllamaOptions.AllowThinking = false`); Ollama przyjmuje to pole także dla modeli bez myślenia.
 - **Słabe rachunki modelu:** Bielik źle liczy w pamięci. Sumy liczy baza (SQL) albo narzędzie `kalkulator`,
@@ -125,6 +128,19 @@ Zasady: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md). W tym repo
   `LOKALNEAI_RFEM_PROBKA`), nie zgaduj; pliki klientów (modele z OneDrive) nie trafiają do repozytorium — testy jednostkowe budują
   rekordy syntetycznie (`Rf5Bytes`). Który zestaw wyników to która kombinacja, czyta się z protokołu solvera `.PRON<nr>` (`NCOMB=`),
   nie z kolejności plików. Plik jest czytany cały do pamięci, żeby nie trzymać uchwytu (RFEM może go w tym czasie zapisywać).
+  Nagłówek rekordu obiektu to `[i32 numer][tekst 1][tekst 2][00×6]` przed ciągiem jedynek, teksty `[u8 len]` albo `[FF][u16 len]`
+  (`Rf5Parser.ReadHeader`): model wyeksportowany z Tekli ma w każdym pręcie 266-znakowe `<TeklaItemMetadata>` w jednym z tych tekstów
+  i parser znający tylko krótki komentarz gubił 2/3 prętów albo brał numer z wnętrza tekstu (model F10, 2026-11-19: „pręta 14 nie ma”).
+  Wyniki samego przypadku n liczonego razem z kombinacjami solver zapisuje pod `NCOMB = 10000 − n` (`Rf5Results.ReadProtocol`).
+- **RF-COM, otwarty RFEM 5 (`LokalneAI.Harness.Rfem\Com`):** interfejsy RF-COM to vtable po IUnknown, nie IDispatch — późne wiązanie
+  (`Type.InvokeMember`, `dynamic`, pywin32) daje E_NOINTERFACE. `RfemCom.cs` jest wygenerowany z biblioteki typów v5.7 (zrzut comtypes) z dokładną
+  liczbą miejsc w vtable i zaślepkami `_NNN_Nazwa` — nie przestawiać ani nie usuwać; `RfemComLayout.Problem()` sprawdza nazwy metod
+  w zarejestrowanej bibliotece przed pierwszym użyciem, a `RfemComUnitTests` rozmiary struktur i liczbę miejsc. Bez `LockLicense()` każde
+  wywołanie wraca z CLASS_E_NOTLICENSED, a trzymana blokada blokuje okno RFEM — `RfemComSession` zwalnia ją w `Dispose`, więc połączenie
+  żyje tylko przez jedno polecenie. CLR zamienia HRESULT-y RFEM-a na różne wyjątki („obiekt nie został odnaleziony” → FileNotFoundException),
+  dlatego łapie się `RfemCom.IsComFailure(e)`, nie samo COMException. Zaznaczenia w oknie RFEM nie da się odczytać (biblioteka v5.7 nie ma
+  takiej metody): `rfem_wskaz` woła `IView.PickObjects`, RFEM otwiera okno wyboru i czeka na OK użytkownika. Testy na żywo
+  (`RfemComLiveTests`) tylko ze zmienną `LOKALNEAI_RFEM_COM=1` i uruchomionym RFEM 5.
 - **COM Office’a (profil `office`):** wywołania idą przez `Type.InvokeMember` z `GetProperty | InvokeMethod` (w bibliotekach
   typów Office’a `Item` bywa metodą), zawsze w wątku STA (`Com.RunSta`). Instancja uruchomiona przez nas startuje niewidoczna
   i jest zamykana po czytaniu; po edycji dokument zostaje otwarty na wierzchu. Próba, która się wysypie, zostawia
@@ -132,6 +148,17 @@ Zasady: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md). W tym repo
   nie `taskkill`, bo widoczna instancja może być użytkownika. Testy nie ruszają Outlooka (szkic otworzyłby okno w poczcie).
 - **Sprzęt:** RTX 4060 8 GB mieści Bielika 11B tylko w 60–73% przy kontekście 16k. Odpowiedź trwa kilka do
   kilkudziesięciu sekund.
+- **Kroki i podagenci:** jedno polecenie = pętla w `HarnessSession.RunTurnAsync` (najwyżej `max_krokow`, domyślnie 12;
+  2026-11-19 podwojone we wszystkich profilach do prób); każdy krok to osobne `POST /api/chat` z całą rozmową — serwer
+  modelu nie ma stanu, dzieli biblioteka. Zlecenia `zlec_podagentowi` z jednego kroku startują równolegle i czekają po pętli
+  wywołań (`DelegatedCall`), wyniki wracają w kolejności wywołań; sesja podagenta dostaje `SessionOptions` bez `SubAgents`
+  (podagent nie zleca dalej), bez historii i bez pomiaru zasad. Pytanie podagenta do użytkownika wraca agentowi głównemu
+  jako nieudany wynik (`SubAgentRunner`), przerwanie kafelkiem — też, a Stop tury rzuca `OperationCanceledException`.
+  „Ten komputer” wśród komputerów podagentów liczy przez bramę okna z nagłówkiem `X-LokalneAI-Przekazane: 1` (brama nie
+  przekazuje dalej, więc liczy własna karta mimo „Gdzie liczyć”); listę modeli bierze z Ollamy tego PC, nie z bramy.
+  Sesję podagenta buduje `HarnessView.BuildSession` przez `Dispatcher.InvokeAsync` (czyta pola okna: foldery, most Tekli).
+  Wpisy „Krok N” (`PanelEntryKind.Step`) powstają zawsze, a `ShowModelSteps` tylko je pokazuje; przebieg podagenta to
+  `PanelEntry.Children` zapisywane jako `CodeConversationEntry.Children`.
 - **Blok ```wykres (umiejętność `formatowanie`):** format JSON żyje w trzech miejscach, które muszą się zgadzać: czytanie
   w `ChartSpec.Parse` (`LokalneAI.Harness\Charts`, bez WPF — testowalne na net48 i net10), zasady dla modelu
   w `profile\formatowanie\system.md` (test `ChartSpecTests` sprawdza, że opisuje każde pole i że przykład się czyta) i rysowanie

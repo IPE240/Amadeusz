@@ -38,6 +38,22 @@ pokazuje modele tamtego komputera.
 Port to **11435** (TCP), a wyszukiwanie używa **11436** (UDP). Port jest ten sam na wszystkich komputerach.
 Zmienia się go w Ustawieniach tylko wtedy, gdy 11435 jest zajęty, i wtedy przy łączeniu trzeba podać `IP:port`.
 
+## Komputery dla podagentów
+
+Zakładka Code może dzielić pracę na **podagentów**: osobne sesje z własnym modelem, które liczą równolegle, a wynik oddają
+agentowi głównemu (narzędzie `zlec_podagentowi`; podagent nie widzi rozmowy — dostaje tylko zadanie). Komputery dla nich
+ustawia się w *Ustawienia → Gdzie liczyć → Komputery dla podagentów*: przełącznik **Ten komputer** (karta tego PC,
+niezależnie od tego, gdzie liczy rozmowa główna) i lista innych komputerów jak w Menedżerze poświadczeń („+” dodaje wiersz,
+× usuwa, **Sprawdź** pyta bramę tamtego komputera o kartę, limit kontekstu i modele; adres zapisuje się po wyjściu z pola).
+Tamte komputery muszą udostępniać model (ich Ustawienia → Udostępnianie), tak samo jak przy „Gdzie liczyć”.
+
+Na każde zlecenie program sam wybiera komputer (najmniej obciążony: mniej własnych podagentów, krótsza kolejka bramy,
+większa karta) i model do jego karty: najpierw model główny rozmowy i preferowane modele profilu (jeśli są na tamtym
+komputerze i mieszczą się z zapasem), potem model już załadowany do pamięci, potem największy, który mieści się w karcie
+z kontekstem (`ModelChooser`). „Ten komputer” liczy przez bramę okna z nagłówkiem `X-LokalneAI-Przekazane: 1`, więc jego
+własna karta, choćby „Gdzie liczyć” wskazywało inny komputer. Każdy podagent widać w trakcie na kafelku nad polem polecenia
+(z przyciskiem **Przerwij**), a po skończeniu jako rozwijany wpis w rozmowie; Stop przerywa wszystkich.
+
 ## Kolejność w kolejce
 
 - Ollama liczy jedno zapytanie naraz (`OLLAMA_NUM_PARALLEL` = 1). Kolejne czekają w bramie, gdzie je widać,
@@ -48,6 +64,20 @@ Zmienia się go w Ustawieniach tylko wtedy, gdy 11435 jest zajęty, i wtedy przy
 - Właściciel może **Odrzucić** zapytanie innego komputera. Zapytań z własnego PC się nie odrzuca, bo wystarczy Stop.
 
 Czat pokazuje pod pytaniem „Czeka w kolejce — przed nim: …”, gdy liczy coś innego.
+
+## Kto ile policzył (tokeny)
+
+Pod kolejką są **liczniki tokenów policzonych na tym komputerze**: wiersz na każdy komputer, który pytał (i „ten komputer”),
+z liczbą zapytań, tokenami przeczytanymi przez model (prompt) i napisanymi, sumą i czasem ostatniego zapytania; przy kilku
+wierszach także „Razem”. Liczby są dokładne: brama i tak przepuszcza odpowiedź Ollamy, więc czyta z jej końca
+`prompt_eval_count` i `eval_count` (API OpenAI: `usage.prompt_tokens` i `completion_tokens`). Prompt liczy się cały, także
+część z pamięci podręcznej Ollamy. Zapytanie przekazane dalej („Gdzie liczyć”) liczy komputer, który je policzył, nie ten,
+który je wysłał. Sumy zapisują się w `%APPDATA%\LokalneAI\tokeny.json` (przetrwają zamknięcie okna); **Resetuj** zeruje je
+i zaczyna liczyć od teraz.
+
+Komputer przedstawia się nazwą Windows w nagłówku `X-LokalneAI-Komputer` — ustawia go brama przy „Gdzie liczyć” i zakładka
+Code przy podagentach na innych komputerach. Bez nagłówka (inny program, stara wersja) w kolejce i licznikach stoi adres IP.
+Nazwa to podpis, nie uwierzytelnienie — dlatego obok jest zawsze adres.
 
 ## Bezpieczeństwo: co jest, czego nie ma
 
@@ -131,5 +161,5 @@ dwóch bramach w jednym procesie.
 | „… przyjmuje tylko z podsieci …” | pytający komputer jest w innej podsieci (np. VPN); brama go nie wpuści |
 | „… nie udostępnia teraz modelu …” | właściciel wyłączył przełącznik |
 | „Na komputerze … nie ma modelu …” | wybierz z listy model, który tamten komputer ma; pobiera go właściciel u siebie |
-| „… przyjmuje kontekst do 16384 tokenów …” | zmniejsz kontekst albo poproś właściciela o większy limit |
+| „… przyjmuje kontekst do 16384 tokenów …” | zmniejsz kontekst albo poproś właściciela o większy limit; zakładka Code sama schodzi do limitu komputera, który liczy (`MainViewModel.HarnessContextLength`, limit z sondy bramy) |
 | „Brama nie wystartowała na porcie 11435” | port zajęty przez inny program; zmień port w Ustawieniach (na wszystkich komputerach) |

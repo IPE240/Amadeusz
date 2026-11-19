@@ -1,0 +1,10 @@
+{
+  "nazwa": "cs_rysunki",
+  "opis": "Rysunki w CS-check: Układy (rysunki montażowe płaszczyzn: elewacje osi X/Y, rzuty poziomów Z, szkice piórem, wykresy sił na osiach), arkusze zespołów (assembly) z wymiarami i opisami, rysunki części (part) i pliki NC DSTV, nesting 1D/2D, co konstruktor i montażysta czytają z arkusza (reguły UL-01…UL-44), rysunki warsztatowe. Model szuka w dokumentacji z repozytorium CS i odpowiada; nie wykonuje poleceń.",
+  "internet": false,
+  "zakonczenie": "model",
+  "narzedzia_wbudowane": ["szukaj_wiedzy", "kalkulator"],
+  "max_krokow": 8,
+  "max_wywolan_w_kroku": 2,
+  "temperatura": 0.1
+}

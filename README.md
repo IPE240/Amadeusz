@@ -42,12 +42,20 @@ Są dwie części:
    - **rfem**: „co jest w modelu hala.rf5?”, „jaki przekrój i długość ma pręt 28?”, „jaka jest siła w pręcie 28?”, „siły w pręcie 29 od KO5”,
      „które pręty mają HEA 160?”, „jakie są kombinacje?”. Plik RFEM 5 (.rf5) jest czytany z dysku bez programu Dlubal
      (`LokalneAI.Harness.Rfem`): węzły, pręty z długością i przekrojem, materiały, przypadki (PO) i kombinacje (KO), a w pliku
-     zapisanym po obliczeniu siły N, Vy, Vz, Mt, My, Mz i przemieszczenia dla każdej kombinacji. Tylko do odczytu, bez chmury
+     zapisanym po obliczeniu siły N, Vy, Vz, Mt, My, Mz i przemieszczenia dla każdej kombinacji. Z uruchomionym RFEM 5 czyta też
+     otwarty model przez RF-COM: „co jest otwarte w RFEM?”, „jaki przekrój ma zaznaczony pręt?” (RFEM prosi o kliknięcie pręta),
+     „siły w pręcie 28 od KO5 z otwartego modelu”, „reakcje w węźle 1”. Tylko do odczytu, bez chmury
      ([profile/rfem/README.md](profile/rfem/README.md)).
    - **tablice**: „jaki Wy ma IPE 200?”, „ile waży 12 m HEB 200?”, „nośność połączenia IH1.1 IPE 240 M16 S235 8.8”, „rozstaw śrub M20”,
      „nośność śruby M16 10.9”. Umiejętność samej wiedzy: charakterystyki przekrojów z Tablic Boguckiego i Żyburtowicza (OCR skanu,
      wiersze sprawdzone zależnościami A–Iy–Wy–iy), typowe połączenia doczołowe DAST (IH, S235/S355, 8.8/10.9) i tablice SZS C5
      do połączeń (śruby, rozstawy, sprężanie, spoiny, materiały). Dane w `wiedza\dane\*.json` ([profile/tablice/README.md](profile/tablice/README.md)).
+   - **cs_program, cs_ifc, cs_konstrukcja, cs_polaczenia, cs_statyka, cs_rysunki, cs_robot** (zestaw Check Structures):
+     „jak policzyć tylko spoiny dla kilku modeli?”, „co znaczy klasa_p4 brak_w_bazie?”, „która spoina wygrywa, gdy rysunek
+     i model mówią co innego?”, „gdzie CS stawia podporę w łańcuchu słupów?”, „co montażysta czyta z arkusza?”, „czy
+     GetActiveObject działa dla Robota?”. Siedem umiejętności samej wiedzy z repozytorium `CS-cheak_structures` (ponad 1000
+     plików Markdown podzielonych tematycznie, każdy plik w jednej umiejętności); dokumentacja RFEM z tego repozytorium
+     doszła do `rfem`. Profil domyślny „Check Structures” ([profile/cs_program/README.md](profile/cs_program/README.md)).
 
    Dokumentację dla modelu wkleja się do `profile\<nazwa>\wiedza\`. Repozytoria z dokumentacją dodaje się przyciskiem
    **Źródła wiedzy…** w oknie asystenta; pliki aktualizują się same ([docs/profile.md](docs/profile.md)).
@@ -64,7 +72,7 @@ Są dwie części:
 2. **Okno** (`LokalneAI.App`) wygląda jak TransmittalMaster (kolory i style w `LokalneAI.App\Theme.xaml`).
    Karty są w granatowym pasku tytułu:
    - **Czat**: rozmowa z modelem i statystyki „gdzie liczył”.
-   - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`, `office`, `ocr`, `rfem`) albo odpowiadający z dokumentacji (`mkk`, `tlumaczenie`, `tablice`) albo odpowiadający z dokumentacji
+   - **Code**: asystent wykonujący polecenia (profile `tekla`, `cde`, `pliki`, `komputer`, `office`, `ocr`, `rfem`) albo odpowiadający z dokumentacji (`mkk`, `tlumaczenie`, `tablice`), `cs_*` albo odpowiadający z dokumentacji
      (`mkk`). Profile zaznacza się jak listę wyboru — kilka naraz (niżej). Ma trzy poziomy uprawnień:
      *Tylko czyta*, *Pyta o każdą zmianę* i *Bez pytania (poza kasowaniem)*. Z lewej **panel rozmów** (niżej).
    - **Ustawienia**: gdzie liczyć (ten komputer albo mocniejszy komputer w biurze), modele w chmurze (test),
@@ -120,7 +128,8 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
   (nie w `cde`). Adresy w sieci biura są dla modelu zablokowane.
 - **Ustawienia** mają sekcje, które zwija się i rozwija kliknięciem w nagłówek; okno pamięta, które były rozwinięte,
   a zwinięta sekcja pokazuje po prawej krótki stan (np. „Claude: 2 na liście”). Sekcje:
-  - gdzie liczyć: ten komputer albo inny, z przyciskiem „Szukaj w sieci”;
+  - gdzie liczyć: ten komputer albo inny, z przyciskiem „Szukaj w sieci”; niżej **komputery dla podagentów** (zakładka Code):
+    przełącznik „Ten komputer” i lista innych komputerów („+”, „Sprawdź”, ×) — [docs/siec.md](docs/siec.md);
   - modele w chmurze (test): klucz API każdego dostawcy (zaszyfrowany kontem Windows, „Załóż klucz…” otwiera
     konsolę dostawcy), lista jego modeli z polami „na liście” i dodawanie modelu po id. Konto claude.ai, ChatGPT
     albo Gemini nie wystarczy — programy łączą się kluczem API rozliczanym za zużycie;
@@ -132,7 +141,8 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
     Code dopiero, gdy jest jego wpis — kto nie ma bazy, nie widzi profilu. Dane z wersji do 0.4 (ustawienia i
     `klucze.json`) program przenosi tu sam przy pierwszym uruchomieniu;
   - udostępnianie: przełącznik, port, limit kontekstu dla innych, otwarcie portu w zaporze;
-  - kolejkę z przyciskiem „Odrzuć” dla zapytań innych komputerów;
+  - kolejkę z przyciskiem „Odrzuć” dla zapytań innych komputerów i liczniki tokenów: ile model tego PC przeczytał
+    i napisał dla każdego komputera (dokładnie, z Ollamy), z przyciskiem „Resetuj”;
   - polecenie systemowe czatu, temperaturę (Bielik: 0,1), długość kontekstu, zapis historii i adres Ollamy.
 - **Rozmowy w zakładce Code** (panel z lewej, jak w Claude czy ChatGPT): każde polecenie zapisuje rozmowę, a kliknięcie
   w panelu ją wznawia — z wpisami w oknie, zaznaczonymi profilami i historią dla modelu. Model, profile i ustawienia
@@ -147,6 +157,25 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
     „Usuń” albo × przy rozmowie (pokazuje się po najechaniu) — rozmowa idzie do `.amadeusz\kosz\` i leży tam
     7 dni (można ją przywrócić, przenosząc plik z powrotem), potem program ją kasuje. Na grupie: otwórz folder,
     zmień nazwę, usuń z listy (pliki zostają i wrócą po ponownym dodaniu folderu).
+  - Kolejność: najnowsze **polecenie** (Enter) na górze (pole `LastPrompt` w pliku). Kliknięcie, zmiana nazwy
+    i przeniesienie do grupy nie zmieniają kolejności; pliki sprzed tej zmiany sortują się po dacie zapisu.
+- **Tokeny i czasy** (Ustawienia → Czat → Diagnostyka, „Pokaż tokeny i czasy przy wpisach w zakładce Code”): przy każdym
+  wpisie dokładne liczby z Ollamy — przy poleceniu pisanie pytania i skład promptu (zasady i narzędzia, pytanie), przy kroku
+  modelu ile napisał, myślenie (czytanie promptu) i pisanie, przy narzędziu czas i ile wyniku wróciło do modelu, pod turą
+  Σ wejście | praca | odpowiedź, ile tokenów model przeczytał łącznie, kontekst i czasy (ładowanie, kolejka i sieć od 1 s).
+  W szerokim oknie z prawej strony wpisu, w wąskim pod nim; objaśnienie po najechaniu. Przed odpowiedzią przy „Model
+  pracuje…” jest szacunek (≈). Przy włączonym jedno krótkie zapytanie na sesję liczy tokeny samych zasad i narzędzi.
+- **Kroki modelu** (przełącznik „Pokaż kroki modelu” nad rozmową w Code albo Ustawienia → Czat → Diagnostyka): jedno
+  polecenie to pętla — model zwraca krok (wywołania narzędzi, odpowiedź albo pytanie), program wykonuje narzędzia i odsyła
+  wyniki, aż do odpowiedzi albo limitu kroków (`max_krokow` w profilu, domyślnie 12; „Model pracuje (krok 3 z 12)…”).
+  Z włączonym przełącznikiem każdy krok widać w rozmowie jako wpis „Krok N: wywołania → …” (surowy JSON w szczegółach),
+  także w przebiegu podagentów. Wpisy zapisują się zawsze — przełącznik to tylko widok, działa też na starsze rozmowy.
+- **Podagenci** (Code): model może zlecić części pracy osobnym asystentom (`zlec_podagentowi`): każdy ma własną sesję
+  i model, nie widzi rozmowy (dostaje tylko zadanie i dane), a kilka zleceń z jednego kroku liczy się równolegle na
+  komputerach z Ustawień → Gdzie liczyć → Komputery dla podagentów (także „Ten komputer”). Program sam dobiera model do
+  karty każdego komputera. W trakcie każdy podagent to kafelek nad polem polecenia (komputer, model, krok, sekundy,
+  przycisk **Przerwij**); po skończeniu — rozwijany wpis w rozmowie z całym przebiegiem (drzewo: polecenie, kroki,
+  wywołania, odpowiedź), zapisywany z rozmową. Stop przerywa wszystkich. Szczegóły: [docs/siec.md](docs/siec.md).
 - **Rozmowy w Czacie** (panel z lewej, jak w Code): `Dokumenty\Amadeusz\Czat\`, grupa = podfolder (`+ Nowa grupa…`),
   rozmowa zapisuje się po każdej odpowiedzi, kliknięcie ją wczytuje (z „Pamiętaj rozmowę” model zna jej wcześniejsze
   pytania). „Nowa rozmowa” czyści okno — poprzednia zostaje w panelu. × i „Usuń” → `Czat\kosz\` na 7 dni; usunięcie
@@ -181,7 +210,7 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
   u dostawcy dozwolonego we wszystkich (z `cde` — tylko Claude, z `mkk` — tylko modele lokalne), internet tylko gdy
   pozwalają wszystkie (`cde` wyłącza go całej rozmowie). `pliki` przy `komputer` wypadają (`komputer` ma wszystkie
   ich polecenia). Polecenie systemowe to suma profili (np. `tekla` ~8 tys. tokenów, `cde` ~4 tys.), a zakładka Code
-  i tak liczy z kontekstem co najmniej 16384; przy trzech i więcej profilach ustaw 32768 (Ustawienia → Czat), a mały
+  i tak liczy z kontekstem co najmniej 16384 (gdy liczy inny komputer — najwyżej tyle, ile on przyjmuje, jego Ustawienia → Udostępnianie); przy trzech i więcej profilach ustaw 32768 (Ustawienia → Czat), a mały
   model gorzej wybiera narzędzie spośród wielu.
 - Pasek na dole pokazuje, który komputer liczy (albo chmurę dostawcy, w jego kolorze), i stan kolejki.
 - Model w chmurze w czacie odpowiada od razu całym tekstem (bez pisania na bieżąco). W zakładce Code pasek pod
@@ -242,14 +271,14 @@ Kod wyjścia: 0 to odpowiedź, 1 to błąd w odpowiedzi, 2 i 3 to wyjątek.
 | `LokalneAI.Harness.Postgres` | wykonawca SQL tylko do odczytu (profil `cde`) | .NET Standard 2.0, Npgsql 8 |
 | `LokalneAI.Harness.Office` | wykonawca dokumentów Word, Excel, Outlook i PowerPoint przez COM zainstalowanego Microsoft 365 (profil `office`) | .NET Standard 2.0, bez paczek |
 | `LokalneAI.Harness.Ocr` | OCR skryptem (Tesseract 5) i PDF (PDFium, PDFsharp 6.1) dla umiejętności `ocr` i poleceń PDF w `office` | .NET Standard 2.0, natywne dll x64 |
-| `LokalneAI.Harness.Rfem` | czytnik modeli RFEM 5 (.rf5) bez programu Dlubal dla umiejętności `rfem`: model, siatka, siły w prętach | .NET Standard 2.0, bez paczek |
+| `LokalneAI.Harness.Rfem` | czytnik modeli RFEM 5 (.rf5) bez programu Dlubal dla umiejętności `rfem`: model, siatka, siły w prętach; otwarty RFEM 5 przez RF-COM (interfejsy vtable wygenerowane z biblioteki typów) | .NET Standard 2.0, bez paczek |
 | `LokalneAI.Harness.Wpf` | panel rozmowy z licznikiem kontekstu do osadzenia | .NET Framework 4.8 i .NET 10 |
 | `LokalneAI.Harness.Tests` | testy xUnit, uruchamiane na .NET 10 i .NET Framework 4.8 | |
 | `LokalneAI.Eval` | porównanie modeli na testach profili | .NET 10 |
 | `LokalneAI.Przyklad.WinForms` | najprostsze osadzenie w WinForms (.NET Framework 4.8) | |
 | `LokalneAI.Gateway` | brama: kolejka, liczenie na innym komputerze, udostępnianie w podsieci | .NET 10, ASP.NET Core (Kestrel) |
 | `LokalneAI.Core`, `LokalneAI.App`, `LokalneAI.Core.Tests` | okno, jego klient Ollamy i testy (także bramy) | .NET 10 |
-| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk`, `office`, `tlumaczenie`, `ocr`, `rfem`, `tablice` | wiedza, polecenia, przykłady i testy profili | |
+| `profile\tekla`, `cde`, `pliki`, `komputer`, `mkk`, `office`, `tlumaczenie`, `ocr`, `rfem`, `tablice`, `cs_program`, `cs_ifc`, `cs_konstrukcja`, `cs_polaczenia`, `cs_statyka`, `cs_rysunki`, `cs_robot` | wiedza, polecenia, przykłady i testy profili | |
 | `szablony\` | szablon profilu i plików `AGENTS`, `CLAUDE`, `lokalne-ai\` dla repozytoriów programów | |
 | `narzedzia\sprawdz_przyklady` | kompiluje i uruchamia przykłady z `docs\biblioteki-dla-agentow.md` | .NET 10 i .NET Framework 4.8, C# 7.3 |
 | `docs\` | osadzanie, opisy dla AI, wiedza dla modeli, serwer modelu, format profilu, wybór modelu, raporty z badań | |
@@ -266,9 +295,10 @@ wystarczy `instalator\instaluj.bat` (sam zbuduje program, potrzebny .NET SDK 10)
 administratora. Skróty nazywają się „Amadeusz” (te ze starszych wersji, „LokalneAI”, instalator zamienia), a folder
 programu i ustawień zostaje `LokalneAI`. Szczegóły w `instalator\CZYTAJ.txt`:
 
-- `instaluj.bat`: Ollama i model na tym komputerze;
+- `instaluj.bat`: Ollama i modele na tym komputerze — instalator pokazuje listę modeli z rozmiarami, zaznacza zalecany
+  według pamięci karty graficznej i pobiera wybrane (kilka naraz; pierwszy = model domyślny programu);
 - `instaluj.bat -SerwerModelu http://serwer-ai:11434`: model na serwerze w biurze;
-- `instaluj.bat -Model <tag>`: inny model.
+- `instaluj.bat -Model <tag>[,<tag>…]` albo `-BezPytan` (zalecany): bez pytania o modele.
 
 ## Porównanie modeli
 

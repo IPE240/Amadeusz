@@ -33,6 +33,12 @@ namespace LokalneAI.Harness.Llm
 
         /// <summary>Temperatura; null = ustawienie klienta.</summary>
         public double? Temperature { get; set; }
+
+        /// <summary>
+        /// Najwięcej tokenów odpowiedzi dla tego jednego zapytania; null = ustawienie klienta. <see cref="OllamaLlmClient"/>
+        /// wysyła to jako <c>num_predict</c> (np. 1 przy liczeniu tokenów samego polecenia systemowego).
+        /// </summary>
+        public int? MaxTokens { get; set; }
     }
 
     /// <summary>Odpowiedź modelu z liczbą tokenów (do licznika kontekstu).</summary>
@@ -52,6 +58,15 @@ namespace LokalneAI.Harness.Llm
 
         /// <summary>Czas ładowania modelu do pamięci (Ollama); zero, gdy model był już załadowany albo serwer tego nie podaje.</summary>
         public TimeSpan LoadDuration { get; set; }
+
+        /// <summary>
+        /// Czas czytania promptu przez model (Ollama: <c>prompt_eval_duration</c>) — zanim napisze pierwszy token. Część promptu
+        /// z pamięci podręcznej (ten sam początek co w poprzednim zapytaniu) czyta się prawie od razu. Zero, gdy serwer nie podaje.
+        /// </summary>
+        public TimeSpan PromptDuration { get; set; }
+
+        /// <summary>Czas pisania odpowiedzi (Ollama: <c>eval_duration</c>); zero, gdy serwer nie podaje.</summary>
+        public TimeSpan OutputDuration { get; set; }
 
         /// <summary>Nazwa modelu, który odpowiedział.</summary>
         public string Model { get; set; }

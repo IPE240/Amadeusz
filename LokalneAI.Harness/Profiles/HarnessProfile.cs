@@ -39,8 +39,8 @@ namespace LokalneAI.Harness.Profiles
         /// <summary>Narzędzia, których argument <c>sql</c> przechodzi przez strażnika SQL (tylko SELECT).</summary>
         public IList<string> SqlTools { get; set; } = new List<string>();
 
-        /// <summary>Ile kroków modelu najwyżej na jedno polecenie użytkownika.</summary>
-        public int MaxSteps { get; set; } = 6;
+        /// <summary>Ile kroków modelu najwyżej na jedno polecenie użytkownika (<c>max_krokow</c>; 2026-11-19 podwojone do prób z dłuższymi zadaniami).</summary>
+        public int MaxSteps { get; set; } = 12;
 
         /// <summary>Ile wywołań najwyżej w jednym kroku.</summary>
         public int MaxCallsPerStep { get; set; } = 4;
@@ -182,6 +182,22 @@ namespace LokalneAI.Harness.Profiles
             return new HarnessProfile(Name, SystemText, tools, Settings, CardText, Examples, Knowledge, Folder, Glossary) { Description = Description, _parts = _parts };
         }
 
+        /// <summary>
+        /// Ten sam profil z narzędziem <c>zlec_podagentowi</c> (<see cref="BuiltInTools.DelegateName"/>); gdy już je ma — ten sam obiekt.
+        /// Sesja robi to sama, gdy dostaje <see cref="Session.SessionOptions.SubAgents"/>; tu do podglądu promptu i testów.
+        /// </summary>
+        public HarnessProfile WithSubAgents()
+        {
+            if (Tools.Any(t => t.Name == BuiltInTools.DelegateName))
+            {
+                return this;
+            }
+
+            var tools = Tools.ToList();
+            tools.Add(BuiltInTools.Get(BuiltInTools.DelegateName));
+            return new HarnessProfile(Name, SystemText, tools, Settings, CardText, Examples, Knowledge, Folder, Glossary) { Description = Description, _parts = _parts };
+        }
+
         private IReadOnlyList<HarnessProfile> _parts;
 
         /// <summary>Profile, z których złożono ten (<see cref="Combine"/>); dla zwykłego profilu — on sam.</summary>
@@ -280,8 +296,9 @@ namespace LokalneAI.Harness.Profiles
                 BuiltInTools = all.SelectMany(s => s.BuiltInTools).Distinct().ToList(),
                 CheckNumbers = all.Any(s => s.CheckNumbers),
                 SqlTools = all.SelectMany(s => s.SqlTools).Distinct().ToList(),
-                MaxSteps = all.Max(s => s.MaxSteps),
-                MaxCallsPerStep = all.Max(s => s.MaxCallsPerStep),
+                // Liczba kroków z ról: zasady odpowiedzi (np. „formatowanie”) nie wydłużają ani nie skracają pracy innych umiejętności.
+                MaxSteps = roleSettings.Max(s => s.MaxSteps),
+                MaxCallsPerStep = roleSettings.Max(s => s.MaxCallsPerStep),
                 Plan = all.Any(s => s.Plan),
                 ReferencePreviousId = all.Any(s => s.ReferencePreviousId),
                 Temperature = temperatures.Count > 0 ? temperatures.Min() : (double?)null,

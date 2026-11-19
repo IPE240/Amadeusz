@@ -615,7 +615,7 @@ public sealed class RfemUnitTests : IDisposable
     [Fact]
     public void Profil_PrzykladyITestyWskazujaIstniejacePolecenia()
     {
-        Assert.Equal(9, RfemProfile.Tools.Count(t => !t.IsBuiltIn));
+        Assert.Equal(16, RfemProfile.Tools.Count(t => !t.IsBuiltIn));   // 9 na pliku .rf5 + 7 na otwartym RFEM (RfemExecutor.LiveTools)
         Assert.All(RfemExecutor.Tools, t => Assert.NotNull(RfemProfile.FindTool(t)));
         foreach (var line in File.ReadAllLines(Path.Combine(RfemProfile.Folder, "testy.jsonl"), Encoding.UTF8).Where(l => l.Trim().Length > 0))
         {

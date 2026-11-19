@@ -108,6 +108,10 @@ public partial class MainWindow : Window
             CodeView.RefreshModelText();
             CodeView.RebuildSession();
         };
+        _viewModel.ShowTokensChanged += (_, _) => CodeView.ApplyShowTokens();
+        _viewModel.ShowStepsChanged += (_, _) => CodeView.ApplyShowSteps();
+        CodeView.ShowStepsChanged += (_, _) => _viewModel.RefreshShowSteps();
+        _viewModel.Agents.Changed += (_, _) => CodeView.RebuildSession(); // inna lista komputerów podagentów — następne polecenie z nowym gospodarzem
         Tabs.SelectionChanged += (_, e) =>
         {
             if (e.OriginalSource == Tabs && Tabs.SelectedItem == CodeTab && IsLoaded)
@@ -220,10 +224,18 @@ public partial class MainWindow : Window
         Tabs.SelectedItem = (name ?? "").ToLowerInvariant() switch
         {
             "code" => CodeTab,
-            "ustawienia" => SettingsTab,
+            "ustawienia" or "kolejka" => SettingsTab,
             _ => ChatTab,
         };
         Tabs.UpdateLayout();
+        if (string.Equals(name, "kolejka", StringComparison.OrdinalIgnoreCase))
+        {
+            // Kontrola liczników tokenów: sekcja „Kolejka” rozwinięta i widoczna na zrzucie.
+            SectionQueue.IsExpanded = true;
+            Tabs.UpdateLayout();
+            SectionQueue.BringIntoView();
+            Tabs.UpdateLayout();
+        }
     }
 
     /// <summary>Kontrola bez klikania: rozwija listę modeli i zapisuje ją do PNG (lista jest w osobnym okienku, poza zrzutem okna).</summary>

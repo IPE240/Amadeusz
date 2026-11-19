@@ -1,9 +1,9 @@
 ﻿# Buduje paczkę instalacyjną Amadeusza: dist\Amadeusz-<wersja>.zip
-#   powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 [-Wersja 0.5.0] [-ZDokumentacjaZRepozytoriow]
+#   powershell -NoProfile -ExecutionPolicy Bypass -File narzedzia\zbuduj_instalator.ps1 [-Wersja 0.7.0] [-ZDokumentacjaZRepozytoriow]
 # Program jest publikowany jako self-contained (win-x64): na komputerach biura nie trzeba instalować .NET.
 # Pliki pobrane z repozytoriów (profile\*\wiedza\zrodla) domyślnie NIE trafiają do paczki — bywają z prywatnych
 # repozytoriów; na każdym komputerze program pobierze je sam, jeśli jego użytkownik ma dostęp.
-param([string]$Wersja = "0.5.0", [switch]$ZDokumentacjaZRepozytoriow)
+param([string]$Wersja = "0.7.0", [switch]$ZDokumentacjaZRepozytoriow)
 
 $ErrorActionPreference = "Stop"
 $repo = Split-Path $PSScriptRoot -Parent

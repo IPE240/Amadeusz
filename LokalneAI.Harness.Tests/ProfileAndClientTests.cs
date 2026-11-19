@@ -18,9 +18,16 @@ public class ProfileFilesTests
     [InlineData("mkk", 0)]
     [InlineData("office", 20)]
     [InlineData("ocr", 7)]
-    [InlineData("rfem", 9)]
+    [InlineData("rfem", 16)]
     [InlineData("tablice", 0)]
     [InlineData("tlumaczenie", 0)]
+    [InlineData("cs_program", 0)]
+    [InlineData("cs_ifc", 0)]
+    [InlineData("cs_konstrukcja", 0)]
+    [InlineData("cs_polaczenia", 0)]
+    [InlineData("cs_statyka", 0)]
+    [InlineData("cs_rysunki", 0)]
+    [InlineData("cs_robot", 0)]
     public void Profil_WczytujeSieZFolderu(string name, int hostTools)
     {
         var profile = HarnessProfile.Load(Paths.Profile(name));

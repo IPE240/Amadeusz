@@ -61,7 +61,7 @@ public partial class HarnessView : UserControl
         InitializeComponent();
         Panel.SessionFactory = CreateSession;
         Panel.NewSessionText = "Nowa rozmowa";
-        Panel.TurnEnded += (_, _) => SaveCurrent();
+        Panel.TurnEnded += (_, _) => SaveCurrent(newPrompt: true);
         // Rozmowa jest już zapisana po ostatnim poleceniu, a panel właśnie się wyczyścił — nie zapisujemy pustej.
         Panel.NewSessionClicked += (_, _) => StartNewConversation(_currentGroup, save: false);
         Panel.ImagePasted = OcrPastedImageAsync;
@@ -109,9 +109,12 @@ public partial class HarnessView : UserControl
             ? "C:\\ODS;%USERPROFILE%\\Documents;%USERPROFILE%\\Desktop"
             : settings.FileRoots;
         PermissionBox.SelectedIndex = settings.CodePermission == "czyta" ? 0 : 1;
+        Panel.ShowTokens = settings.ShowTokens;
+        Panel.ShowModelSteps = settings.ShowSteps;
 
         var chosen = settings.HarnessProfiles ?? (settings.HarnessProfile is { } old ? [old] : []);
         _loading = true;
+        StepsBox.IsChecked = settings.ShowSteps;
         ProfilesPanel.Children.Clear();
         foreach (var name in ProfilesFolder.List(_context.ProfilesRoot))
         {
@@ -283,6 +286,37 @@ public partial class HarnessView : UserControl
         }
     }
 
+    /// <summary>Wpisy panelu do pliku rozmowy (bez „Model pracuje…”), z przebiegiem podagentów jako wpisami podrzędnymi.</summary>
+    private static List<CodeConversationEntry> ToStored(IEnumerable<PanelEntry> entries)
+        => entries
+            .Where(e => !(e.Kind == PanelEntryKind.Info && (e.Text ?? "").StartsWith("Model pracuje", StringComparison.Ordinal)))
+            .Select(e => new CodeConversationEntry
+            {
+                Kind = e.Kind.ToString(),
+                Text = e.Text ?? "",
+                Detail = e.Detail,
+                Success = e.Success,
+                Metrics = e.Metrics,
+                Children = e.HasChildren ? ToStored(e.Children) : null,
+            })
+            .ToList();
+
+    /// <summary>Wpis z pliku rozmowy do panelu (nieznany rodzaj z nowszej wersji = informacja), z wpisami podrzędnymi.</summary>
+    private static PanelEntry FromStored(CodeConversationEntry e)
+    {
+        var entry = new PanelEntry(Enum.TryParse<PanelEntryKind>(e.Kind, out var kind) ? kind : PanelEntryKind.Info, e.Text, e.Detail)
+        {
+            Success = e.Success,
+            Metrics = e.Metrics,
+        };
+        foreach (var child in e.Children ?? [])
+        {
+            entry.Children.Add(FromStored(child));
+        }
+
+        return entry;
+    }
+
     /// <summary>Historia bieżącej sesji (to, co dostaje model) do pliku rozmowy — przed zamknięciem albo przebudową sesji.</summary>
     private void CaptureHistory()
     {
@@ -295,8 +329,12 @@ public partial class HarnessView : UserControl
         }
     }
 
-    /// <summary>Zapisuje otwartą rozmowę w <c>&lt;folder grupy&gt;\.amadeusz\</c> (po każdym poleceniu). Pusta rozmowa nie powstaje.</summary>
-    private void SaveCurrent()
+    /// <summary>
+    /// Zapisuje otwartą rozmowę w <c>&lt;folder grupy&gt;\.amadeusz\</c>. Pusta rozmowa nie powstaje. Na górę listy idzie tylko
+    /// po nowym poleceniu (<paramref name="newPrompt"/>); zapis przy przejściu do innej rozmowy, zmianie nazwy albo przeniesieniu
+    /// nie zmienia kolejności (lista sortuje się po <see cref="CodeConversation.LastPrompt"/>).
+    /// </summary>
+    private void SaveCurrent(bool newPrompt = false)
     {
         if (!_persist || _currentGroup is null)
         {
@@ -304,10 +342,7 @@ public partial class HarnessView : UserControl
         }
 
         CaptureHistory();
-        var entries = Panel.Entries
-            .Where(e => !(e.Kind == PanelEntryKind.Info && e.Text.StartsWith("Model pracuje", StringComparison.Ordinal)))
-            .Select(e => new CodeConversationEntry { Kind = e.Kind.ToString(), Text = e.Text ?? "", Detail = e.Detail, Success = e.Success })
-            .ToList();
+        var entries = ToStored(Panel.Entries);
         if (entries.Count == 0)
         {
             return; // pusta rozmowa nie powstaje, a zapisanej nie nadpisujemy pustą
@@ -316,6 +351,15 @@ public partial class HarnessView : UserControl
         _current.Entries = entries;
         _current.Profiles = EffectiveProfiles;
         _current.Model = _context.ModelLabel;
+        if (newPrompt)
+        {
+            _current.LastPrompt = DateTime.Now;
+        }
+        else if (_current.LastPrompt is null && _current.Updated != default)
+        {
+            _current.LastPrompt = _current.Updated; // plik sprzed tej zmiany: zostaje na swoim miejscu
+        }
+
         _current.Updated = DateTime.Now;
         if (string.IsNullOrWhiteSpace(_current.Title))
         {
@@ -336,16 +380,16 @@ public partial class HarnessView : UserControl
 
         if (_currentNode is null || !ReferenceEquals(_currentNode.Group, _currentGroup))
         {
-            var node = new ConversationNode(_currentGroup, _current.Id, _current.Title, _current.Updated);
-            _currentGroup.Conversations.Insert(0, node);
+            var node = new ConversationNode(_currentGroup, _current.Id, _current.Title, _current.Activity);
+            _currentGroup.InsertSorted(node);
             SetCurrentNode(node);
         }
         else
         {
             _currentNode.Title = _current.Title;
-            _currentNode.Updated = _current.Updated;
+            _currentNode.Updated = _current.Activity;
             var index = _currentGroup.Conversations.IndexOf(_currentNode);
-            if (index > 0)
+            if (newPrompt && index > 0)
             {
                 _currentGroup.Conversations.Move(index, 0);
             }
@@ -392,8 +436,7 @@ public partial class HarnessView : UserControl
         }
 
         ApplyProfiles(syncKnowledge: true);
-        Panel.LoadEntries(conversation.Entries.Select(e => new PanelEntry(
-            Enum.TryParse<PanelEntryKind>(e.Kind, out var kind) ? kind : PanelEntryKind.Info, e.Text, e.Detail) { Success = e.Success }));
+        Panel.LoadEntries(conversation.Entries.Select(FromStored));
         Panel.Title = node.DisplayTitle;
         RefreshWorkFolderText();
         SidebarHint.Text = "";
@@ -671,7 +714,7 @@ public partial class HarnessView : UserControl
 
         node.Group.Conversations.Remove(node);
         node.Group = target;
-        target.Conversations.Insert(0, node);
+        target.InsertSorted(node);
         target.IsExpanded = true;
         if (node == _currentNode)
         {
@@ -928,15 +971,83 @@ public partial class HarnessView : UserControl
             throw new InvalidOperationException("Wybierz co najmniej jedną umiejętność nad rozmową.");
         }
 
+        var parts = LoadParts(names);
+        var profile = HarnessProfile.Combine(parts);
+        (_llm as IDisposable)?.Dispose();
+        _llm = null;
+        _llm = CreateLlm(profile);
+        _sessionModelKey = ModelKey();
+        var history = _current.History.Select(m => new LlmMessage(m.Role, m.Content)).ToList();
+        // Tokeny samych zasad i narzędzi (jedno krótkie zapytanie na sesję) — tylko gdy liczniki są widoczne.
+        return BuildSession(parts, profile, _llm, history, _context.Settings.ShowTokens, CreateSubAgentHost(names));
+    }
+
+    /// <summary>Profile umiejętności z dysku, z wiedzą z dysku (Źródła wiedzy) — do sesji głównej i sesji podagentów.</summary>
+    private List<HarnessProfile> LoadParts(IReadOnlyList<string> names)
+    {
         var parts = names.Select(n => HarnessProfile.Load(Path.Combine(_context.ProfilesRoot, n))).ToList();
         for (var i = 0; i < parts.Count; i++)
         {
             LoadDiskKnowledge(names[i], parts[i]);
         }
 
-        var profile = HarnessProfile.Combine(parts);
-        (_llm as IDisposable)?.Dispose();
-        _llm = null;
+        return parts;
+    }
+
+    /// <summary>
+    /// Gospodarz podagentów z Ustawień → Gdzie liczyć → Komputery dla podagentów: null, gdy nie ma żadnego komputera
+    /// (ani „ten komputer”). Umiejętności podagenta: wszystkie widoczne na liście; domyślnie te same, co sesja główna.
+    /// Model: najpierw model główny (gdy lokalny) i preferowane wybranego profilu, potem to, co jest na danym komputerze.
+    /// </summary>
+    private ISubAgentHost? CreateSubAgentHost(List<string> mainSkills)
+    {
+        var settings = _context.Settings;
+        if (!settings.AgentsUseThisComputer && settings.AgentMachines.Count == 0)
+        {
+            return null;
+        }
+
+        var available = AvailableSkills;
+        var skills = ProfilesPanel.Children.OfType<CheckBox>().Select(c => (string)c.Tag).Where(available.Contains)
+            .Select(n => new SubAgentSkill(n, CloudViewModel.SafeDescription(Path.Combine(_context.ProfilesRoot, n)) ?? ""))
+            .ToList();
+        var preferred = new List<string>();
+        if (_context.Cloud is null && !string.IsNullOrWhiteSpace(_context.Model))
+        {
+            preferred.Add(_context.Model);
+        }
+
+        if (WorkProfileBox.SelectedItem is ComboBoxItem { Tag: WorkProfileSetting work })
+        {
+            preferred.AddRange(work.Models.Where(k => !k.Contains('|')));
+        }
+
+        var host = new SubAgentHost(new SubAgentHostOptions
+        {
+            Machines = settings.AgentMachines,
+            UseThisComputer = settings.AgentsUseThisComputer,
+            LocalGatewayUrl = _context.OllamaUrl,
+            LocalOllamaUrl = _context.LocalOllamaUrl,
+            LocalGpuGb = _context.LocalGpuGb,
+            LocalGpuText = _context.LocalGpuText,
+            Skills = skills,
+            DefaultSkills = mainSkills.Where(available.Contains).ToList(),
+            ContextLength = _context.ContextLength,
+            Temperature = _context.Temperature,
+            PreferredModels = preferred.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            // Sesja podagenta: te same wykonawcy, foldery i zgody, co sesja główna; bez historii, liczników i własnych podagentów.
+            BuildSession = (names, llm) => Dispatcher.InvokeAsync(() =>
+            {
+                var parts = LoadParts(names);
+                return BuildSession(parts, HarnessProfile.Combine(parts), llm, null, false, null);
+            }).Task,
+        });
+        return host.HasMachines ? host : null;
+    }
+
+    /// <summary>Klient modelu sesji głównej: chmura (prosto z tego komputera) albo Ollama przez bramę okna.</summary>
+    private ILlmClient CreateLlm(HarnessProfile profile)
+    {
         if (_context.Cloud is { } cloud)
         {
             // Model w chmurze idzie prosto z tego komputera (bez bramy i kolejki). Czy profile na niego pozwalają, sprawdza HarnessSession.
@@ -946,28 +1057,34 @@ public partial class HarnessView : UserControl
                 throw new InvalidOperationException("Brak klucza API " + cloud.Name + " — wpisz go w Ustawieniach → Modele w chmurze.");
             }
 
-            _llm = CloudLlm.Create(cloud, key, _context.Model, _context.Temperature);
-        }
-        else
-        {
-            _llm = new OllamaLlmClient(new OllamaOptions
-            {
-                Url = _context.OllamaUrl,
-                Model = _context.Model,
-                ContextLength = _context.ContextLength,
-                Temperature = _context.Temperature,
-                KeepAlive = "10m",
-                ClientName = "Code: " + profile.Name,
-                // W kolejce bramy można poczekać, aż inny program albo komputer skończy.
-                RequestTimeout = TimeSpan.FromMinutes(10),
-            });
+            return CloudLlm.Create(cloud, key, _context.Model, _context.Temperature);
         }
 
-        _sessionModelKey = ModelKey();
+        return new OllamaLlmClient(new OllamaOptions
+        {
+            Url = _context.OllamaUrl,
+            Model = _context.Model,
+            ContextLength = _context.ContextLength,
+            Temperature = _context.Temperature,
+            KeepAlive = "10m",
+            ClientName = "Code: " + profile.Name,
+            // W kolejce bramy można poczekać, aż inny program albo komputer skończy.
+            RequestTimeout = TimeSpan.FromMinutes(10),
+        });
+    }
+
+    /// <summary>
+    /// Sesja z gotowych profili i klienta modelu: wykonawcy według umiejętności (Tekla, SQL, pliki, Office, OCR, RFEM),
+    /// notatki o sytuacji, internet gdy wolno. Dla sesji głównej z historią i gospodarzem podagentów; dla podagenta bez nich.
+    /// </summary>
+    private HarnessSession BuildSession(List<HarnessProfile> parts, HarnessProfile profile, ILlmClient llm, IList<LlmMessage>? history, bool measureSystemPrompt, ISubAgentHost? subAgents)
+    {
         var options = new SessionOptions
         {
             ConfirmMutation = ConfirmAsync,
-            History = _current.History.Select(m => new LlmMessage(m.Role, m.Content)).ToList(),
+            History = history,
+            MeasureSystemPrompt = measureSystemPrompt,
+            SubAgents = subAgents,
         };
         if (_context.Web is { } web && profile.Settings.Internet)
         {
@@ -1067,7 +1184,8 @@ public partial class HarnessView : UserControl
                 var (roots, work) = FileRoots();
                 rfem ??= new RfemExecutor(new RfemOptions { AllowedRoots = roots, WorkingFolder = work });
                 executor = rfem;
-                notes.Add("Pliki RFEM 5 (.rf5) czyta program z pliku, bez RFEM-a; gdy w folderze bieżącym jest jeden plik .rf5, polecenia biorą go bez podawania ścieżki."
+                notes.Add("Pliki RFEM 5 (.rf5) czyta program z pliku, bez RFEM-a; gdy w folderze bieżącym jest jeden plik .rf5, polecenia biorą go bez podawania ścieżki. "
+                    + RfemExecutor.LiveStatus()
                     + (files is null
                         ? " Folder bieżący na start (folder tej rozmowy): " + work + ". Dozwolone foldery: " + string.Join("; ", roots.Select(Environment.ExpandEnvironmentVariables)) + "."
                         : ""));
@@ -1089,9 +1207,9 @@ public partial class HarnessView : UserControl
             }
         }
 
-        notes.Add("Dziś jest " + DateTime.Today.ToString("yyyy-MM-dd") + ".");
+        notes.Add("Dziś jest " + MainViewModel.TodayText() + ".");
         options.ContextNote = string.Join(" ", notes);
-        return new HarnessSession(_llm, profile, router, options);
+        return new HarnessSession(llm, profile, router, options);
     }
 
     /// <summary>Dozwolone foldery z pola nad rozmową i folder bieżący (folder rozmowy, zawsze dozwolony) — dla profili plików i Office’a.</summary>
@@ -1228,7 +1346,8 @@ public partial class HarnessView : UserControl
                 : IsRfemProfile(name)
                     ? "Przykład: „co jest w modelu hala.rf5?”, „jaki przekrój i długość ma pręt 28?”, „jaka jest siła w pręcie 28 od KO5?”, „które pręty mają HEA 160?”, "
                       + "„jakie są kombinacje?”. Plik .rf5 jest czytany z dysku bez RFEM-a (RFEM 6 .rf6 — nie). Siły są tylko w plikach zapisanych po obliczeniu; "
-                      + "wszystko tylko do odczytu, bez pytań o zgodę."
+                      + "wszystko tylko do odczytu, bez pytań o zgodę. Z otwartym RFEM 5: „co jest otwarte w RFEM?”, „jaki przekrój ma zaznaczony pręt?” (RFEM poprosi o kliknięcie), "
+                      + "„siły w pręcie 28 od KO5 z otwartego modelu”, „reakcje w węźle 1”. " + RfemExecutor.LiveStatus()
                 : name == "tlumaczenie"
                     ? "Wklej tekst po polsku — model odda tłumaczenie na angielski brytyjski (terminy konstrukcyjne bierze ze słownika umiejętności przez szukaj_wiedzy). "
                       + "Razem z umiejętnością office tłumaczy dokumenty: „przeczytaj opis.docx i zapisz tłumaczenie jako opis_EN.docx”. Najlepiej z qwen3.5:9b albo Bielikiem 11B."
@@ -1310,7 +1429,55 @@ public partial class HarnessView : UserControl
         }
     }
 
-    private void Steps_Changed(object sender, RoutedEventArgs e) => Panel.ShowModelSteps = StepsBox.IsChecked == true;
+    /// <summary>Przełącznik „Pokaż kroki modelu” nad rozmową: ten sam, co w Ustawieniach → Czat (zapisywany).</summary>
+    private void Steps_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        var on = StepsBox.IsChecked == true;
+        Panel.ShowModelSteps = on;
+        if (_context.Settings.ShowSteps != on)
+        {
+            _context.Settings.ShowSteps = on;
+            if (_saveSettings)
+            {
+                _context.Save?.Invoke();
+            }
+
+            ShowStepsChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>Zmienił się przełącznik kroków nad rozmową (okno odświeża Ustawienia).</summary>
+    public event EventHandler? ShowStepsChanged;
+
+    /// <summary>Ustawienia → Czat → „Pokaż kroki modelu”: ten sam przełącznik, co nad rozmową; działa od razu, także na wpisy sprzed zmiany.</summary>
+    public void ApplyShowSteps()
+    {
+        _context = _contextProvider?.Invoke() ?? _context;
+        var wasLoading = _loading;
+        _loading = true;
+        StepsBox.IsChecked = _context.Settings.ShowSteps;
+        _loading = wasLoading;
+        Panel.ShowModelSteps = _context.Settings.ShowSteps;
+    }
+
+    /// <summary>
+    /// Ustawienia → Czat → „Pokaż tokeny i czasy”: liczniki przy wpisach. Nowa sesja przy następnym poleceniu, żeby zmierzyła
+    /// (albo przestała mierzyć) tokeny samych zasad i narzędzi; wpisy rozmowy zostają.
+    /// </summary>
+    public void ApplyShowTokens()
+    {
+        _context = _contextProvider?.Invoke() ?? _context;
+        Panel.ShowTokens = _context.Settings.ShowTokens;
+        if (!Panel.IsBusy)
+        {
+            Panel.ResetSession();
+        }
+    }
 
     private string FolderOf(string profile) => Path.Combine(_context.ProfilesRoot, profile);
 
@@ -1483,7 +1650,7 @@ public partial class HarnessView : UserControl
             var missing = profile.Skills.Where(n => !available.Contains(n)).ToList();
             WorkProfileBox.Items.Add(new ComboBoxItem
             {
-                Content = profile.Name,
+                Content = profile.Name + (missing.Count == 0 ? "" : " (bez: " + string.Join(", ", missing) + ")"),
                 Tag = profile,
                 ToolTip = "Umiejętności: " + string.Join(", ", skills) + (missing.Count == 0 ? "" : " (niedostępne tutaj: " + string.Join(", ", missing) + ")"),
             });
@@ -1534,6 +1701,11 @@ public partial class HarnessView : UserControl
         if (skills.OrderBy(n => n).SequenceEqual(SelectedProfiles.OrderBy(n => n)))
         {
             SyncWorkProfile();
+            if (MissingSkillsNote(profile) is { } note)
+            {
+                HintText.Text = note;
+            }
+
             return;
         }
 
@@ -1546,6 +1718,40 @@ public partial class HarnessView : UserControl
         _loading = false;
         SkillsChanged();
         ApplyPreferredModel(profile);
+        var missing = MissingSkillsNote(profile);
+        if (missing is not null)
+        {
+            HintText.Text = (HintText.Text.Length > 0 && HintText.Text.StartsWith("Profil ", StringComparison.Ordinal) ? HintText.Text + " " : "") + missing;
+        }
+    }
+
+    /// <summary>
+    /// Opis umiejętności profilu, których na tym komputerze nie ma (np. „cde” bez wpisu w Menedżerze poświadczeń) — inaczej
+    /// profil „Baza CDE” zostawia samo „formatowanie” i model nie ma czym odpowiedzieć. Null = wszystkie są.
+    /// </summary>
+    private string? MissingSkillsNote(WorkProfileSetting profile)
+    {
+        var available = AvailableSkills;
+        var known = ProfilesPanel.Children.OfType<CheckBox>().Select(c => (string)c.Tag).ToHashSet(StringComparer.Ordinal);
+        var missing = profile.Skills.Where(n => !available.Contains(n)).ToList();
+        if (missing.Count == 0)
+        {
+            return null;
+        }
+
+        var parts = missing.Select(n =>
+        {
+            if (!known.Contains(n))
+            {
+                return "„" + n + "” (nie ma jej w folderze umiejętności)";
+            }
+
+            var settings = CloudViewModel.SafeSettings(Path.Combine(_context.ProfilesRoot, n));
+            return settings?.Credential is { Length: > 0 }
+                ? "„" + n + "” (dodaj wpis „" + CredentialName(n, settings) + "” w Ustawieniach → Menedżer poświadczeń)"
+                : "„" + n + "”";
+        });
+        return "Na tym komputerze profil „" + profile.Name + "” nie ma umiejętności: " + string.Join(", ", parts) + ".";
     }
 
     /// <summary>Przełącza model na pierwszy dostępny z preferowanych modeli profilu; gdy żadnego nie ma — mówi, który zostaje.</summary>
@@ -1720,6 +1926,15 @@ public sealed class HarnessContext
     public int ContextLength { get; init; }
 
     public double Temperature { get; init; }
+
+    /// <summary>Ollama na tym komputerze (lista modeli dla podagenta „ten komputer”; zapytania idą przez <see cref="OllamaUrl"/>).</summary>
+    public string LocalOllamaUrl { get; init; } = "";
+
+    /// <summary>Pamięć karty tego komputera w GB (dobór modelu podagenta); null = nieznana.</summary>
+    public double? LocalGpuGb { get; init; }
+
+    /// <summary>Opis karty tego komputera, np. „NVIDIA GeForce RTX 4060 (8 GB)”; null = nie wykryto.</summary>
+    public string? LocalGpuText { get; init; }
 
     public string ProfilesRoot { get; init; } = "";
 

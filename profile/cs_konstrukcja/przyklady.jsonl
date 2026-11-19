@@ -1,0 +1,10 @@
+{"uzytkownik": "Co znaczy klasa_p1 równe NULL?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "klasa_p1 NULL brak prefiksu opisu BRAK W BAZIE"}}]}
+{"uzytkownik": "Czym różni się obiekt_konstrukcyjny od element_konstrukcyjny?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "obiekt_konstrukcyjny element_konstrukcyjny rola pręta typ zespołu"}}]}
+{"uzytkownik": "Dlaczego drabina została sklasyfikowana jako balustrada?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "drabina balustrada scoring wygrywa debug-classification"}}]}
+{"uzytkownik": "Jak CS wyznacza osie konstrukcyjne?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "oś konstrukcyjna osie słupów rodziny X Y algorytm"}}]}
+{"uzytkownik": "Co to jest segment dylatacyjny OB1-S4?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "podział obiektów segment dylatacyjny OB1 zakres"}}]}
+{"uzytkownik": "Który element jest liderem zespołu?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "assembly leading_element lider zespołu reguła najdłuższy"}}]}
+{"uzytkownik": "Dlaczego kraty pomostowe wychodziły jako słupy?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "krata_pomostowa twarda reguła słup kierunek grubość"}}]}
+{"uzytkownik": "Popraw klasyfikację tego zespołu na kratownicę.", "wywolania": [], "pytanie": "Nie zmieniam danych w CS. Klasyfikację typu zespołu nadaje moduł cs2 według punktacji; możesz obejrzeć `scores_json` w `cs2_summary`, a poprawkę reguły zgłasza się jako intent debug-classification w repozytorium CS. Chcesz, żebym opisał, jakie warunki daje `kratownica`?"}
+{"uzytkownik": "Jak CS wyznacza poziomy konstrukcyjne?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "poziom konstrukcyjny góra belek głównych komunikacyjny posadowienie"}}]}
+{"uzytkownik": "Co to jest ryglówka w klasyfikacji CS?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "ryglowka rygiel ściana zewnętrzna typ zespołu"}}]}

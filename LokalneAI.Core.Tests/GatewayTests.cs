@@ -209,6 +209,9 @@ public sealed class GatewayTests
         Assert.Equal("PC-B", item.Computer);
         Assert.Equal("Code: tekla", item.Program);
         Assert.Equal(1, a.Queue.ServedForOthers);
+        var tokens = Assert.Single(a.Tokens.Snapshot());
+        Assert.Equal(("PC-B", false, 1L, 12L, 3L), (tokens.Computer, tokens.IsThisComputer, tokens.Requests, tokens.PromptTokens, tokens.OutputTokens));
+        Assert.Empty(b.Tokens.Snapshot()); // B tylko przekazał — liczył A
 
         using var tooBig = Post(b.LocalUrl + "/api/chat", """{"model":"bielik","messages":[],"options":{"num_ctx":32768}}""", program: "Czat");
         using var refused = await http.SendAsync(tooBig);
@@ -252,6 +255,43 @@ public sealed class GatewayTests
         Assert.Equal("http://127.0.0.1:" + a.Port, peer.Url);
     }
 
+    [Fact]
+    public void KoniecOdpowiedzi_LiczbyTokenowZOllamyIOpenAI_NieZTresci()
+    {
+        var tail = new ResponseTail();
+        tail.Append(Encoding.UTF8.GetBytes("{\"message\":{\"content\":\"pole \\\"eval_count\\\": 99\"},\"done\":false}\n"));
+        tail.Append(Encoding.UTF8.GetBytes(new string('x', 20_000))); // długa odpowiedź: zostaje tylko koniec
+        tail.Append(Encoding.UTF8.GetBytes("{\"done\":true,\"prompt_eval_count\":3462,\"eval_count\":33}\n"));
+        Assert.Equal((3462, 33), tail.Read());
+
+        var content = new ResponseTail();
+        content.Append(Encoding.UTF8.GetBytes("{\"message\":{\"content\":\"\\\"eval_count\\\": 99\"}}"));
+        Assert.Equal((0, 0), content.Read());
+
+        var openAi = new ResponseTail();
+        openAi.Append(Encoding.UTF8.GetBytes("{\"choices\":[],\"usage\":{\"prompt_tokens\":120,\"completion_tokens\":7,\"total_tokens\":127}}"));
+        Assert.Equal((120, 7), openAi.Read());
+    }
+
+    [Fact]
+    public void Liczniki_SumujaPoKomputerze_ResetZeruje()
+    {
+        var tally = new TokenTally();
+        tally.Add("PC-B", "10.0.0.5", false, 100, 10, DateTimeOffset.Now);
+        tally.Add("pc-b", "10.0.0.6", false, 50, 5, DateTimeOffset.Now);
+        tally.Add("PC-A", null, true, 7, 1, DateTimeOffset.Now);
+        var rows = tally.Snapshot();
+        Assert.Equal(2, rows.Count);
+        Assert.True(rows[0].IsThisComputer); // ten komputer pierwszy
+        Assert.Equal((2L, 150L, 15L, "10.0.0.6"), (rows[1].Requests, rows[1].PromptTokens, rows[1].OutputTokens, rows[1].Address));
+
+        tally.Load(rows, new DateTimeOffset(2026, 11, 1, 8, 0, 0, TimeSpan.Zero));
+        Assert.Equal(2, tally.Snapshot().Count);
+        tally.Reset();
+        Assert.Empty(tally.Snapshot());
+        Assert.True(tally.Since > DateTimeOffset.Now.AddMinutes(-1));
+    }
+
     private static QueueItem Item(RequestOrigin origin, string computer, DateTimeOffset arrived)
         => new(origin, computer, "127.0.0.1", "test", "m", arrived);
 
@@ -280,7 +320,7 @@ public sealed class GatewayTests
             var json = request.RequestUri!.AbsolutePath switch
             {
                 "/api/tags" => """{"models":[{"name":"bielik"}]}""",
-                "/api/chat" => "{\"message\":{\"content\":\"Dzień\"},\"done\":false}\n{\"message\":{\"content\":\" dobry\"},\"done\":true}\n",
+                "/api/chat" => "{\"message\":{\"content\":\"Dzień\"},\"done\":false}\n{\"message\":{\"content\":\" dobry\"},\"done\":true,\"prompt_eval_count\":12,\"eval_count\":3}\n",
                 _ => "{}",
             };
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/x-ndjson") };

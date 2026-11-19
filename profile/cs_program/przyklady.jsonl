@@ -1,0 +1,10 @@
+{"uzytkownik": "Jak zainstalować CS-check na nowym komputerze?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "instalacja INSTALUJ.bat Python Node PostgreSQL"}}]}
+{"uzytkownik": "Co zrobić, żeby wrzucony plik IFC pojawił się w projekcie?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "teczka projektu ifc nowa wersja Analizuj w CS"}}]}
+{"uzytkownik": "Jak policzyć tylko spoiny dla kilku modeli naraz?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "serwisy obliczeniowe grupy Dolicz kilka modeli"}}]}
+{"uzytkownik": "Jak wyeksportować model z psetami CS do IFC?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "eksport okno IFC psety profil user Zapisz plik"}}]}
+{"uzytkownik": "Czy CS liczy statykę?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "limity CS nie liczy statyki obliczenia"}}]}
+{"uzytkownik": "Jak przenieść projekt na drugi komputer bez ponownej analizy?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "paczka projektu csx Wynieś projekt Wczytaj"}}]}
+{"uzytkownik": "Ile trwa import typowego modelu?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "czasy importu pełna analiza minuty"}}]}
+{"uzytkownik": "Zaimportuj mi model hali do CS.", "wywolania": [], "pytanie": "Nie wykonuję poleceń w programach. W CS zrobisz to tak: wrzuć plik do `ifc/` w teczce projektu (pojawi się jako wersja) i kliknij „Analizuj w CS” w viewerze, albo w Claude Code w repozytorium CS napisz „zaimportuj mi model z pliku <ścieżka>”. Chcesz opis kroków dokładniej?"}
+{"uzytkownik": "Jak nazwać nowy projekt w CS?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "nazwa projektu numer symbol konwencja biura nowy-projekt"}}]}
+{"uzytkownik": "Co robi okno agenta AI w viewerze?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "okno agenta Agent AI steruje programem karta Agent chce"}}]}

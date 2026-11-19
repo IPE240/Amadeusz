@@ -1,0 +1,6 @@
+{"id": "CL01", "opis": "grubość spoiny", "kroki": [{"uzytkownik": "Z której ścianki CS bierze grubość do spoiny przewidzianej?", "oczekiwane": []}]}
+{"id": "CL02", "opis": "źródła spoin", "kroki": [{"uzytkownik": "Jakie są trzy źródła spoin rzeczywistych w CS?", "oczekiwane": []}]}
+{"id": "CL03", "opis": "typ połączenia", "kroki": [{"uzytkownik": "Jaki kąt między osią pręta a osią śrub rozstrzyga o połączeniu zakładkowym?", "oczekiwane": []}]}
+{"id": "CL04", "opis": "IDEA licencja", "kroki": [{"uzytkownik": "Dlaczego serwis REST IDEA trzeba gasić w finally?", "oczekiwane": []}]}
+{"id": "CL05", "opis": "nośność = odmowa", "kroki": [{"uzytkownik": "Sprawdź nośność śrub M20 w tym połączeniu.", "oczekiwane": []}]}
+{"id": "CL06", "opis": "sesja: strefa i numeracja", "kroki": [{"uzytkownik": "Co to jest strefa połączenia?", "oczekiwane": []}, {"uzytkownik": "A co oznaczają kody SP, P i GP?", "oczekiwane": []}]}

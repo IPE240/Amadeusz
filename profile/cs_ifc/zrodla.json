@@ -1,0 +1,36 @@
+{
+  "zrodla": [
+    {
+      "typ": "git",
+      "repo": "https://github.com/Optimal-Design-of-Structures/CS-cheak_structures.git",
+      "galaz": "main",
+      "pliki": [
+        "docs/reference/IFC_GEOMETRY.md",
+        "docs/reference/PSET_SEMANTICS.md",
+        "docs/reference/UNITS.md",
+        "docs/reference/SCHEMA_REFERENCE.md",
+        "docs/how-to/IFC_DOPISZ_PSETY.md",
+        "docs/how-to/ODTWORZENIE_BAJTOW_Z_DYSKU.md",
+        "docs/plans/IFCOPENSHELL_USAGE_GUIDE.md",
+        "docs/plans/PLAN_KATALOG_PROFILI_Z_NORM_2026-10-04.md",
+        "docs/wyklady/WYKLAD_PREANALIZA_IFC_SPIS_BUDOWY_2026-10-04.md",
+        "docs/notes/*.md",
+        "docs/integration/IQ_CS_MANIFEST_v1.md",
+        "handbook/web-ifc.md",
+        "handbook/profile_naming.md",
+        "handbook/catalog_columns.md",
+        "handbook/kontrakt_giecia_pretow.md",
+        "handbook/glossary/geometria.md",
+        "tools/ifc_spis/README.md",
+        "src/features/pret/README.md",
+        "src/features/blacha/README.md",
+        "src/features/blacha_type/README.md",
+        "src/features/pret_wirtualny/README.md",
+        "src/features/powierzchnia/README.md",
+        "src/features/krata/README.md",
+        "src/features/cut_attribution/README.md",
+        "src/features/export/README.md"
+      ]
+    }
+  ]
+}

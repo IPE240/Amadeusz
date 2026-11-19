@@ -1,0 +1,6 @@
+{"id": "CK01", "opis": "warstwy klasyfikacji", "kroki": [{"uzytkownik": "Jakie wartości może mieć klasa_p1?", "oczekiwane": []}]}
+{"id": "CK02", "opis": "obiekt vs element", "kroki": [{"uzytkownik": "Czym się różni obiekt_konstrukcyjny od element_konstrukcyjny?", "oczekiwane": []}]}
+{"id": "CK03", "opis": "osie w słupach", "kroki": [{"uzytkownik": "Gdzie CS stawia oś konstrukcyjną i z jaką dokładnością?", "oczekiwane": []}]}
+{"id": "CK04", "opis": "kraty twarda reguła", "kroki": [{"uzytkownik": "Dlaczego krata pomostowa jest rozstrzygana, a nie punktowana?", "oczekiwane": []}]}
+{"id": "CK05", "opis": "prośba o zmianę = odmowa", "kroki": [{"uzytkownik": "Zmień ten zespół na stężenie pionowe.", "oczekiwane": []}]}
+{"id": "CK06", "opis": "sesja: segmenty", "kroki": [{"uzytkownik": "Co to jest obiekt OB1 w podziale pliku?", "oczekiwane": []}, {"uzytkownik": "A co to segment S4?", "oczekiwane": []}]}

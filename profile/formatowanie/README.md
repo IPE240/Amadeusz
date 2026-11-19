@@ -5,7 +5,9 @@ z kolumną „Różnica”), kroki jako lista, najważniejszy wynik pogrubiony, 
 Okno Amadeusza (Czat i Code, także panel `HarnessPanel` w innych programach) pokazuje Markdown jako tabelę z ramkami
 i rysuje wykres; menu pod prawym przyciskiem ma „Kopiuj tabele i dane wykresów do Excela”.
 
-- Bez narzędzi i bez wiedzy — sam `system.md` (`Eval rozmiar`: ~1270 tokenów szacunkowo, Bielik 11B liczy go na ok. 2000;
+- Bez narzędzi i bez wiedzy — sam `system.md`. Wybrana sama (np. profil „Baza CDE” na komputerze bez wpisu „cde” w Menedżerze
+  poświadczeń) ma internet, więc `max_krokow` 4 i 2 wywołania w kroku (szukanie, strona, odpowiedź); przy łączeniu z innymi
+  liczba kroków bierze się tylko z ról (`Eval rozmiar`: ~1270 tokenów szacunkowo, Bielik 11B liczy go na ok. 2000;
   ponad połowa to opis pól wykresu). Przy kontekście 8192 zostaje to w budżecie, ale profile z dużą wiedzą (tekla, tablice)
   i tak potrzebują 16384.
 - Domyślnie we wszystkich profilach (Ustawienia → Profile); program dopisał ją raz do istniejących profili.

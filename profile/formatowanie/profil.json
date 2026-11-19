@@ -5,6 +5,6 @@
   "narzedzia_wbudowane": [],
   "chmura": ["anthropic", "openai", "google"],
   "internet": true,
-  "max_krokow": 1,
-  "max_wywolan_w_kroku": 1
+  "max_krokow": 8,
+  "max_wywolan_w_kroku": 2
 }

@@ -1,0 +1,17 @@
+{
+  "zrodla": [
+    {
+      "typ": "git",
+      "repo": "https://github.com/Optimal-Design-of-Structures/CS-cheak_structures.git",
+      "galaz": "main",
+      "pliki": [
+        "docs/how-to/RFEM_API.md",
+        "docs/how-to/RFEM_WYNIKI.md",
+        "docs/how-to/RFEM5_COM.md",
+        "docs/how-to/WYNIKI_3D_POMIAR_IGPU.md",
+        "tools/rfem_client/README.md",
+        "src/features/rfem_mirror/README.md"
+      ]
+    }
+  ]
+}

@@ -10,13 +10,23 @@ Z repozytorium (git clone https://github.com/Optimal-Design-of-Structures/Amadeu
 
 Model moze liczyc:
 - na tym komputerze: instaluj.bat bez parametrow. Instalator zainstaluje Ollame
-  i pobierze model Bielik 11B v3 (polski, SpeakLeash; ok. 7 GB, potrzebne ok. 8 GB
-  wolnego miejsca). Najlepiej karta graficzna z 8 GB pamieci lub wiecej.
+  i zapyta, ktore modele pobrac. Lista pokazuje rozmiar kazdego modelu i gwiazdka
+  zalecany dla tej karty graficznej:
+    [1] Bielik 11B v3          6,7 GB  karta 8 GB (domyslny w biurze)
+    [2] Qwen3.5 9B             6,6 GB  karta 8 GB (najcelniejszy w Code)
+    [3] Bielik-Minitron 7B v3  4,5 GB  karta 6 GB
+    [4] Qwen3.5 4B             3,3 GB  karta 4 GB
+    [5] Qwen3.5 2B             1,9 GB  slaby komputer albo bez karty
+    [6] Bielik 1.5B v3         1,7 GB  tylko Czat
+  Wpisz numery po przecinku (np. 4,6); pierwszy bedzie modelem domyslnym programu.
+  Mozna tez wpisac pelna nazwe innego modelu z ollama.com. Enter = zalecany
+  (albo nic, gdy na komputerze sa juz modele), 0 = bez modelu.
 - na serwerze w biurze: instaluj.bat -SerwerModelu http://<serwer>:11434
   (Ollama na tym komputerze nie jest wtedy potrzebna).
 
-Inny model: instaluj.bat -Model <nazwa>, np. szybszy i mniejszy
-  -Model SpeakLeash/bielik-minitron-7B-v3.0-instruct:Q4_K_M
+Bez pytania: instaluj.bat -Model qwen3.5:4b-q4_K_M (kilka po przecinku)
+  albo instaluj.bat -BezPytan (model zalecany dla tego komputera).
+Kolejne modele mozna dobrac pozniej, uruchamiajac instaluj.bat jeszcze raz.
 
 URUCHOMIENIE
 Menu Start albo skrot na pulpicie: Amadeusz. Okno ma trzy zakladki:

@@ -1,0 +1,19 @@
+{
+  "zrodla": [
+    {
+      "typ": "git",
+      "repo": "https://github.com/Optimal-Design-of-Structures/CS-cheak_structures.git",
+      "galaz": "main",
+      "pliki": [
+        "docs/reference/ROBOT_COM_API.md",
+        "docs/how-to/ROBOT_DO_IFC_WYTEZENIE.md",
+        "handbook/pitfalls/programy_zewnetrzne.md",
+        "src/features/mes_robot/README.md",
+        "tools/rfem_to_robot/README.md",
+        "tools/rfem_to_robot/MAPOWANIE.md",
+        "tools/jadro_pretowe/README.md",
+        "tools/k0_eksperyment/README.md"
+      ]
+    }
+  ]
+}

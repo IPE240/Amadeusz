@@ -32,6 +32,16 @@ public sealed class CodeConversation
 
     public DateTime Updated { get; set; }
 
+    /// <summary>
+    /// Kiedy użytkownik ostatnio wysłał polecenie (Enter) — po tym sortuje się lista rozmów. Zapis rozmowy bez nowego polecenia
+    /// (przejście do innej, zmiana nazwy, przeniesienie) go nie zmienia. Null w plikach sprzed tej zmiany — wtedy <see cref="Updated"/>.
+    /// </summary>
+    public DateTime? LastPrompt { get; set; }
+
+    /// <summary>Data do sortowania listy rozmów: ostatnie polecenie, a w starszych plikach ostatni zapis.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public DateTime Activity => LastPrompt ?? Updated;
+
     /// <summary>Profile, z którymi rozmowa była ostatnio prowadzona (np. <c>tekla</c>, <c>komputer</c>).</summary>
     public List<string> Profiles { get; set; } = [];
 
@@ -57,6 +67,13 @@ public sealed class CodeConversationEntry
 
     /// <summary>Wynik wywołania: true/false; null = nie dotyczy.</summary>
     public bool? Success { get; set; }
+
+    /// <summary>Tokeny i czasy przy wpisie (zakładka Code z „Pokaż tokeny i czasy”); null = brak.</summary>
+    public string? Metrics { get; set; }
+
+    /// <summary>Wpisy podrzędne (rodzaj <c>Agent</c> = podagent: jego polecenie, wywołania, kroki i odpowiedź); null = zwykły wpis.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<CodeConversationEntry>? Children { get; set; }
 }
 
 /// <summary>Wiadomość dla modelu.</summary>
@@ -118,7 +135,7 @@ public static class CodeConversationStore
             var conversation = Load(file);
             if (conversation is not null)
             {
-                list.Add(new CodeConversationInfo(Path.GetFileNameWithoutExtension(file), conversation.Title, conversation.Updated, file));
+                list.Add(new CodeConversationInfo(Path.GetFileNameWithoutExtension(file), conversation.Title, conversation.Activity, file));
             }
         }
 

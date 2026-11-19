@@ -5,6 +5,6 @@
   "internet": true,
   "zakonczenie": "auto",
   "narzedzia_wbudowane": [],
-  "max_krokow": 4,
+  "max_krokow": 8,
   "max_wywolan_w_kroku": 4
 }

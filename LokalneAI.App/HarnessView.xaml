@@ -128,8 +128,9 @@
                                               ToolTip="Zmiany wykonują się od razu; kasowanie i inne ryzykowne polecenia nadal pytają. Działa do zamknięcia programu." />
                             </ComboBox>
                         </StackPanel>
-                        <CheckBox x:Name="StepsBox" Content="Pokaż kroki modelu (JSON)" VerticalAlignment="Center" Margin="14,0,0,0"
-                                  Checked="Steps_Changed" Unchecked="Steps_Changed" />
+                        <CheckBox x:Name="StepsBox" Content="Pokaż kroki modelu" VerticalAlignment="Center" Margin="14,0,0,0"
+                                  Checked="Steps_Changed" Unchecked="Steps_Changed"
+                                  ToolTip="Wpis „Krok N” po każdej odpowiedzi modelu: wywołania, odpowiedź, pytanie albo plan; surowy JSON w szczegółach. Ten sam przełącznik: Ustawienia → Czat → Diagnostyka. Wpisy zapisują się zawsze — to tylko widok." />
                     </WrapPanel>
                     <!-- Źródła wiedzy i aktualizacja dokumentacji: Ustawienia → Umiejętności. -->
                     <WrapPanel Margin="0,8,0,0">

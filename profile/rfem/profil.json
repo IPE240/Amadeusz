@@ -3,7 +3,7 @@
   "opis": "Czytanie modeli RFEM 5 (.rf5) z pliku, bez programu Dlubal: węzły, pręty z przekrojem i długością, przekroje, materiały, przypadki i kombinacje obciążeń, a po obliczeniu także siły wewnętrzne w prętach (N, Vy, Vz, Mt, My, Mz) dla kombinacji. Tylko do odczytu.",
   "zakonczenie": "model",
   "narzedzia_wbudowane": ["szukaj_wiedzy", "kalkulator"],
-  "max_krokow": 6,
+  "max_krokow": 12,
   "max_wywolan_w_kroku": 3,
   "temperatura": 0.1
 }

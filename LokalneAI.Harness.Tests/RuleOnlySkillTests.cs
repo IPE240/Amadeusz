@@ -27,4 +27,20 @@ public class RuleOnlySkillTests
         Assert.DoesNotContain("# Rola: formatowanie", three.SystemText);
         Assert.False(three.Settings.Internet);                          // cde nadal wyłącza internet
     }
+
+    [Fact]
+    public void Formatowanie_KrokiZRol_ASamoMaKilkaKrokow()
+    {
+        var cde = HarnessProfile.Load(Paths.Profile("cde"));
+        var tekla = HarnessProfile.Load(Paths.Profile("tekla"));
+        var formatowanie = HarnessProfile.Load(Paths.Profile("formatowanie"));
+
+        // Zasady odpowiedzi nie zmieniają liczby kroków ról.
+        Assert.Equal(tekla.Settings.MaxSteps, HarnessProfile.Combine([tekla, formatowanie]).Settings.MaxSteps);
+        Assert.Equal(cde.Settings.MaxSteps, HarnessProfile.Combine([cde, formatowanie]).Settings.MaxSteps);
+        Assert.Equal(tekla.Settings.MaxCallsPerStep, HarnessProfile.Combine([tekla, formatowanie]).Settings.MaxCallsPerStep);
+
+        // Samo „formatowanie” (np. profil „Baza CDE” na komputerze bez bazy cde) ma internet: szukanie, strona i odpowiedź.
+        Assert.True(formatowanie.Settings.MaxSteps >= 3);
+    }
 }

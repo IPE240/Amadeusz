@@ -1,0 +1,29 @@
+{
+  "zrodla": [
+    {
+      "typ": "git",
+      "repo": "https://github.com/Optimal-Design-of-Structures/CS-cheak_structures.git",
+      "galaz": "main",
+      "pliki": [
+        "handbook/glossary/obliczenia.md",
+        "handbook/glossary/obciazenia.md",
+        "handbook/glossary/obudowa.md",
+        "handbook/pitfalls/mes_model_obliczeniowy.md",
+        "docs/wyklady/WYKLAD_MODEL_MES_WPROWADZENIE_2026-09-15.md",
+        "docs/wyklady/WYKLAD_OBUDOWA_PLASZCZYZNY_OBCIAZENIA_2026-10-31.md",
+        "docs/wyklady/WYKLAD_DANE_ANALIZY_SZYBKIE_WYNIKI_2026-09-19.md",
+        "docs/plans/PLAN_MODEL_MES_Z_IFC_2026-09-17.md",
+        "docs/plans/PLAN_OBUDOWA_OBCIAZENIA_2026-10-31.md",
+        "docs/plans/PLAN_SOLWER_MES_W_CS_2026-10-31.md",
+        "docs/plans/RAPORT_SOLWERY_MKK_OPTIMAFEA_2026-10-31.md",
+        "docs/plans/PYTANIA_WYNIKI_3D_2026-10-08.md",
+        "docs/help/obciazenia_*.md",
+        "src/features/mes/README.md",
+        "src/features/static/README.md",
+        "src/features/loads/README.md",
+        "src/features/model_compare/README.md",
+        "src/features/results3d/README.md"
+      ]
+    }
+  ]
+}

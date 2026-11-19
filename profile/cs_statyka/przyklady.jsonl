@@ -1,0 +1,10 @@
+{"uzytkownik": "Jak CS znajduje podpory w modelu MES?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "podpory łańcuch prętów słupy podstawa modelu węzeł obliczeniowy"}}]}
+{"uzytkownik": "Co to jest pręt sztywny wirtualny w modelu obliczeniowym?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "pret_systemu rola sztywny_wirtualny uzupelniajacy"}}]}
+{"uzytkownik": "Które elementy są wykluczone z modelu MES?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "MES wykluczone drabina balustrada krata R19"}}]}
+{"uzytkownik": "Jakie przypadki śniegu liczy zakładka Obciążenia?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "śnieg przypadki normowe 5.3.2 5.3.6 nawis barierka"}}]}
+{"uzytkownik": "Co znaczy flaga lewituje_bez_dowodu?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "flaga_luk lewituje bez dowodu łącznik"}}]}
+{"uzytkownik": "Jak nałożyć model z Robota na model z Tekli?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "model_compare przesunięcie układów dopasuj model obliczeniowy fizyczny"}}]}
+{"uzytkownik": "Czy CS pobiera obciążenia z RFEM?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "obciążenia load case RFEM nie pobiera kombinacje sytuacje"}}]}
+{"uzytkownik": "Policz statykę tego modelu.", "wywolania": [], "pytanie": "CS nie liczy statyki. Buduje model prętowy z IFC i wysyła go do solvera: w toolkicie zakładka MES → Robot („Wyślij do Robota”), a wyniki wracają do CS na Układy i do 3D. Chcesz, żebym opisał kroki wysyłki do Robota?"}
+{"uzytkownik": "W jakich jednostkach jest schemat static?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "static zasady twarde SI metry niutony jednostki"}}]}
+{"uzytkownik": "Czym jest powierzchnia obciążenia w łuku obudowy?", "wywolania": [{"narzedzie": "szukaj_wiedzy", "argumenty": {"fraza": "powierzchnia obciążenia obudowa kierunek przenoszenia pręty podporowe"}}]}

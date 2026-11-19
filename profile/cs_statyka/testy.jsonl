@@ -1,0 +1,6 @@
+{"id": "CS01", "opis": "granica: CS nie liczy", "kroki": [{"uzytkownik": "Czy CS sam liczy siły wewnętrzne w modelu MES?", "oczekiwane": []}]}
+{"id": "CS02", "opis": "łańcuch prętów i podpora", "kroki": [{"uzytkownik": "Gdzie w łańcuchu słupów CS stawia automatyczną podporę?", "oczekiwane": []}]}
+{"id": "CS03", "opis": "jednostki static", "kroki": [{"uzytkownik": "W jakich jednostkach jest schemat static?", "oczekiwane": []}]}
+{"id": "CS04", "opis": "śnieg dach bliski decyzja", "kroki": [{"uzytkownik": "Jak szczelina między dachami wpływa na zaspę w przypadku 5.3.6 w CS?", "oczekiwane": []}]}
+{"id": "CS05", "opis": "prośba o obliczenie = odmowa", "kroki": [{"uzytkownik": "Oblicz reakcje podporowe hali.", "oczekiwane": []}]}
+{"id": "CS06", "opis": "sesja: porównanie modeli", "kroki": [{"uzytkownik": "Co to jest przesunięcie układów w model_compare?", "oczekiwane": []}, {"uzytkownik": "Jaki znak ma zapisane d?", "oczekiwane": []}]}

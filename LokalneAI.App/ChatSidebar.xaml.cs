@@ -37,7 +37,7 @@ public partial class ChatSidebar : UserControl
     {
         _viewModel = viewModel;
         _root = root ?? ChatConversationStore.DefaultRoot;
-        viewModel.ChatTurnEnded += (_, _) => SaveCurrent();
+        viewModel.ChatTurnEnded += (_, _) => SaveCurrent(newPrompt: true);
         viewModel.ChatCleared += (_, _) => StartNew(_currentGroup ?? _groups.FirstOrDefault());
         LoadGroups();
     }
@@ -73,8 +73,11 @@ public partial class ChatSidebar : UserControl
         _currentGroup = _groups[0];
     }
 
-    /// <summary>Zapisuje bieżącą rozmowę (po każdej odpowiedzi). Pusta rozmowa się nie zapisuje.</summary>
-    public void SaveCurrent()
+    /// <summary>
+    /// Zapisuje bieżącą rozmowę. Pusta rozmowa się nie zapisuje. Na górę listy idzie tylko po nowym pytaniu
+    /// (<paramref name="newPrompt"/>); zmiana nazwy kolejności nie zmienia (lista sortuje się po ostatnim pytaniu).
+    /// </summary>
+    public void SaveCurrent(bool newPrompt = false)
     {
         if (!Persist || _viewModel is null || _viewModel.Exchanges.Count == 0)
         {
@@ -87,6 +90,15 @@ public partial class ChatSidebar : UserControl
         {
             var first = exchanges[0].Question.ReplaceLineEndings(" ").Trim();
             _current.Title = first.Length <= 60 ? first : first[..60].TrimEnd() + "…";
+        }
+
+        if (newPrompt)
+        {
+            _current.LastPrompt = DateTime.Now;
+        }
+        else if (_current.LastPrompt is null && _current.Updated != default)
+        {
+            _current.LastPrompt = _current.Updated;
         }
 
         _current.Updated = DateTime.Now;
@@ -113,16 +125,16 @@ public partial class ChatSidebar : UserControl
 
         if (_currentNode is null || !ReferenceEquals(_currentNode.Group, group))
         {
-            _currentNode = new ConversationNode(group, _current.Id, _current.Title, _current.Updated);
-            group.Conversations.Insert(0, _currentNode);
+            _currentNode = new ConversationNode(group, _current.Id, _current.Title, _current.Activity);
+            group.InsertSorted(_currentNode);
             group.IsExpanded = true;
         }
         else
         {
             _currentNode.Title = _current.Title;
-            _currentNode.Updated = _current.Updated;
+            _currentNode.Updated = _current.Activity;
             var index = group.Conversations.IndexOf(_currentNode);
-            if (index > 0)
+            if (newPrompt && index > 0)
             {
                 group.Conversations.Move(index, 0);
             }
@@ -435,7 +447,7 @@ public partial class ChatSidebar : UserControl
 
         node.Group.Conversations.Remove(node);
         node.Group = target;
-        target.Conversations.Insert(0, node);
+        target.InsertSorted(node);
         target.IsExpanded = true;
         if (ReferenceEquals(node, _currentNode))
         {
