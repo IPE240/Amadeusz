@@ -141,6 +141,53 @@ public sealed class WebTests
     }
 
     [Fact]
+    public async Task Sesja_ZaslepkaZamiastAdresu_PodpowiedzZAdresemZWynikow_ModelOtwieraPoprawny()
+    {
+        // gemma4:12b (2026-11-20): wyszukanie i otwarcie w jednym kroku, z adresem-zaślepką. Odmowa ma podsunąć adres z wyników
+        // (zapamiętany od razu po wyszukaniu), a nie kazać „nie ponawiaj” — model poprawia się w następnym kroku.
+        var settings = new ProfileSettings { Internet = true };
+        var profile = new HarnessProfile("czat", "Odpowiadasz po polsku.", Array.Empty<ToolDefinition>(), settings).WithInternet();
+        var llm = new ScriptedLlm(
+            "{\"krok\":\"wywolania\",\"wywolania\":[{\"narzedzie\":\"szukaj_w_internecie\",\"argumenty\":{\"fraza\":\"PN-EN 1993\"}},"
+            + "{\"narzedzie\":\"czytaj_strone\",\"argumenty\":{\"adres\":\"wynik_szukania_pkn\"}}]}",
+            "{\"krok\":\"wywolania\",\"wywolania\":[{\"narzedzie\":\"czytaj_strone\",\"argumenty\":{\"adres\":\"https://sklep.pkn.pl/pn-en-1993.html\"}}]}",
+            "{\"krok\":\"odpowiedz\",\"tekst\":\"To Eurokod 3.\"}");
+        using var web = Web(request => Html(request.RequestUri!.Host.Contains("duckduckgo") ? LiteHtml : "<title>PN-EN 1993</title><p>Eurokod 3</p>"));
+        using var session = new HarnessSession(llm, profile, null, new SessionOptions { Web = web });
+
+        var result = await session.SendAsync("Co to jest PN-EN 1993?");
+
+        Assert.Equal(3, result.Calls.Count);
+        Assert.StartsWith("NIE OTWORZONO", result.Calls[1].Result);
+        Assert.Contains("1) https://sklep.pkn.pl/pn-en-1993.html", result.Calls[1].Result);
+        Assert.DoesNotContain("nie ponawiaj", result.Calls[1].Result, StringComparison.OrdinalIgnoreCase);
+        Assert.True(result.Calls[2].Success, result.Calls[2].Result);
+        Assert.Contains("Eurokod 3", result.Calls[2].Result);
+    }
+
+    [Fact]
+    public async Task Sesja_ZgadnietyAdresNieDziala_BladZAdresamiZWynikow()
+    {
+        // gemma4:12b, 2026-11-20: po wyszukaniu otworzył zgadnięty adres w domenie z polecenia (nie istniał) i zapytał o inne źródło,
+        // choć właściwy adres miał w wynikach. Błąd strony ma podsunąć adresy z wyników.
+        var settings = new ProfileSettings { Internet = true };
+        var profile = new HarnessProfile("czat", "Odpowiadasz po polsku.", Array.Empty<ToolDefinition>(), settings).WithInternet();
+        var llm = new ScriptedLlm(
+            "{\"krok\":\"wywolania\",\"wywolania\":[{\"narzedzie\":\"szukaj_w_internecie\",\"argumenty\":{\"fraza\":\"PN-EN 1993 sklep.pkn.pl\"}},"
+            + "{\"narzedzie\":\"czytaj_strone\",\"argumenty\":{\"adres\":\"https://sklep.pkn.pl/zgadniete\"}}]}",
+            "{\"krok\":\"odpowiedz\",\"tekst\":\"x\"}");
+        using var web = Web(request => request.RequestUri!.Host.Contains("duckduckgo") ? Html(LiteHtml)
+            : request.RequestUri.AbsolutePath.Contains("zgadniete") ? new HttpResponseMessage(HttpStatusCode.NotFound) : Html("<p>Eurokod 3</p>"));
+        using var session = new HarnessSession(llm, profile, null, new SessionOptions { Web = web });
+
+        var result = await session.SendAsync("Co to jest PN-EN 1993? Sprawdź na sklep.pkn.pl");
+
+        Assert.False(result.Calls[1].Success);
+        Assert.Contains("1) https://sklep.pkn.pl/pn-en-1993.html", result.Calls[1].Result);
+        Assert.DoesNotContain("zgadniete", result.Calls[1].Result.Substring(result.Calls[1].Result.IndexOf("1)", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public async Task Sesja_BezDostepu_ModelDostajeBlad()
     {
         var profile = new HarnessProfile("czat", "x", Array.Empty<ToolDefinition>(), new ProfileSettings { Internet = true }).WithInternet();

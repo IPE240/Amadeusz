@@ -266,6 +266,7 @@ Najczęściej potrzebne pola `ustawienia.json`:
 | `model`, `modelProvider` | wybrany model; `modelProvider` pusty = Ollama, inaczej `anthropic` / `openai` / `google` |
 | `contextLength` | kontekst czatu |
 | `codeContextLength` | kontekst zakładki Code (lista „Kontekst” nad rozmową): 8192, 16384, 32768 albo 0 = jak w Czacie, ale co najmniej 16384 |
+| `codeSkillSearch` | pole „Szukaj brakujących umiejętności” w zakładce Code (domyślnie `false`) |
 | `computeOn`, `computeOnName` | „Gdzie liczyć”: adres bramy innego komputera; `null` = ten komputer |
 | `shareOnLan`, `gatewayPort`, `maxContextForOthers` | udostępnianie, port bramy, limit kontekstu dla innych |
 | `agentMachines`, `agentsUseThisComputer` | komputery dla podagentów |

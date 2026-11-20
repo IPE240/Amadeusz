@@ -17,6 +17,11 @@ public class TurnIntentTests
     [InlineData("nie szukaj w internecie, tylko powiedz z głowy", false)]
     [InlineData("przeczytaj, co jest na stronie 5 raportu", false)]
     [InlineData("poszukaj plików PDF w folderze", false)]
+    [InlineData("pobierz prognozę pogody dla Krakowa z interii.pl i zrób wykres temperatury", true)]
+    [InlineData("weź dane ze strony meteo.pl", true)]
+    [InlineData("otwórz https://example.com/katalog", true)]
+    [InlineData("zestawienie.xlsx ma błąd w kolumnie B", false)]
+    [InlineData("w wersji 2.5 programu", false)]
     public void ProsbaOInternet(string text, bool expected) => Assert.Equal(expected, TurnIntent.AsksForWeb(text));
 
     [Theory]
@@ -49,6 +54,25 @@ public class TurnIntentTests
         Assert.Equal(2, llm.Requests.Count);                                  // jedno cofnięcie, potem koniec (bez pętli)
         Assert.Contains("Nie sprawdziłeś w internecie", llm.Requests[1].Messages.Last().Content);
         Assert.Contains(result.Warnings, w => w.Contains("bez sprawdzenia w internecie"));
+    }
+
+    [Fact]
+    public async Task ProsbaOStrone_ModelPytaZamiastSzukac_ProgramKazeSprawdzic()
+    {
+        // gemma4:12b, 2026-11-20: „pobierz prognozę z interii.pl…” → „Nie mam możliwości pobierania danych ze stron, wklej je”.
+        var llm = new ScriptedLlm(
+            "{\"krok\":\"pytanie\",\"tekst\":\"Nie mam możliwości pobierania danych ze stron. Wkleisz prognozę?\"}",
+            "{\"krok\":\"pytanie\",\"tekst\":\"Nadal nie mogę.\"}");
+        using var web = new WebAccess();
+        using var session = new HarnessSession(llm, Chat(), null, new SessionOptions { Web = web });
+
+        var result = await session.SendAsync("pobierz prognozę pogody dla Krakowa z interii.pl i zrób wykres");
+
+        Assert.Contains(TurnIntent.WebHint, llm.Requests[0].Messages.Last().Content);
+        Assert.Equal(2, llm.Requests.Count);                                  // jedno cofnięcie, potem pytanie trafia do użytkownika
+        Assert.Contains("Nie pytaj", llm.Requests[1].Messages.Last().Content);
+        Assert.Equal(TurnKind.Question, result.Kind);
+        Assert.Contains(result.Warnings, w => w.Contains("zapytał zamiast sprawdzić"));
     }
 
     [Fact]

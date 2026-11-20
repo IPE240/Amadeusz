@@ -129,6 +129,9 @@ namespace LokalneAI.Harness.Tools
         private readonly HashSet<string> _knownUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _userDomains = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _modelUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Znane adresy w kolejności poznania (do podpowiedzi po odmowie: „te możesz otworzyć”).</summary>
+        private readonly List<string> _knownOrder = new List<string>();
         private readonly object _gate = new object();
 
         /// <summary>Tworzy strażnika z ustawieniami gospodarza i folderami umiejętności sesji (chronionymi przed zmianą).</summary>
@@ -160,7 +163,11 @@ namespace LokalneAI.Harness.Tools
             {
                 foreach (var url in UrlsIn(text).Select(SafetyRules.NormalizeUrl).Where(u => u != null))
                 {
-                    _knownUrls.Add(url);
+                    if (_knownUrls.Add(url))
+                    {
+                        _knownOrder.Add(url);
+                    }
+
                     if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
                     {
                         _userDomains.Add(SafetyRules.RegistrableDomain(uri.Host));
@@ -206,11 +213,23 @@ namespace LokalneAI.Harness.Tools
             {
                 foreach (var url in UrlsIn(text).Select(SafetyRules.NormalizeUrl).Where(u => u != null))
                 {
-                    if (!_modelUrls.Contains(url))
+                    if (!_modelUrls.Contains(url) && _knownUrls.Add(url))
                     {
-                        _knownUrls.Add(url);
+                        _knownOrder.Add(url);
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Ostatnio poznane adresy, które wolno otworzyć (od użytkownika, z wyników wyszukiwania, stron i wiedzy), najnowsze najpierw — do
+        /// podpowiedzi dla modelu, gdy próbował otworzyć adres zgadnięty albo zaślepkę.
+        /// </summary>
+        internal IReadOnlyList<string> RecentKnownUrls(int max)
+        {
+            lock (_gate)
+            {
+                return Enumerable.Reverse(_knownOrder).Take(Math.Max(0, max)).ToList();
             }
         }
 

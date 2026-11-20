@@ -34,6 +34,12 @@ public sealed class AppSettings
     /// </summary>
     public int CodeContextLength { get; set; }
 
+    /// <summary>
+    /// Zakładka Code: gdy modelowi brakuje polecenia, szuka w niezaznaczonych umiejętnościach i prosi o ich włączenie (pole „Szukaj
+    /// brakujących umiejętności” nad rozmową). Domyślnie wyłączone (2026-11-20): model prosił o niepotrzebne umiejętności i zapychał kontekst.
+    /// </summary>
+    public bool CodeSkillSearch { get; set; }
+
     /// <summary>Wysyłać modelowi wcześniejsze pytania i odpowiedzi.</summary>
     public bool RememberConversation { get; set; }
 

@@ -184,7 +184,9 @@ Zasady: [docs/zasady-opisow-dla-ai.md](docs/zasady-opisow-dla-ai.md). W tym repo
   Sesję podagenta buduje `HarnessView.BuildSession` przez `Dispatcher.InvokeAsync` (czyta pola okna: foldery, most Tekli).
   Wpisy „Krok N” (`PanelEntryKind.Step`) powstają zawsze, a `ShowModelSteps` tylko je pokazuje; przebieg podagenta to
   `PanelEntry.Children` zapisywane jako `CodeConversationEntry.Children`.
-- **Brakujące umiejętności (`ISkillCatalog`):** katalog dostaje tylko sesja główna Code (`BuildSession(canSwitchSkills: true)`,
+- **Brakujące umiejętności (`ISkillCatalog`):** katalog dostaje tylko sesja główna Code i tylko z polem „Szukaj brakujących
+  umiejętności” (`AppSettings.CodeSkillSearch`, domyślnie wyłączone od 2026-11-20 — model prosił o niepotrzebne umiejętności, np. przy
+  pogodzie z wykresem, aż zapchał kontekst) (`BuildSession(canSwitchSkills: true)`,
   `HarnessView.Skills.cs`); podagent i tablica — nie. Narzędzia katalogu są wbudowane, więc omijają `SafetyGuard` — dlatego
   `wlacz_umiejetnosci` niczego nie włącza bez kliknięcia „Tak, włącz i ponów” (`HarnessPanel.AskAsync`; tylko kontrola
   `AutoConfirm` zatwierdza sama). Włączenie idzie przez `RequestSkills(…, "dodaj")` i `ApplyPendingSkills` (umiejętność

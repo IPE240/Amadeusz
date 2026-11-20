@@ -13,8 +13,11 @@ namespace LokalneAI.Harness.Session
     /// </summary>
     public static class TurnIntent
     {
+        // Także nazwa serwisu albo adres („z interii.pl”, „ze strony meteo.pl”, https://…) — 2026-11-20: „pobierz prognozę z interii.pl”
+        // nie była rozpoznana i gemma4:12b odpisał, że nie umie pobierać ze stron.
         private static readonly Regex Web = new Regex(
-            @"\b(interne\w*|necie|necik\w*|online|\w*googl\w*|wyszukiwar\w*|www)\b|\bw\s+sieci\b",
+            @"\b(interne\w*|necie|necik\w*|online|\w*googl\w*|wyszukiwar\w*|www)\b|\bw\s+sieci\b|https?://"
+            + @"|\b[a-z0-9-]+(\.[a-z0-9-]+)*\.(pl|com|eu|org|net|info|de|uk|io|gov|edu)\b",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private static readonly Regex NoWeb = new Regex(

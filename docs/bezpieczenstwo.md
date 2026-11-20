@@ -95,6 +95,10 @@ rozpoznanie sieci biura; w pętli albo po zakresie adresów — blokada), szyfro
 - W domenie podanej przez użytkownika wolno też inne strony **bez parametrów** (bez `?…`), ze ścieżką do 120 znaków i bez członów
   wyglądających na dane (40 i więcej znaków base64 albo 32 szesnastkowych — nazwy stron z myślnikami są w porządku). Adres złożony
   przez model jest blokowany — mógłby nieść dane w zapytaniu.
+- Odmowa przy `czytaj_strone` i `szukaj_w_internecie` to zwykle pomyłka modelu (adres zgadnięty albo zaślepka w tym samym kroku co
+  wyszukiwanie), nie atak: model dostaje „NIE OTWORZONO” z listą adresów, które wolno otworzyć (od użytkownika i z wyników — wyniki
+  są znane od razu po wyszukaniu), a nie „ZABLOKOWANE… nie ponawiaj”, po którym gemma4:12b się poddawał (2026-11-20). Granica jest
+  ta sama, wpis w dzienniku blokad też. Tę samą listę dostaje model, gdy zgadnięty adres nie działa (błąd strony, certyfikatu).
 - Ta sama zasada dotyczy pobierania w PowerShellu (`Invoke-WebRequest`), adresów przekazywanych programom (`uruchom chrome …`,
   `Start-Process`) i zleceń dla podagentów (adres i domena w treści zlecenia). Adres w zwykłym tekście (notatka, przestrzeń nazw
   XML) niczego nie wysyła i nie jest sprawdzany.

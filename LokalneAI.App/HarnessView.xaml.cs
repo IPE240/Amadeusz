@@ -122,6 +122,7 @@ public partial class HarnessView : UserControl
         var chosen = settings.HarnessProfiles ?? (settings.HarnessProfile is { } old ? [old] : []);
         _loading = true;
         StepsBox.IsChecked = settings.ShowSteps;
+        SkillSearchBox.IsChecked = settings.CodeSkillSearch;
         ContextBox.SelectedItem = ContextBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == settings.CodeContextLength.ToString(CultureInfo.InvariantCulture))
                                   ?? ContextBox.Items[0];
         ProfilesPanel.Children.Clear();
@@ -1106,9 +1107,10 @@ public partial class HarnessView : UserControl
             // Strażnik bezpieczeństwa (docs\bezpieczenstwo.md) — ten sam dla sesji głównej i podagentów.
             Safety = SafetyFor(),
         };
-        if (canSwitchSkills)
+        if (canSwitchSkills && _context.Settings.CodeSkillSearch)
         {
-            // Sesja główna Code: zamiast „nie mam narzędzia” model szuka wśród niezaznaczonych umiejętności i prosi o włączenie.
+            // Sesja główna Code, tylko z polem „Szukaj brakujących umiejętności” (domyślnie wyłączone, 2026-11-20 — model prosił
+            // o niepotrzebne umiejętności i zapychał kontekst): zamiast „nie mam narzędzia” szuka w niezaznaczonych i prosi o włączenie.
             options.SkillCatalog = CreateSkillCatalog(parts.Select(p => p.Name));
         }
 
@@ -1621,6 +1623,37 @@ public partial class HarnessView : UserControl
 
     /// <summary>Zmienił się przełącznik kroków nad rozmową (okno odświeża Ustawienia).</summary>
     public event EventHandler? ShowStepsChanged;
+
+    /// <summary>
+    /// Pole „Szukaj brakujących umiejętności”: katalog umiejętności w sesji (<see cref="AppSettings.CodeSkillSearch"/>). Rozmowa trwa dalej —
+    /// następne polecenie pójdzie do sesji z katalogiem albo bez niego.
+    /// </summary>
+    private void SkillSearch_Changed(object sender, RoutedEventArgs e)
+    {
+        var on = SkillSearchBox.IsChecked == true;
+        if (_loading || _context.Settings.CodeSkillSearch == on)
+        {
+            return;
+        }
+
+        _context.Settings.CodeSkillSearch = on;
+        if (_saveSettings)
+        {
+            _context.Save?.Invoke();
+        }
+
+        if (!Panel.IsBusy)
+        {
+            RebuildSession();
+        }
+
+        if (Panel.Entries.Count > 0)
+        {
+            Panel.AddInfo(on
+                ? "Od teraz model może szukać brakujących umiejętności i prosić o ich włączenie (rozmowa trwa dalej)."
+                : "Od teraz model nie szuka innych umiejętności — pracuje tymi, które są zaznaczone (rozmowa trwa dalej).");
+        }
+    }
 
     /// <summary>
     /// Lista „Kontekst” nad rozmową: własny kontekst zakładki Code (<see cref="AppSettings.CodeContextLength"/>; 0 = jak w Czacie, min. 16 384).

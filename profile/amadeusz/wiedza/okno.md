@@ -11,7 +11,7 @@ Zakładka **Whiteboard**: tablica z narzędziami jak w Lightshocie — Zaznacz (
 
 # Brakujące umiejętności: szukanie i przycisk „Tak, włącz i ponów”
 
-Gdy w zakładce Code do polecenia brakuje narzędzia, Amadeusz nie mówi „nie potrafię”: szuka wśród niezaznaczonych umiejętności (znajdz_umiejetnosc) i prosi o włączenie pasującej (wlacz_umiejetnosci). W rozmowie pojawia się pytanie z przyciskami **Tak, włącz i ponów** / **Nie**. Po zgodzie umiejętność dochodzi do zaznaczonych, a polecenie idzie jeszcze raz samo, z całą rozmową (najwyżej dwa ponowienia z rzędu). Pomijane są umiejętności ukryte, bez poświadczenia i niedozwolone dla wybranego modelu w chmurze. Tablica (Whiteboard) i podagenci tego nie mają.
+Działa tylko z polem „Szukaj brakujących umiejętności” nad rozmową (domyślnie wyłączone; ustawienie codeSkillSearch). Wtedy, gdy w zakładce Code do polecenia brakuje narzędzia, Amadeusz nie mówi „nie potrafię”: szuka wśród niezaznaczonych umiejętności (znajdz_umiejetnosc) i prosi o włączenie pasującej (wlacz_umiejetnosci). W rozmowie pojawia się pytanie z przyciskami **Tak, włącz i ponów** / **Nie**. Po zgodzie umiejętność dochodzi do zaznaczonych, a polecenie idzie jeszcze raz samo, z całą rozmową (najwyżej dwa ponowienia z rzędu). Pomijane są umiejętności ukryte, bez poświadczenia i niedozwolone dla wybranego modelu w chmurze. Tablica (Whiteboard) i podagenci tego nie mają.
 
 # Wklejony obrazek: OCR i obraz dla modelu (Code, Czat)
 

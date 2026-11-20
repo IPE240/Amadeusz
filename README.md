@@ -190,7 +190,8 @@ a z przełącznikiem `-Skrot` tworzy też skrót na pulpicie. Gdy okno jest otwa
   wyniki, aż do odpowiedzi albo limitu kroków (`max_krokow` w profilu, domyślnie 12; „Model pracuje (krok 3 z 12)…”).
   Z włączonym przełącznikiem każdy krok widać w rozmowie jako wpis „Krok N: wywołania → …” (surowy JSON w szczegółach),
   także w przebiegu podagentów. Wpisy zapisują się zawsze — przełącznik to tylko widok, działa też na starsze rozmowy.
-- **Brakujące umiejętności** (Code): gdy do polecenia nie ma narzędzia w zaznaczonych umiejętnościach, Amadeusz nie odpowiada
+- **Brakujące umiejętności** (Code, tylko z polem **„Szukaj brakujących umiejętności”** nad rozmową — domyślnie wyłączone od
+  2026-11-20, bo model prosił o niepotrzebne umiejętności i zapychał kontekst): gdy do polecenia nie ma narzędzia w zaznaczonych umiejętnościach, Amadeusz nie odpowiada
   „nie potrafię”, tylko przeszukuje pozostałe umiejętności (`znajdz_umiejetnosc`: nazwy, opisy, polecenia, karta) i prosi
   o włączenie pasującej — w rozmowie pojawia się pytanie z przyciskami **Tak, włącz i ponów** / **Nie**. Po zgodzie umiejętność
   dochodzi do zaznaczonych, a polecenie idzie jeszcze raz samo, z całą rozmową (najwyżej dwa ponowienia z rzędu). Katalog

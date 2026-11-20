@@ -16,7 +16,7 @@ Każda blokada trafia do `%LOCALAPPDATA%\LokalneAI\bezpieczenstwo.log` — jeden
 
 # Czytanie stron: dlaczego asystent nie otwiera adresu (czytaj_strone)
 
-Model otwiera tylko adresy, które przyszły spoza modelu: z poleceń użytkownika, z wyników wyszukiwania, z przeczytanych stron i z szukaj_wiedzy — dokładnie w tej postaci. Adres z pliku, z wyniku PowerShella albo od podagenta się nie liczy, tak samo adres, który model sam napisał. W domenie podanej przez użytkownika wolno też inne strony bez parametrów (?…) i bez długich ciągów znaków w ścieżce. Adres złożony przez model jest blokowany, bo mógłby wynieść dane w zapytaniu. Rada: podaj pełny adres w poleceniu albo poproś najpierw o wyszukanie strony. Ta sama zasada dotyczy pobierania w PowerShellu, adresów dla przeglądarki i zleceń dla podagentów.
+Model otwiera tylko adresy, które przyszły spoza modelu: z poleceń użytkownika, z wyników wyszukiwania, z przeczytanych stron i z szukaj_wiedzy — dokładnie w tej postaci. Adres z pliku, z wyniku PowerShella albo od podagenta się nie liczy, tak samo adres, który model sam napisał. W domenie podanej przez użytkownika wolno też inne strony bez parametrów (?…) i bez długich ciągów znaków w ścieżce. Adres złożony przez model jest blokowany, bo mógłby wynieść dane w zapytaniu. Model dostaje wtedy „NIE OTWORZONO” z listą adresów z wyników, które wolno otworzyć. Rada: podaj pełny adres w poleceniu albo poproś najpierw o wyszukanie strony. Ta sama zasada dotyczy pobierania w PowerShellu, adresów dla przeglądarki i zleceń dla podagentów.
 
 # Co Amadeusz może robić sam ze sobą
 

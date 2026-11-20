@@ -467,6 +467,20 @@ namespace LokalneAI.Harness.Session
                     if (kind == StepSchema.Question)
                     {
                         var question = ReadText(stepJson);
+                        if (wantsWeb && hasWeb && !webNudged && !calls.Any(c => BuiltInTools.IsWeb(c.Tool)))
+                        {
+                            // Użytkownik prosił o stronę albo internet, a model zamiast szukać pyta („nie mam możliwości pobierania…, wklej dane”)
+                            // — gemma4:12b przy prognozie pogody z Interii, 2026-11-20. Raz go cofamy, jak przy odpowiedzi z pamięci.
+                            webNudged = true;
+                            warnings.Add("Model zapytał zamiast sprawdzić w internecie — program każe mu najpierw sprawdzić.");
+                            Raise(new HarnessEvent(HarnessEventKind.Warning, warnings.Last()));
+                            AddHistory(new LlmMessage("user",
+                                "Nie pytaj — masz narzędzia internetowe, a użytkownik prosił o dane ze strony. Wywołaj teraz " + BuiltInTools.WebSearchName
+                                + ", w następnym kroku " + BuiltInTools.WebFetchName + " z adresem z wyników, i zrób to, o co prosił; podaj „Źródła:”."));
+                            _addedParts.Add("uwagi programu");
+                            continue;
+                        }
+
                         Raise(new HarnessEvent(HarnessEventKind.Question, question));
                         return Finish(TurnKind.Question, question, calls, warnings, steps, modelCalls, clock, true);
                     }
@@ -769,12 +783,25 @@ namespace LokalneAI.Harness.Session
 
                 if (web.Kind == SafetyVerdictKind.Block)
                 {
-                    return Blocked(web, call);
+                    return WebRefused(web, call);
                 }
 
                 try
                 {
-                    return await BuiltInTools.ExecuteWebAsync(call.Name, call.Arguments, _options.Web, cancellationToken).ConfigureAwait(false);
+                    var fetched = await BuiltInTools.ExecuteWebAsync(call.Name, call.Arguments, _options.Web, cancellationToken).ConfigureAwait(false);
+                    if (fetched != null && fetched.Success)
+                    {
+                        // Od razu, nie po całym kroku: „wyszukaj i otwórz” w jednym kroku ma już adresy z tych wyników.
+                        _guard.RememberUrls(fetched.Text);
+                    }
+                    else if (fetched != null && call.Name == BuiltInTools.WebFetchName)
+                    {
+                        // Zgadnięty adres nie działa (np. „interii.pl/pogoda/krakow” — odmieniona nazwa z polecenia, błąd certyfikatu): model
+                        // dostaje adresy z wyników, zamiast pytać użytkownika o inne źródło (gemma4:12b, 2026-11-20).
+                        return ToolResult.Error(fetched.Text + OpenableUrlsHint(call.GetString("adres")));
+                    }
+
+                    return fetched;
                 }
                 catch (Exception e) when (!(e is OperationCanceledException) || !cancellationToken.IsCancellationRequested)
                 {
@@ -893,6 +920,35 @@ namespace LokalneAI.Harness.Session
             Raise(new HarnessEvent(HarnessEventKind.Warning, "Program zablokował polecenie modelu (" + call.Name + "): " + verdict.Reason));
             return ToolResult.Error("ZABLOKOWANE ze względów bezpieczeństwa: " + verdict.Reason
                 + " Tego Amadeusz nie robi sam, także za zgodą. Nie ponawiaj i nie próbuj innym sposobem — jeśli to potrzebne, powiedz użytkownikowi, jak zrobi to sam.");
+        }
+
+        /// <summary>
+        /// Odmowa przy internecie (adres spoza rozmowy, za długa fraza) to zwykle pomyłka modelu — zgadnięty adres albo zaślepka w tym samym
+        /// kroku co wyszukiwanie — a nie atak. Granica zostaje ta sama (strona tylko z adresu od użytkownika albo z wyników), ale model
+        /// dostaje „NIE OTWORZONO” z podpowiedzią i listą adresów, które wolno otworzyć, zamiast „ZABLOKOWANE… nie ponawiaj” — po tamtym
+        /// gemma4:12b się poddawał, choć właściwy adres miał już w wynikach (2026-11-20, prognoza pogody z Interii). Wpis w dzienniku zostaje.
+        /// </summary>
+        private ToolResult WebRefused(SafetyVerdict verdict, ToolCall call)
+        {
+            _guard.ReportBlocked(verdict, call);
+            Raise(new HarnessEvent(HarnessEventKind.Warning, "Program nie wykonał (" + call.Name + "): " + verdict.Reason));
+            if (call.Name != BuiltInTools.WebFetchName)
+            {
+                return ToolResult.Error("NIE WYKONANO: " + verdict.Reason + " Popraw wywołanie i spróbuj jeszcze raz.");
+            }
+
+            return ToolResult.Error("NIE OTWORZONO: " + verdict.Reason + OpenableUrlsHint(call.GetString("adres")));
+        }
+
+        /// <summary>Podpowiedź po nieudanym otwarciu strony: adresy, które wolno otworzyć (od użytkownika i z wyników), bez tego, który zawiódł.</summary>
+        private string OpenableUrlsHint(string failed)
+        {
+            var bad = SafetyRules.NormalizeUrl((failed ?? "").Contains("://") ? failed : "https://" + failed);
+            var known = _guard.RecentKnownUrls(9).Where(u => !string.Equals(u, bad, StringComparison.OrdinalIgnoreCase)).Take(8).ToList();
+            return known.Count > 0
+                ? " Adresy, które możesz otworzyć (przepisz jeden dokładnie, z wyników wyszukiwania): "
+                  + string.Join(" ", known.Select((url, i) => (i + 1) + ") " + url)) + ". Otwórz najlepiej pasujący, zanim zapytasz użytkownika."
+                : " Najpierw wyszukaj stronę narzędziem " + BuiltInTools.WebSearchName + ", w następnym kroku otwórz adres z wyników.";
         }
 
         /// <summary>Sprawdza argumenty, podstawia zmienne sesji i odwołania „id = 0”; zwraca opis błędu albo null.</summary>

@@ -13,7 +13,7 @@ Hasła baz, FTP i SMB: Menedżer poświadczeń Windows (wpisy `Amadeusz:…`).
 
 # ustawienia.json: pola (ollamaUrl, model, contextLength, computeOn, shareOnLan…)
 
-Nazwy pól camelCase. Najczęściej potrzebne: `ollamaUrl` (adres Ollamy, domyślnie http://127.0.0.1:11434); `model`, `modelProvider` (pusty = Ollama, albo anthropic/openai/google); `contextLength` (kontekst Czatu); `codeContextLength` (kontekst zakładki Code, 0 = jak w Czacie, ale co najmniej 16384); `computeOn`, `computeOnName` (Gdzie liczyć; null = ten komputer); `shareOnLan`, `gatewayPort`, `maxContextForOthers` (udostępnianie); `agentMachines`, `agentsUseThisComputer` (podagenci); `favoriteModels`, `cloudModels`; `harnessProfiles` (zaznaczone umiejętności), `workProfiles` (profile); `showTokens`, `showSteps`, `internetAccess`.
+Nazwy pól camelCase. Najczęściej potrzebne: `ollamaUrl` (adres Ollamy, domyślnie http://127.0.0.1:11434); `model`, `modelProvider` (pusty = Ollama, albo anthropic/openai/google); `contextLength` (kontekst Czatu); `codeContextLength` (kontekst zakładki Code, 0 = jak w Czacie, ale co najmniej 16384); `codeSkillSearch` (szukanie brakujących umiejętności, domyślnie false); `computeOn`, `computeOnName` (Gdzie liczyć; null = ten komputer); `shareOnLan`, `gatewayPort`, `maxContextForOthers` (udostępnianie); `agentMachines`, `agentsUseThisComputer` (podagenci); `favoriteModels`, `cloudModels`; `harnessProfiles` (zaznaczone umiejętności), `workProfiles` (profile); `showTokens`, `showSteps`, `internetAccess`.
 
 # Zmiana ustawienia.json ręcznie lub skryptem — tylko przy wyłączonym programie
 

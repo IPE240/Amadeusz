@@ -141,6 +141,9 @@
                                               ToolTip="Przy trzech i więcej umiejętnościach naraz albo długich rozmowach. Na karcie 8 GB większy model nie zmieści się cały w pamięci karty." />
                             </ComboBox>
                         </StackPanel>
+                        <CheckBox x:Name="SkillSearchBox" Content="Szukaj brakujących umiejętności" VerticalAlignment="Center" Margin="14,0,0,0"
+                                  Checked="SkillSearch_Changed" Unchecked="SkillSearch_Changed"
+                                  ToolTip="Gdy model nie ma polecenia do zadania, szuka w niezaznaczonych umiejętnościach i prosi o ich włączenie (przycisk w rozmowie). Każda włączona umiejętność powiększa polecenie systemowe — przy małym kontekście może go zapchać. Domyślnie wyłączone." />
                         <CheckBox x:Name="StepsBox" Content="Pokaż kroki modelu" VerticalAlignment="Center" Margin="14,0,0,0"
                                   Checked="Steps_Changed" Unchecked="Steps_Changed"
                                   ToolTip="Wpis „Krok N” po każdej odpowiedzi modelu: wywołania, odpowiedź, pytanie albo plan; surowy JSON w szczegółach. Ten sam przełącznik: Ustawienia → Czat → Diagnostyka. Wpisy zapisują się zawsze — to tylko widok." />
